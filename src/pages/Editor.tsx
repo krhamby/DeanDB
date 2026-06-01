@@ -76,6 +76,7 @@ export function Editor() {
   const [bulkText, setBulkText] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkLog, setBulkLog] = useState<string[]>([]);
+  const [rosterQuery, setRosterQuery] = useState("");
 
   if (!data) return null;
 
@@ -460,6 +461,29 @@ export function Editor() {
       return draft;
     });
 
+  // ── Roster search + global collapse ──
+  const q = rosterQuery.trim().toLowerCase();
+  const artistNameMatches = (a: Artist) => a.name.toLowerCase().includes(q);
+  const visibleAlbums = (a: Artist) =>
+    !q || artistNameMatches(a)
+      ? a.albums
+      : a.albums.filter((al) => al.title.toLowerCase().includes(q));
+  const shownArtists = !q
+    ? data.artists
+    : data.artists.filter(
+        (a) => artistNameMatches(a) || a.albums.some((al) => al.title.toLowerCase().includes(q)),
+      );
+  const allAlbumIds = data.artists.flatMap((a) => a.albums.map((al) => al.id));
+  const allCollapsed = allAlbumIds.every((id) => !albumOpen[id]);
+  const toggleAllAlbums = () => {
+    const open = !allCollapsed ? false : true; // if any open -> collapse; if all collapsed -> expand
+    setAlbumOpen(() => {
+      const next: Record<string, boolean> = {};
+      for (const id of allAlbumIds) next[id] = open;
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-8">
       <SectionTitle kicker="Mission control" title="The Editor" />
@@ -702,8 +726,34 @@ export function Editor() {
 
       {/* Manage artists */}
       <div className="space-y-4">
-        <h3 className="font-display text-lg font-black text-white">Roster ({data.artists.length})</h3>
-        {data.artists.map((artist: Artist) => (
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="font-display text-lg font-black text-white">
+            Roster ({data.artists.length})
+          </h3>
+          <input
+            value={rosterQuery}
+            onChange={(e) => setRosterQuery(e.target.value)}
+            placeholder="Search artists or albums…"
+            className={`${inputCls} flex-1 sm:max-w-xs`}
+          />
+          {allAlbumIds.length > 0 && (
+            <button
+              onClick={toggleAllAlbums}
+              className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white"
+            >
+              {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
+            </button>
+          )}
+          {q && (
+            <span className="text-xs text-zinc-500">
+              {shownArtists.length} match{shownArtists.length === 1 ? "" : "es"}
+            </span>
+          )}
+        </div>
+        {shownArtists.length === 0 && (
+          <p className="py-6 text-center text-sm text-zinc-500">No artists or albums match “{rosterQuery}”.</p>
+        )}
+        {shownArtists.map((artist: Artist) => (
           <Panel key={artist.id} className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -753,7 +803,7 @@ export function Editor() {
             )}
 
             <div className="mt-3 space-y-2">
-              {artist.albums.map((al) => {
+              {visibleAlbums(artist).map((al) => {
                 const tkey = `${artist.id}:${al.id}`;
                 return (
                   <div
