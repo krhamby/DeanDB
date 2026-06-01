@@ -7,6 +7,7 @@ import { ArtistDetail } from "./pages/ArtistDetail";
 import { AlbumDetail } from "./pages/AlbumDetail";
 import { HallOfFame } from "./pages/HallOfFame";
 import { Editor } from "./pages/Editor";
+import { Login } from "./pages/Login";
 
 function Loading() {
   return (
@@ -18,6 +19,7 @@ function Loading() {
 
 function Router() {
   const hash = useHashRoute();
+  const { isEditor } = useStore();
   const [head, a, b] = parseRoute(hash);
 
   switch (head) {
@@ -31,8 +33,11 @@ function Router() {
       return <AlbumDetail artistId={a} albumId={b} />;
     case "hall-of-fame":
       return <HallOfFame />;
+    case "login":
+      return <Login />;
     case "editor":
-      return <Editor />;
+      // The Editor is gated: non-editors get the login screen instead.
+      return isEditor ? <Editor /> : <Login />;
     default:
       return <Dashboard />;
   }

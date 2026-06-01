@@ -1,8 +1,15 @@
 import { useRef, useState } from "react";
 import { useStore } from "../lib/store";
-import { slugify, uid } from "../lib/format";
-import { fetchTracklist, findAlbumCover, lookupArtist, refreshArtistMeta } from "../lib/musicbrainz";
-import { DeanMeter, Panel, SectionTitle, Stars } from "../components/ui";
+import { fmtHours, slugify, uid } from "../lib/format";
+import { computeStats } from "../lib/stats";
+import {
+  fetchTracklist,
+  findAlbumCover,
+  lookupArtist,
+  refreshArtistMeta,
+  type ArtistMatch,
+} from "../lib/musicbrainz";
+import { DeanMeter, Panel, SectionTitle, Score10 } from "../components/ui";
 import type { Album, AlbumStatus, Artist, DeanDBData } from "../types";
 
 const PALETTE: [string, string][] = [
@@ -61,10 +68,40 @@ export function Editor() {
   const [bulkTracks, setBulkTracks] = useState<Record<string, string>>({});
   const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [bulkText, setBulkText] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkLog, setBulkLog] = useState<string[]>([]);
 
   if (!data) return null;
 
-  // Import an artist's whole studio discography (covers + years) from MusicBrainz.
+  // Build a roster Artist from a MusicBrainz match (shared by single + bulk import).
+  const artistFromMatch = (match: ArtistMatch, genre?: string, country?: string): Artist => ({
+    id: `${slugify(match.name)}-${uid("a").slice(-4)}`,
+    name: match.name,
+    genre: match.genre ?? (genre?.trim() || "Unknown"),
+    country: match.country ?? (country?.trim() || "—"),
+    color: pick(),
+    catalogSize: match.catalogSize || match.albums.length || 1,
+    bio: "",
+    mbid: match.mbid,
+    albums: match.albums.map((al) => ({
+      id: `${slugify(al.title)}-${uid("al").slice(-4)}`,
+      title: al.title,
+      year: al.year,
+      cover: pick(),
+      coverUrl: al.coverUrl,
+      mbid: al.mbid,
+      status: "want" as const,
+      rating: null,
+      review: "",
+      minutes: 40,
+      dateListened: null,
+      favorite: false,
+      tracks: [],
+    })),
+  });
+
+  // Import a single artist's whole studio discography from MusicBrainz.
   const importArtist = async () => {
     const name = newArtist.name.trim();
     if (!name) return;
@@ -77,31 +114,7 @@ export function Editor() {
         return;
       }
       update((draft) => {
-        draft.artists.push({
-          id: `${slugify(match.name)}-${uid("a").slice(-4)}`,
-          name: match.name,
-          genre: match.genre ?? (newArtist.genre.trim() || "Unknown"),
-          country: match.country ?? (newArtist.country.trim() || "—"),
-          color: pick(),
-          catalogSize: match.catalogSize || match.albums.length || 1,
-          bio: "",
-          mbid: match.mbid,
-          albums: match.albums.map((al) => ({
-            id: `${slugify(al.title)}-${uid("al").slice(-4)}`,
-            title: al.title,
-            year: al.year,
-            cover: pick(),
-            coverUrl: al.coverUrl,
-            mbid: al.mbid,
-            status: "want" as const,
-            rating: null,
-            review: "",
-            minutes: 40,
-            dateListened: null,
-            favorite: false,
-            tracks: [],
-          })),
-        });
+        draft.artists.push(artistFromMatch(match, newArtist.genre, newArtist.country));
         return draft;
       });
       setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers.`);
@@ -111,6 +124,53 @@ export function Editor() {
     } finally {
       setLookupBusy(false);
     }
+  };
+
+  // Bulk import: one artist name per line. Throttled to respect MusicBrainz,
+  // skips names already in the roster, and logs each result live.
+  const bulkImport = async () => {
+    const names = [...new Set(bulkText.split("\n").map((s) => s.trim()).filter(Boolean))];
+    if (names.length === 0) return;
+    setBulkImporting(true);
+    setBulkLog([`Starting bulk import of ${names.length} artist(s)…`]);
+    const seen = new Set(data.artists.map((a) => a.name.toLowerCase()));
+    let added = 0,
+      skipped = 0,
+      missed = 0;
+    const log = (line: string) => setBulkLog((l) => [...l, line]);
+
+    for (let i = 0; i < names.length; i++) {
+      const name = names[i];
+      const tag = `(${i + 1}/${names.length})`;
+      if (seen.has(name.toLowerCase())) {
+        log(`${tag} ${name} — already in roster, skipped`);
+        skipped++;
+        continue;
+      }
+      try {
+        const match = await lookupArtist(name);
+        if (!match) {
+          log(`${tag} ${name} — no match ✗`);
+          missed++;
+        } else {
+          update((draft) => {
+            draft.artists.push(artistFromMatch(match));
+            return draft;
+          });
+          seen.add(name.toLowerCase());
+          seen.add(match.name.toLowerCase());
+          log(`${tag} ${match.name} — ${match.albums.length} albums ✓`);
+          added++;
+        }
+      } catch {
+        log(`${tag} ${name} — error ✗`);
+        missed++;
+      }
+      await sleep(1500); // be polite to MusicBrainz
+    }
+    log(`✓ Done — added ${added}, skipped ${skipped}, not found ${missed}. Now hit Publish!`);
+    setBulkText("");
+    setBulkImporting(false);
   };
 
   // Pull a single album's cover art (and fill the year if missing).
@@ -136,18 +196,26 @@ export function Editor() {
     }
   };
 
-  const applyTracks = (artistId: string, albumId: string, titles: string[]) =>
+  // Set tracks, and adopt MusicBrainz's real runtime when it has one.
+  const applyTracks = (
+    artistId: string,
+    albumId: string,
+    titles: string[],
+    runtimeMin: number,
+  ) =>
     update((draft) => {
       const al = draft.artists
         .find((a) => a.id === artistId)
         ?.albums.find((x) => x.id === albumId);
-      if (al)
+      if (al) {
         al.tracks = titles.map((title) => ({
           id: uid("t"),
           title,
           rating: null,
           favorite: false,
         }));
+        if (runtimeMin > 0) al.minutes = runtimeMin;
+      }
       return draft;
     });
 
@@ -157,8 +225,8 @@ export function Editor() {
     try {
       const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
       if (!mbid) return;
-      const titles = await fetchTracklist(mbid);
-      if (titles.length) applyTracks(artist.id, al.id, titles);
+      const tl = await fetchTracklist(mbid);
+      if (tl.titles.length) applyTracks(artist.id, al.id, tl.titles, tl.runtimeMin);
     } catch {
       /* leave tracks as-is on failure */
     } finally {
@@ -185,8 +253,8 @@ export function Editor() {
       try {
         const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
         if (mbid) {
-          const titles = await fetchTracklist(mbid);
-          if (titles.length) applyTracks(artist.id, al.id, titles);
+          const tl = await fetchTracklist(mbid);
+          if (tl.titles.length) applyTracks(artist.id, al.id, tl.titles, tl.runtimeMin);
         }
       } catch {
         /* skip this album */
@@ -505,12 +573,12 @@ export function Editor() {
           <Field label="Season label">
             <input className={inputCls} value={data.season} onChange={(e) => update((d) => ((d.season = e.target.value), d))} />
           </Field>
-          <Field label="Goal hours">
+          <Field label="Goal — total runtime (auto)">
             <input
-              type="number"
-              className={inputCls}
-              value={data.goalHours}
-              onChange={(e) => update((d) => ((d.goalHours = Number(e.target.value) || 0), d))}
+              readOnly
+              className={`${inputCls} cursor-default opacity-70`}
+              value={fmtHours(computeStats(data).totalRuntimeHours)}
+              title="The goal is the combined runtime of every album you're tracking. Load tracklists to make runtimes accurate."
             />
           </Field>
         </div>
@@ -559,6 +627,40 @@ export function Editor() {
         </p>
       </Panel>
 
+      {/* Bulk import */}
+      <Panel className="space-y-3 p-5">
+        <h3 className="font-display text-lg font-black text-white">Bulk Import from MusicBrainz</h3>
+        <p className="text-xs leading-relaxed text-zinc-500">
+          Paste one artist per line. Each is looked up on MusicBrainz (~1.5s apiece to stay polite),
+          names already in the roster are skipped, and full studio discographies arrive with covers.
+          Typos usually still match. When it finishes, hit <span className="text-gold">Publish</span>.
+        </p>
+        <textarea
+          value={bulkText}
+          onChange={(e) => setBulkText(e.target.value)}
+          disabled={bulkImporting}
+          rows={6}
+          placeholder={"50 Cent\nAlice in Chains\nBig Thief\nTool\n…"}
+          className={`${inputCls} w-full font-mono`}
+        />
+        <button
+          onClick={bulkImport}
+          disabled={bulkImporting || !bulkText.trim()}
+          className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+        >
+          {bulkImporting ? "⏳ Importing… (don't close this tab)" : "⇊ Import all from MusicBrainz"}
+        </button>
+        {bulkLog.length > 0 && (
+          <div className="max-h-56 space-y-0.5 overflow-auto rounded-lg border border-edge bg-panel-2/60 p-3 font-mono text-xs text-zinc-400">
+            {bulkLog.map((l, i) => (
+              <div key={i} className={l.includes("✓") ? "text-emerald-400" : l.includes("✗") ? "text-dean" : ""}>
+                {l}
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
       {/* Manage artists */}
       <div className="space-y-4">
         <h3 className="font-display text-lg font-black text-white">Roster ({data.artists.length})</h3>
@@ -600,7 +702,10 @@ export function Editor() {
               {artist.albums.map((al) => {
                 const tkey = `${artist.id}:${al.id}`;
                 return (
-                  <div key={al.id} className="rounded-xl border border-edge/60 bg-panel-2/60 p-3">
+                  <div
+                    key={al.id}
+                    className={`rounded-xl border border-edge/60 bg-panel-2/60 p-3 ${al.excluded ? "opacity-60" : ""}`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-white">
                         {al.title} <span className="text-zinc-600">{al.year ?? ""}</span>
@@ -649,6 +754,15 @@ export function Editor() {
                       >
                         {al.favorite ? "⭐" : "☆"}
                       </button>
+                      <button
+                        onClick={() => patchAlbumField(artist.id, al.id, { excluded: !al.excluded })}
+                        className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                          al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-zinc-500 hover:text-white"
+                        }`}
+                        title="Exclude from the marathon (won't count toward runtime or progress)"
+                      >
+                        {al.excluded ? "🚫 Excluded" : "Exclude"}
+                      </button>
                       <div className="ml-auto flex items-center gap-2">
                         <DeanMeter value={al.rating} size={34} />
                         <input
@@ -689,10 +803,9 @@ export function Editor() {
                                 >
                                   {t.favorite ? "⭐" : "☆"}
                                 </button>
-                                <Stars
+                                <Score10
                                   value={t.rating}
-                                  size={15}
-                                  onChange={(v) => patchTrackField(artist.id, al.id, t.id, { rating: v || null })}
+                                  onChange={(v) => patchTrackField(artist.id, al.id, t.id, { rating: v })}
                                 />
                                 <button
                                   onClick={() => removeTrack(artist.id, al.id, t.id)}

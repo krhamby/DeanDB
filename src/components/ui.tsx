@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 import type { AlbumStatus } from "../types";
 
+/** Shared 0–10 color ramp used by the Dean Meter and per-song scores. */
+export function scoreColor(value: number | null): string {
+  if (value == null) return "#3a3a45";
+  if (value >= 9) return "#f5c518";
+  if (value >= 7) return "#7ee081";
+  if (value >= 5) return "#ffb84d";
+  return "#ff5a3c";
+}
+
 // ── The Dean Meter ──────────────────────────────────────────────
 // A circular score gauge, IMDb-rating energy but Dean-branded.
 export function DeanMeter({
@@ -14,16 +23,7 @@ export function DeanMeter({
   const stroke = 5;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const color =
-    value == null
-      ? "#3a3a45"
-      : value >= 9
-        ? "#f5c518"
-        : value >= 7
-          ? "#7ee081"
-          : value >= 5
-            ? "#ffb84d"
-            : "#ff5a3c";
+  const color = scoreColor(value);
   return (
     <div
       className="relative grid place-items-center shrink-0"
@@ -57,35 +57,43 @@ export function DeanMeter({
   );
 }
 
-// ── Star rating for individual songs ────────────────────────────
-export function Stars({
+// ── 0–10 score for individual songs ─────────────────────────────
+// Same scale as the Dean Meter. Editable as a compact number field;
+// read-only renders just the colored value.
+export function Score10({
   value,
   onChange,
-  size = 18,
 }: {
   value: number | null;
-  onChange?: (v: number) => void;
-  size?: number;
+  onChange?: (v: number | null) => void;
 }) {
+  const color = scoreColor(value);
+  if (!onChange) {
+    return (
+      <span className="font-display text-sm font-black tabular-nums" style={{ color }}>
+        {value == null ? "—" : value.toFixed(1)}
+      </span>
+    );
+  }
   return (
-    <div className="inline-flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((n) => {
-        const filled = value != null && n <= value;
-        return (
-          <button
-            key={n}
-            type="button"
-            disabled={!onChange}
-            onClick={() => onChange?.(value === n ? 0 : n)}
-            className={onChange ? "cursor-pointer transition-transform hover:scale-125" : "cursor-default"}
-            style={{ lineHeight: 0 }}
-            aria-label={`${n} star${n > 1 ? "s" : ""}`}
-          >
-            <span style={{ fontSize: size, color: filled ? "#f5c518" : "#3a3a45" }}>★</span>
-          </button>
-        );
-      })}
-    </div>
+    <span className="inline-flex items-center gap-1">
+      <input
+        type="number"
+        min={0}
+        max={10}
+        step={0.1}
+        value={value ?? ""}
+        placeholder="—"
+        onChange={(e) => {
+          const v = e.target.value;
+          onChange(v === "" ? null : Math.max(0, Math.min(10, Number(v))));
+        }}
+        className="w-14 rounded-md border border-edge bg-panel-2 px-1.5 py-0.5 text-right text-sm font-bold tabular-nums outline-none focus:border-gold/50"
+        style={{ color }}
+        aria-label="Song score out of 10"
+      />
+      <span className="text-xs text-zinc-600">/10</span>
+    </span>
   );
 }
 

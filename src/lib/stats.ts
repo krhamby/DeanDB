@@ -9,6 +9,10 @@ export interface AlbumWithArtist extends Album {
 export interface Stats {
   totalMinutesListened: number;
   hoursListened: number;
+  /** Total runtime of every tracked album — the real "size" of the marathon. */
+  totalRuntimeMinutes: number;
+  totalRuntimeHours: number;
+  /** The goal IS the full runtime (in hours). */
   goalHours: number;
   goalPct: number;
   albumsCompleted: number;
@@ -34,18 +38,24 @@ export function flattenAlbums(data: DeanDBData): AlbumWithArtist[] {
   );
 }
 
-/** Discography completion for one artist (0–1), based on catalogSize. */
+/** Discography completion for one artist (0–1). Excluded albums don't count. */
 export function artistProgress(artist: Artist): number {
-  const completed = artist.albums.filter((a) => a.status === "completed").length;
-  const denom = Math.max(artist.catalogSize, artist.albums.length, 1);
+  const tracked = artist.albums.filter((a) => !a.excluded);
+  const excludedCount = artist.albums.length - tracked.length;
+  const completed = tracked.filter((a) => a.status === "completed").length;
+  const denom = Math.max(artist.catalogSize - excludedCount, tracked.length, 1);
   return Math.min(completed / denom, 1);
 }
 
 export function computeStats(data: DeanDBData): Stats {
-  const albums = flattenAlbums(data);
+  // Excluded albums (e.g. ones Dean will never finish) are out of all math.
+  const albums = flattenAlbums(data).filter((a) => !a.excluded);
   const completed = albums.filter((a) => a.status === "completed");
   const totalMinutes = completed.reduce((sum, a) => sum + (a.minutes || 0), 0);
   const hours = totalMinutes / 60;
+
+  // The goal is the actual total runtime of everything Dean is working through.
+  const runtimeMinutes = albums.reduce((sum, a) => sum + (a.minutes || 0), 0);
 
   const rated = completed.filter((a) => a.rating != null);
   const avgRating =
@@ -80,8 +90,10 @@ export function computeStats(data: DeanDBData): Stats {
   return {
     totalMinutesListened: totalMinutes,
     hoursListened: hours,
-    goalHours: data.goalHours,
-    goalPct: Math.min((hours / data.goalHours) * 100, 100),
+    totalRuntimeMinutes: runtimeMinutes,
+    totalRuntimeHours: runtimeMinutes / 60,
+    goalHours: runtimeMinutes / 60,
+    goalPct: runtimeMinutes > 0 ? Math.min((totalMinutes / runtimeMinutes) * 100, 100) : 0,
     albumsCompleted: completed.length,
     albumsListening: albums.filter((a) => a.status === "listening").length,
     albumsWant: albums.filter((a) => a.status === "want").length,
@@ -104,16 +116,34 @@ export interface Achievement {
   unlocked: boolean;
   /** Optional progress text shown while locked, e.g. "12 / 50 hrs". */
   progress?: string;
+  /** Secret achievements stay masked ("???") until they unlock. */
+  hidden?: boolean;
 }
 
 export function computeAchievements(data: DeanDBData, stats: Stats): Achievement[] {
-  const hasPerfectScore = flattenAlbums(data).some((a) => a.rating === 10);
-  const longestAlbum = Math.max(0, ...flattenAlbums(data).map((a) => a.minutes));
+  const albumsF = flattenAlbums(data).filter((a) => !a.excluded);
+  const completedF = albumsF.filter((a) => a.status === "completed");
+  const hasPerfectScore = albumsF.some((a) => a.rating === 10);
+  const longestAlbum = Math.max(0, ...albumsF.map((a) => a.minutes));
   const distinctGenres = new Set(
     data.artists
       .filter((a) => a.albums.some((al) => al.status === "completed"))
       .map((a) => a.genre),
   ).size;
+
+  // ── Secret-achievement signals ──
+  const decades = new Set(
+    completedF.filter((a) => a.year).map((a) => Math.floor((a.year as number) / 10)),
+  ).size;
+  const countries = new Set(
+    data.artists.filter((a) => a.albums.some((al) => al.status === "completed")).map((a) => a.country),
+  ).size;
+  const perfectSong = albumsF.some((a) => a.tracks.some((t) => t.rating === 10));
+  const fullyRatedAlbum = completedF.some(
+    (a) => a.tracks.length > 0 && a.tracks.every((t) => t.rating != null),
+  );
+  const harshCritic = albumsF.some((a) => a.rating != null && a.rating < 2);
+  const wordsmith = albumsF.some((a) => a.review.trim().length >= 280);
 
   return [
     {
@@ -173,9 +203,9 @@ export function computeAchievements(data: DeanDBData, stats: Stats): Achievement
       id: "the-summit",
       emoji: "👑",
       title: "The Summit",
-      desc: `Reach the ${data.goalHours}-hour goal. The marathon is complete.`,
-      unlocked: stats.hoursListened >= data.goalHours,
-      progress: `${stats.hoursListened.toFixed(1)} / ${data.goalHours} hrs`,
+      desc: "Listen through the entire tracked runtime. The marathon is complete.",
+      unlocked: stats.totalRuntimeMinutes > 0 && stats.hoursListened >= stats.goalHours,
+      progress: `${stats.hoursListened.toFixed(1)} / ${stats.goalHours.toFixed(1)} hrs`,
     },
     {
       id: "endurance",
@@ -183,6 +213,54 @@ export function computeAchievements(data: DeanDBData, stats: Stats): Achievement
       title: "Endurance Test",
       desc: "Complete a single album longer than 90 minutes.",
       unlocked: longestAlbum > 90,
+    },
+    {
+      id: "completionist",
+      emoji: "✅",
+      title: "The Completionist",
+      desc: "Rate every single track on a completed album.",
+      unlocked: fullyRatedAlbum,
+    },
+    // ── Secret achievements (masked until earned) ──
+    {
+      id: "time-traveler",
+      emoji: "🕰️",
+      title: "Time Traveler",
+      desc: "Complete albums spanning five different decades.",
+      unlocked: decades >= 5,
+      hidden: true,
+    },
+    {
+      id: "globetrotter",
+      emoji: "🌐",
+      title: "Passport Stamped",
+      desc: "Finish albums from artists of five different countries.",
+      unlocked: countries >= 5,
+      hidden: true,
+    },
+    {
+      id: "flawless",
+      emoji: "💎",
+      title: "Flawless",
+      desc: "Award a single song a perfect 10.0.",
+      unlocked: perfectSong,
+      hidden: true,
+    },
+    {
+      id: "tough-crowd",
+      emoji: "🍅",
+      title: "Tough Crowd",
+      desc: "Rate an album below 2.0. Somebody had to say it.",
+      unlocked: harshCritic,
+      hidden: true,
+    },
+    {
+      id: "the-essayist",
+      emoji: "✍️",
+      title: "The Essayist",
+      desc: "Write a review of 280+ characters. A true head.",
+      unlocked: wordsmith,
+      hidden: true,
     },
   ];
 }

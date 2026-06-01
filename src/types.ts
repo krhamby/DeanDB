@@ -24,6 +24,8 @@ export interface Album {
   coverUrl?: string;
   /** MusicBrainz release-group id, if matched, for re-fetching art/metadata. */
   mbid?: string;
+  /** Excluded albums are kept for reference but don't count toward the marathon. */
+  excluded?: boolean;
   status: AlbumStatus;
   /** "The Dean Meter" — Dean's overall album score, 0.0–10.0. null = unrated. */
   rating: number | null;

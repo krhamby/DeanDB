@@ -66,6 +66,22 @@ $$;
 
 grant execute on function public.save_deandb(jsonb, text) to anon;
 
+-- 5b. Passcode check for "editor login" --------------------------------------
+--     Returns true if the passcode matches, without ever exposing the value.
+create or replace function public.check_passcode(passcode text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select editor_passcode = passcode from public.deandb_config where id = 1),
+    false
+  );
+$$;
+
+grant execute on function public.check_passcode(text) to anon;
+
 -- 6. Realtime: let viewers see edits the instant Dean publishes --------------
 alter publication supabase_realtime add table public.deandb_state;
 

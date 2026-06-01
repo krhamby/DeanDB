@@ -78,10 +78,17 @@ export function AlbumCard({
   return (
     <button
       onClick={() => navigate(`/album/${artistId}/${album.id}`)}
-      className="group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1"
+      className={`group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1 ${
+        album.excluded ? "opacity-45" : ""
+      }`}
     >
       <div className="relative">
         <Cover colors={album.cover} title={album.title} coverUrl={album.coverUrl} />
+        {album.excluded && (
+          <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-black/70 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-dean">
+            🚫 Excluded
+          </span>
+        )}
         {album.favorite && (
           <span className="absolute left-2 top-2 text-lg drop-shadow" title="Dean's favorite">
             ⭐

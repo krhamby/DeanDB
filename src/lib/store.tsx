@@ -9,7 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import type { DeanDBData } from "../types";
-import { loadState, saveState, subscribe, supabaseEnabled } from "./supabase";
+import { checkPasscode, loadState, saveState, subscribe, supabaseEnabled } from "./supabase";
+
+const EDITOR_FLAG = "deandb:editor";
+const PASSCODE_KEY = "deandb:passcode";
 
 const LS_KEY = "deandb:working-copy:v1";
 
@@ -36,6 +39,12 @@ interface StoreValue {
   publishing: boolean;
   /** A saved-but-unpublished draft exists in this browser (offered, never auto-applied). */
   hasLocalDraft: boolean;
+  /** True when this browser is unlocked as the editor (Dean). View-only otherwise. */
+  isEditor: boolean;
+  /** Validate the passcode and unlock editing. Returns whether it succeeded. */
+  login: (passcode: string) => Promise<boolean>;
+  /** Lock editing again on this browser. */
+  logout: () => void;
   /** Apply an immutable update to the data and persist it locally. */
   update: (mutator: (draft: DeanDBData) => DeanDBData) => void;
   /** Replace the whole dataset (used by import). */
@@ -88,6 +97,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [dirty, setDirty] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
+  // Editing is locked until the editor logs in. With no backend (local dev),
+  // there's nothing to authenticate against, so editing is open.
+  const [isEditor, setIsEditor] = useState(
+    () => !supabaseEnabled || localStorage.getItem(EDITOR_FLAG) === "1",
+  );
   // Realtime callbacks need the latest `dirty` without re-subscribing.
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -169,6 +183,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [data],
   );
 
+  const login = useCallback(async (passcode: string) => {
+    // No backend = nothing to check against; allow editing locally.
+    const ok = !supabaseEnabled ? true : await checkPasscode(passcode);
+    if (ok) {
+      localStorage.setItem(EDITOR_FLAG, "1");
+      localStorage.setItem(PASSCODE_KEY, passcode);
+      setIsEditor(true);
+    }
+    return ok;
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(EDITOR_FLAG);
+    localStorage.removeItem(PASSCODE_KEY);
+    setIsEditor(false);
+  }, []);
+
   const resetToPublished = useCallback(async () => {
     localStorage.removeItem(LS_KEY);
     setHasLocalDraft(false);
@@ -190,6 +221,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabaseEnabled,
       publishing,
       hasLocalDraft,
+      isEditor,
+      login,
+      logout,
       update,
       replace,
       publish,
@@ -202,6 +236,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dirty,
       publishing,
       hasLocalDraft,
+      isEditor,
+      login,
+      logout,
       update,
       replace,
       publish,

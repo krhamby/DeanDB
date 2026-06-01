@@ -66,14 +66,14 @@ export function Dashboard() {
               <div className="font-display text-2xl font-black text-white">
                 {stats.goalPct.toFixed(1)}%
               </div>
-              <div className="text-xs text-zinc-500">of {stats.goalHours}h goal</div>
+              <div className="text-xs text-zinc-500">of {fmtHours(stats.totalRuntimeHours)} total runtime</div>
             </div>
           </div>
           <div className="mt-4">
             <ProgressBar pct={stats.goalPct} className="h-3" />
             <div className="mt-2 flex justify-between text-xs text-zinc-600">
               <span>0h</span>
-              <span>{stats.goalHours}h — The Summit 👑</span>
+              <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
             </div>
           </div>
         </Panel>
@@ -145,23 +145,35 @@ export function Dashboard() {
           title="Achievements"
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {achievements.map((a) => (
-            <Panel
-              key={a.id}
-              className={`flex items-center gap-3 p-4 transition-opacity ${
-                a.unlocked ? "" : "opacity-50 grayscale"
-              }`}
-            >
-              <span className="text-3xl">{a.unlocked ? a.emoji : "🔒"}</span>
-              <div>
-                <div className="font-display font-black text-white">{a.title}</div>
-                <div className="text-xs text-zinc-500">{a.desc}</div>
-                {!a.unlocked && a.progress && (
-                  <div className="mt-0.5 text-xs font-semibold text-gold">{a.progress}</div>
-                )}
-              </div>
-            </Panel>
-          ))}
+          {achievements.map((a) => {
+            const secret = a.hidden && !a.unlocked;
+            return (
+              <Panel
+                key={a.id}
+                className={`flex items-center gap-3 p-4 transition-opacity ${
+                  a.unlocked ? "" : "opacity-50 grayscale"
+                } ${a.hidden && a.unlocked ? "border-gold/50" : ""}`}
+              >
+                <span className="text-3xl">{secret ? "❓" : a.unlocked ? a.emoji : "🔒"}</span>
+                <div>
+                  <div className="font-display font-black text-white">
+                    {secret ? "Secret Achievement" : a.title}
+                    {a.hidden && a.unlocked && (
+                      <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide text-gold">
+                        ★ secret
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-zinc-500">
+                    {secret ? "Keep listening to reveal this one…" : a.desc}
+                  </div>
+                  {!a.unlocked && !a.hidden && a.progress && (
+                    <div className="mt-0.5 text-xs font-semibold text-gold">{a.progress}</div>
+                  )}
+                </div>
+              </Panel>
+            );
+          })}
         </div>
       </section>
         </>

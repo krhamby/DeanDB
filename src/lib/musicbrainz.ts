@@ -74,31 +74,41 @@ interface ReleaseBrowse {
   releases?: Array<{
     id: string;
     "track-count"?: number;
-    media?: Array<{ tracks?: Array<{ title: string; position: number }> }>;
+    media?: Array<{ tracks?: Array<{ title: string; position: number; length?: number }> }>;
   }>;
+}
+
+export interface Tracklist {
+  titles: string[];
+  /** Total runtime in minutes (0 if MusicBrainz has no track lengths). */
+  runtimeMin: number;
 }
 
 /**
  * Fetch a tracklist for a release-group. MusicBrainz stores tracks on
  * *releases* (specific editions), so we grab an official release in the group
- * and read its media → tracks. Returns track titles in order.
+ * and read its media → tracks. Returns titles in order plus total runtime.
  */
-export async function fetchTracklist(releaseGroupMbid: string): Promise<string[]> {
+export async function fetchTracklist(releaseGroupMbid: string): Promise<Tracklist> {
   const json = await mbGet<ReleaseBrowse>(
     `/release?release-group=${releaseGroupMbid}&inc=recordings&status=official&limit=25`,
   );
   const releases = json.releases ?? [];
-  if (releases.length === 0) return [];
+  if (releases.length === 0) return { titles: [], runtimeMin: 0 };
   // Prefer the release with the most tracks (usually the standard edition,
   // and avoids picking a single/promo that happens to share the group).
   const best = releases.reduce((a, b) =>
     (b["track-count"] ?? 0) > (a["track-count"] ?? 0) ? b : a,
   );
   const titles: string[] = [];
+  let ms = 0;
   for (const m of best.media ?? []) {
-    for (const t of m.tracks ?? []) titles.push(t.title);
+    for (const t of m.tracks ?? []) {
+      titles.push(t.title);
+      ms += t.length ?? 0;
+    }
   }
-  return titles;
+  return { titles, runtimeMin: Math.round(ms / 60000) };
 }
 
 interface ArtistSearch {

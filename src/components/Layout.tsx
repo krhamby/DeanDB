@@ -8,7 +8,6 @@ const NAV = [
   { path: "/", label: "Home" },
   { path: "/artists", label: "Artists" },
   { path: "/hall-of-fame", label: "Hall of Fame" },
-  { path: "/editor", label: "Editor" },
 ];
 
 function Logo() {
@@ -50,7 +49,7 @@ function Ticker() {
 
 export function Layout({ children }: { children: ReactNode }) {
   const hash = useHashRoute();
-  const { data } = useStore();
+  const { data, isEditor, logout } = useStore();
   const active = hash.replace(/^#/, "") || "/";
   const stats = data ? computeStats(data) : null;
 
@@ -74,16 +73,45 @@ export function Layout({ children }: { children: ReactNode }) {
                 </button>
               );
             })}
+            {isEditor && (
+              <button
+                onClick={() => navigate("/editor")}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  active.startsWith("/editor") ? "bg-gold text-black" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                Editor
+              </button>
+            )}
           </nav>
-          {stats && (
-            <div className="hidden items-center gap-2 rounded-full border border-edge bg-panel px-3 py-1.5 sm:flex">
-              <span className="text-xs text-zinc-500">Marathon</span>
-              <span className="font-display text-sm font-black text-gold">
-                {fmtHours(stats.hoursListened)}
-              </span>
-              <span className="text-xs text-zinc-600">/ {stats.goalHours}h</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {stats && (
+              <div className="hidden items-center gap-2 rounded-full border border-edge bg-panel px-3 py-1.5 sm:flex">
+                <span className="text-xs text-zinc-500">Marathon</span>
+                <span className="font-display text-sm font-black text-gold">
+                  {fmtHours(stats.hoursListened)}
+                </span>
+                <span className="text-xs text-zinc-600">/ {fmtHours(stats.totalRuntimeHours)}</span>
+              </div>
+            )}
+            {isEditor ? (
+              <button
+                onClick={logout}
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-500 hover:text-dean"
+                title="Lock editing on this device"
+              >
+                Log out
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate("/login")}
+                className="rounded-lg border border-edge px-2.5 py-1.5 text-xs font-semibold text-zinc-400 hover:text-gold"
+                title="Editor login"
+              >
+                🔒 Log in
+              </button>
+            )}
+          </div>
         </div>
         <Ticker />
       </header>

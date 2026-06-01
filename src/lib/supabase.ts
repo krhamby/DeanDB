@@ -54,6 +54,20 @@ export async function saveState(
 }
 
 /**
+ * Verify the editor passcode via a SECURITY DEFINER RPC (the passcode itself
+ * never leaves the database). Used to unlock the Editor / "log in" as Dean.
+ */
+export async function checkPasscode(passcode: string): Promise<boolean> {
+  if (!client) return false;
+  const { data, error } = await client.rpc("check_passcode", { passcode });
+  if (error) {
+    console.error("check_passcode failed:", error.message);
+    return false;
+  }
+  return data === true;
+}
+
+/**
  * Live updates: invokes `onChange` whenever the published row changes.
  * Returns an unsubscribe function. No-op when Supabase is disabled.
  */

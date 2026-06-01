@@ -3,11 +3,11 @@ import { useStore } from "../lib/store";
 import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
-import { DeanMeter, Panel, StatusBadge, Stars } from "../components/ui";
+import { DeanMeter, Panel, StatusBadge, Score10 } from "../components/ui";
 import type { Album, AlbumStatus, DeanDBData } from "../types";
 
 export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: string }) {
-  const { data, update } = useStore();
+  const { data, update, isEditor } = useStore();
   const [editing, setEditing] = useState(false);
 
   const artist = data?.artists.find((a) => a.id === artistId);
@@ -86,14 +86,16 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
         <h2 className="font-display text-xl font-black text-white">
           {album.review ? "Dean's Review" : "The Verdict"}
         </h2>
-        <button
-          onClick={() => setEditing((e) => !e)}
-          className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-            editing ? "bg-gold text-black" : "border border-edge text-zinc-300 hover:text-white"
-          }`}
-        >
-          {editing ? "Done" : "✎ Edit"}
-        </button>
+        {isEditor && (
+          <button
+            onClick={() => setEditing((e) => !e)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+              editing ? "bg-gold text-black" : "border border-edge text-zinc-300 hover:text-white"
+            }`}
+          >
+            {editing ? "Done" : "✎ Edit"}
+          </button>
+        )}
       </div>
 
       {/* Review */}
@@ -198,7 +200,7 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
                 >
                   {t.favorite ? "⭐" : "☆"}
                 </button>
-                <Stars value={t.rating} onChange={editing ? (v) => patchTrack(t.id, { rating: v || null }) : undefined} />
+                <Score10 value={t.rating} onChange={editing ? (v) => patchTrack(t.id, { rating: v }) : undefined} />
               </div>
             ))}
             {album.tracks.length === 0 && (
