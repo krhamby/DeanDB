@@ -54,6 +54,9 @@ export function Editor() {
     publish,
     hasLocalDraft,
     restoreLocalDraft,
+    autoPublish,
+    setAutoPublish,
+    pauseAutoPublish,
   } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [newArtist, setNewArtist] = useState({ name: "", genre: "", country: "", catalogSize: 1 });
@@ -136,6 +139,7 @@ export function Editor() {
     const names = [...new Set(bulkText.split("\n").map((s) => s.trim()).filter(Boolean))];
     if (names.length === 0) return;
     setBulkImporting(true);
+    pauseAutoPublish(true); // hold auto-publish until the whole batch is done
     setBulkLog([`Starting bulk import of ${names.length} artist(s)…`]);
     const seen = new Set(data.artists.map((a) => a.name.toLowerCase()));
     let added = 0,
@@ -172,9 +176,11 @@ export function Editor() {
       }
       await sleep(300); // small buffer; global limiter handles real spacing
     }
-    log(`✓ Done — added ${added}, skipped ${skipped}, not found ${missed}. Now hit Publish!`);
+    const tail = autoPublish ? "Auto-publishing now…" : "Now hit Publish!";
+    log(`✓ Done — added ${added}, skipped ${skipped}, not found ${missed}. ${tail}`);
     setBulkText("");
     setBulkImporting(false);
+    pauseAutoPublish(false); // resume → triggers a single auto-publish if enabled
   };
 
   // Pull a single album's cover art (and fill the year if missing).
@@ -248,6 +254,7 @@ export function Editor() {
       setBulkTracks((s) => ({ ...s, [artist.id]: "Every album already has tracks." }));
       return;
     }
+    pauseAutoPublish(true); // one publish after the whole batch
     let done = 0;
     for (const al of todo) {
       setBulkTracks((s) => ({
@@ -270,6 +277,7 @@ export function Editor() {
       ...s,
       [artist.id]: `✓ Pulled tracklists for ${todo.length} album(s).`,
     }));
+    pauseAutoPublish(false);
   };
 
   // Refresh genre / country / catalog size from MusicBrainz for one artist.
@@ -513,6 +521,33 @@ export function Editor() {
               </span>
             )}
           </div>
+
+          {/* Auto-publish toggle */}
+          <label className="flex cursor-pointer select-none items-center gap-2 pt-1 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={autoPublish}
+              onChange={(e) => {
+                if (passcode) localStorage.setItem("deandb:passcode", passcode);
+                setAutoPublish(e.target.checked);
+              }}
+              className="h-4 w-4 accent-gold"
+            />
+            Auto-publish changes
+            <span className="text-xs text-zinc-600">
+              — pushes ~3s after you stop editing; waits for bulk imports to finish first
+            </span>
+          </label>
+          {autoPublish && (
+            <p className="text-xs font-semibold text-emerald-400">
+              {publishing
+                ? "Auto-publishing…"
+                : dirty
+                  ? "● Auto-publish queued…"
+                  : "✓ Everything's published automatically"}
+            </p>
+          )}
+
           {publishMsg && (
             <p className={`text-sm font-semibold ${publishMsg.ok ? "text-emerald-400" : "text-dean"}`}>
               {publishMsg.text}

@@ -13,6 +13,7 @@ import { checkPasscode, loadState, saveState, subscribe, supabaseEnabled } from 
 
 const EDITOR_FLAG = "deandb:editor";
 const PASSCODE_KEY = "deandb:passcode";
+const AUTOPUBLISH_KEY = "deandb:autopublish";
 
 const LS_KEY = "deandb:working-copy:v1";
 
@@ -45,6 +46,11 @@ interface StoreValue {
   login: (passcode: string) => Promise<boolean>;
   /** Lock editing again on this browser. */
   logout: () => void;
+  /** When true, edits auto-publish to the cloud (debounced). */
+  autoPublish: boolean;
+  setAutoPublish: (on: boolean) => void;
+  /** Hold/resume auto-publish around batch operations (bulk import etc.). */
+  pauseAutoPublish: (paused: boolean) => void;
   /** Apply an immutable update to the data and persist it locally. */
   update: (mutator: (draft: DeanDBData) => DeanDBData) => void;
   /** Replace the whole dataset (used by import). */
@@ -102,6 +108,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [isEditor, setIsEditor] = useState(
     () => !supabaseEnabled || localStorage.getItem(EDITOR_FLAG) === "1",
   );
+  const [autoPublish, setAutoPublishState] = useState(
+    () => localStorage.getItem(AUTOPUBLISH_KEY) === "1",
+  );
+  // While a batch op (bulk import / load-all-tracks) runs, hold auto-publish
+  // so we push once at the end instead of after every single change.
+  const [autoPaused, setAutoPaused] = useState(false);
   // Realtime callbacks need the latest `dirty` without re-subscribing.
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -200,6 +212,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setIsEditor(false);
   }, []);
 
+  const setAutoPublish = useCallback((on: boolean) => {
+    localStorage.setItem(AUTOPUBLISH_KEY, on ? "1" : "0");
+    setAutoPublishState(on);
+  }, []);
+
+  const pauseAutoPublish = useCallback((paused: boolean) => setAutoPaused(paused), []);
+
+  // Auto-publish: when enabled (and not mid-batch), push to the cloud a few
+  // seconds after the last edit settles. Each change resets the timer.
+  useEffect(() => {
+    if (!autoPublish || !isEditor || !supabaseEnabled || !dirty || autoPaused) return;
+    const t = window.setTimeout(() => {
+      publish(localStorage.getItem(PASSCODE_KEY) ?? "");
+    }, 3000);
+    return () => clearTimeout(t);
+    // `data` is included so each edit restarts the debounce window.
+  }, [autoPublish, isEditor, dirty, autoPaused, data, publish]);
+
   const resetToPublished = useCallback(async () => {
     localStorage.removeItem(LS_KEY);
     setHasLocalDraft(false);
@@ -224,6 +254,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isEditor,
       login,
       logout,
+      autoPublish,
+      setAutoPublish,
+      pauseAutoPublish,
       update,
       replace,
       publish,
@@ -239,6 +272,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isEditor,
       login,
       logout,
+      autoPublish,
+      setAutoPublish,
+      pauseAutoPublish,
       update,
       replace,
       publish,
