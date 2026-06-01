@@ -9,7 +9,7 @@ import {
   refreshArtistMeta,
   type ArtistMatch,
 } from "../lib/musicbrainz";
-import { DeanMeter, Panel, SectionTitle, Score10 } from "../components/ui";
+import { DeanMeter, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
 import type { Album, AlbumStatus, Artist, DeanDBData } from "../types";
 
 const PALETTE: [string, string][] = [
@@ -68,6 +68,8 @@ export function Editor() {
   const [bulkTracks, setBulkTracks] = useState<Record<string, string>>({});
   const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Albums collapse to a one-line summary by default; click to expand.
+  const [albumOpen, setAlbumOpen] = useState<Record<string, boolean>>({});
   const [bulkText, setBulkText] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkLog, setBulkLog] = useState<string[]>([]);
@@ -119,8 +121,10 @@ export function Editor() {
       });
       setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers.`);
       setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
-    } catch {
-      setLookupMsg("MusicBrainz lookup failed (network/CORS). You can still add manually.");
+    } catch (e) {
+      setLookupMsg(
+        e instanceof Error ? `${e.message}. You can still add manually.` : "Lookup failed.",
+      );
     } finally {
       setLookupBusy(false);
     }
@@ -162,11 +166,11 @@ export function Editor() {
           log(`${tag} ${match.name} — ${match.albums.length} albums ✓`);
           added++;
         }
-      } catch {
-        log(`${tag} ${name} — error ✗`);
+      } catch (e) {
+        log(`${tag} ${name} — ${e instanceof Error ? e.message : "error"} ✗`);
         missed++;
       }
-      await sleep(1500); // be polite to MusicBrainz
+      await sleep(300); // small buffer; global limiter handles real spacing
     }
     log(`✓ Done — added ${added}, skipped ${skipped}, not found ${missed}. Now hit Publish!`);
     setBulkText("");
@@ -260,7 +264,7 @@ export function Editor() {
         /* skip this album */
       }
       done++;
-      await sleep(1100);
+      await sleep(300);
     }
     setBulkTracks((s) => ({
       ...s,
@@ -689,6 +693,21 @@ export function Editor() {
                 >
                   🎵 Load all tracklists
                 </button>
+                {artist.albums.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const open = artist.albums.every((a) => albumOpen[a.id]);
+                      setAlbumOpen((s) => {
+                        const next = { ...s };
+                        for (const a of artist.albums) next[a.id] = !open;
+                        return next;
+                      });
+                    }}
+                    className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white"
+                  >
+                    {artist.albums.every((a) => albumOpen[a.id]) ? "⤡ Collapse all" : "⤢ Expand all"}
+                  </button>
+                )}
                 <button onClick={() => removeArtist(artist.id)} className="text-xs text-zinc-600 hover:text-dean">
                   Remove
                 </button>
@@ -704,13 +723,39 @@ export function Editor() {
                 return (
                   <div
                     key={al.id}
-                    className={`rounded-xl border border-edge/60 bg-panel-2/60 p-3 ${al.excluded ? "opacity-60" : ""}`}
+                    className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-white">
-                        {al.title} <span className="text-zinc-600">{al.year ?? ""}</span>
-                        <span className="ml-2 text-xs text-zinc-500">· {al.tracks.length} tracks</span>
+                    {/* Collapsed summary — click to expand */}
+                    <button
+                      onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))}
+                      className="flex w-full items-center gap-2 p-3 text-left hover:bg-white/5"
+                    >
+                      <span className="w-3 shrink-0 text-xs text-zinc-500">{albumOpen[al.id] ? "▾" : "▸"}</span>
+                      <span className="flex-1 truncate text-sm font-semibold text-white">
+                        {al.title} <span className="font-normal text-zinc-600">{al.year ?? ""}</span>
                       </span>
+                      {al.excluded && <span className="shrink-0 text-xs text-dean" title="Excluded">🚫</span>}
+                      {al.favorite && <span className="shrink-0 text-xs" title="Favorite">⭐</span>}
+                      <span className="hidden shrink-0 text-xs text-zinc-600 sm:inline">{al.tracks.length} trk</span>
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        title={al.status}
+                        style={{
+                          background:
+                            al.status === "completed" ? "#34d399" : al.status === "listening" ? "#f5c518" : "#52525b",
+                        }}
+                      />
+                      <span
+                        className="w-9 shrink-0 text-right font-display text-sm font-black tabular-nums"
+                        style={{ color: scoreColor(al.rating) }}
+                      >
+                        {al.rating != null ? al.rating.toFixed(1) : "—"}
+                      </span>
+                    </button>
+
+                    {albumOpen[al.id] && (
+                    <div className="border-t border-edge/50 p-3">
+                    <div className="flex items-center justify-end">
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => fetchCover(artist, al)}
@@ -833,6 +878,8 @@ export function Editor() {
                         +
                       </button>
                     </div>
+                    </div>
+                    )}
                   </div>
                 );
               })}

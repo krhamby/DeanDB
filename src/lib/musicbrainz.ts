@@ -18,12 +18,46 @@ export function coverArtUrl(releaseGroupMbid: string): string {
   return `https://coverartarchive.org/release-group/${releaseGroupMbid}/front-250`;
 }
 
-async function mbGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${MB}${path}${path.includes("?") ? "&" : "?"}fmt=json`, {
-    headers: { Accept: "application/json" },
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// ── Global rate limiter ─────────────────────────────────────────
+// MusicBrainz asks for ~1 request/second and returns 503 when exceeded.
+// Every call funnels through this serial queue so requests are spaced out
+// no matter how many imports fire at once. 503/429 get retried with backoff.
+const MIN_INTERVAL_MS = 1100;
+let lastStarted = 0;
+let queue: Promise<unknown> = Promise.resolve();
+
+function schedule<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(async () => {
+    const wait = MIN_INTERVAL_MS - (Date.now() - lastStarted);
+    if (wait > 0) await sleep(wait);
+    lastStarted = Date.now();
+    return task();
   });
-  if (!res.ok) throw new Error(`MusicBrainz ${res.status}`);
-  return (await res.json()) as T;
+  // Keep the chain alive even if a task rejects.
+  queue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+async function mbGet<T>(path: string): Promise<T> {
+  const url = `${MB}${path}${path.includes("?") ? "&" : "?"}fmt=json`;
+  return schedule(async () => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      if (res.status === 503 || res.status === 429) {
+        // Rate limited — back off and retry inside our own queue slot.
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      if (!res.ok) throw new Error(`MusicBrainz ${res.status}`);
+      return (await res.json()) as T;
+    }
+    throw new Error("MusicBrainz rate limit — try again in a moment");
+  });
 }
 
 const yearOf = (date?: string): number | null => {
