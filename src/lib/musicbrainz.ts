@@ -70,6 +70,37 @@ export async function findAlbumCover(
   };
 }
 
+interface ReleaseBrowse {
+  releases?: Array<{
+    id: string;
+    "track-count"?: number;
+    media?: Array<{ tracks?: Array<{ title: string; position: number }> }>;
+  }>;
+}
+
+/**
+ * Fetch a tracklist for a release-group. MusicBrainz stores tracks on
+ * *releases* (specific editions), so we grab an official release in the group
+ * and read its media → tracks. Returns track titles in order.
+ */
+export async function fetchTracklist(releaseGroupMbid: string): Promise<string[]> {
+  const json = await mbGet<ReleaseBrowse>(
+    `/release?release-group=${releaseGroupMbid}&inc=recordings&status=official&limit=25`,
+  );
+  const releases = json.releases ?? [];
+  if (releases.length === 0) return [];
+  // Prefer the release with the most tracks (usually the standard edition,
+  // and avoids picking a single/promo that happens to share the group).
+  const best = releases.reduce((a, b) =>
+    (b["track-count"] ?? 0) > (a["track-count"] ?? 0) ? b : a,
+  );
+  const titles: string[] = [];
+  for (const m of best.media ?? []) {
+    for (const t of m.tracks ?? []) titles.push(t.title);
+  }
+  return titles;
+}
+
 interface ArtistSearch {
   artists?: Array<{ id: string; name: string; country?: string }>;
 }

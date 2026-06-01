@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useStore } from "../lib/store";
 import { slugify, uid } from "../lib/format";
-import { findAlbumCover, lookupArtist } from "../lib/musicbrainz";
+import { fetchTracklist, findAlbumCover, lookupArtist } from "../lib/musicbrainz";
 import { Panel, SectionTitle } from "../components/ui";
 import type { Album, Artist, DeanDBData } from "../types";
 
@@ -57,6 +57,8 @@ export function Editor() {
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupMsg, setLookupMsg] = useState("");
   const [coverBusy, setCoverBusy] = useState<Record<string, boolean>>({});
+  const [trackBusy, setTrackBusy] = useState<Record<string, boolean>>({});
+  const [bulkTracks, setBulkTracks] = useState<Record<string, string>>({});
 
   if (!data) return null;
 
@@ -130,6 +132,70 @@ export function Editor() {
     } finally {
       setCoverBusy((s) => ({ ...s, [al.id]: false }));
     }
+  };
+
+  const applyTracks = (artistId: string, albumId: string, titles: string[]) =>
+    update((draft) => {
+      const al = draft.artists
+        .find((a) => a.id === artistId)
+        ?.albums.find((x) => x.id === albumId);
+      if (al)
+        al.tracks = titles.map((title) => ({
+          id: uid("t"),
+          title,
+          rating: null,
+          favorite: false,
+        }));
+      return draft;
+    });
+
+  // Pull one album's tracklist (resolving its MusicBrainz id first if needed).
+  const fetchTracks = async (artist: Artist, al: Album) => {
+    setTrackBusy((s) => ({ ...s, [al.id]: true }));
+    try {
+      const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
+      if (!mbid) return;
+      const titles = await fetchTracklist(mbid);
+      if (titles.length) applyTracks(artist.id, al.id, titles);
+    } catch {
+      /* leave tracks as-is on failure */
+    } finally {
+      setTrackBusy((s) => ({ ...s, [al.id]: false }));
+    }
+  };
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Pull tracklists for every album that doesn't have them yet, throttled to
+  // ~1 request/second out of respect for MusicBrainz's rate limit.
+  const loadAllTracks = async (artist: Artist) => {
+    const todo = artist.albums.filter((a) => a.tracks.length === 0);
+    if (todo.length === 0) {
+      setBulkTracks((s) => ({ ...s, [artist.id]: "Every album already has tracks." }));
+      return;
+    }
+    let done = 0;
+    for (const al of todo) {
+      setBulkTracks((s) => ({
+        ...s,
+        [artist.id]: `Loading tracklists… ${done}/${todo.length}`,
+      }));
+      try {
+        const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
+        if (mbid) {
+          const titles = await fetchTracklist(mbid);
+          if (titles.length) applyTracks(artist.id, al.id, titles);
+        }
+      } catch {
+        /* skip this album */
+      }
+      done++;
+      await sleep(1100);
+    }
+    setBulkTracks((s) => ({
+      ...s,
+      [artist.id]: `✓ Pulled tracklists for ${todo.length} album(s).`,
+    }));
   };
 
   const doPublish = async () => {
@@ -432,10 +498,22 @@ export function Editor() {
                   {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
                 </span>
               </div>
-              <button onClick={() => removeArtist(artist.id)} className="text-xs text-zinc-600 hover:text-dean">
-                Remove
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => loadAllTracks(artist)}
+                  className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110"
+                  title="Fetch tracklists for every album from MusicBrainz"
+                >
+                  🎵 Load all tracklists
+                </button>
+                <button onClick={() => removeArtist(artist.id)} className="text-xs text-zinc-600 hover:text-dean">
+                  Remove
+                </button>
+              </div>
             </div>
+            {bulkTracks[artist.id] && (
+              <p className="mt-2 text-xs text-zinc-400">{bulkTracks[artist.id]}</p>
+            )}
 
             <div className="mt-3 space-y-2">
               {artist.albums.map((al) => {
@@ -455,6 +533,14 @@ export function Editor() {
                           title="Fetch cover art from the Cover Art Archive"
                         >
                           {coverBusy[al.id] ? "🎨 …" : al.coverUrl ? "🎨 Refresh cover" : "🎨 Find cover"}
+                        </button>
+                        <button
+                          onClick={() => fetchTracks(artist, al)}
+                          disabled={trackBusy[al.id]}
+                          className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50"
+                          title="Fetch this album's tracklist from MusicBrainz"
+                        >
+                          {trackBusy[al.id] ? "🎵 …" : al.tracks.length ? "🎵 Reload tracks" : "🎵 Get tracks"}
                         </button>
                         <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-zinc-600 hover:text-dean">
                           Delete
