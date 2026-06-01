@@ -43,6 +43,28 @@ You can edit that file by hand, **or** use the in-app **Editor** tab (the friend
 
 > Edits made in the Editor are local to your browser until you export + commit them. That's the trick that keeps the app server-free while still being shareable: the committed JSON is what the world sees.
 
+## 🔌 Live data with Supabase (optional, recommended)
+
+Wire up a free [Supabase](https://supabase.com) project and the Editor's **Publish**
+button pushes changes to the cloud — every viewer sees them **instantly**, no commit
+needed. The whole DeanDB document lives in one JSONB row; everyone can read it, and
+writes are protected by an **editor passcode** checked server-side (the public anon
+key alone can't change anything).
+
+**Setup (~5 minutes):**
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor**, paste in [`supabase/schema.sql`](supabase/schema.sql), and **Run**.
+   Change `'change-me-now'` in that file to a secret editor passcode first.
+3. In Supabase, go to **Project Settings → API** and copy:
+   - the **Project URL** → `SUPABASE_URL` in [`src/lib/config.ts`](src/lib/config.ts)
+   - the **anon / publishable key** → `SUPABASE_ANON_KEY` in the same file
+     (it's public-safe by design — RLS does the protecting).
+4. Commit & push. Done — open the **Editor**, type your passcode, and hit **Publish**.
+
+If `SUPABASE_ANON_KEY` is left blank, DeanDB automatically falls back to the bundled
+JSON + localStorage, so it always works even without a backend.
+
 ## 🌐 Deploying to GitHub Pages (so friends can see it)
 
 A workflow is already included at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
@@ -60,7 +82,7 @@ A workflow is already included at [`.github/workflows/deploy.yml`](.github/workf
 | Language | TypeScript (strict) |
 | Styling | Tailwind CSS v4 |
 | Routing | Tiny custom hash router (zero-config on GitHub Pages) |
-| Data | A single JSON file + browser localStorage for live editing |
-| Deps | Just `react` + `react-dom`. That's it. |
+| Data | Supabase (shared, live) with automatic fallback to bundled JSON + localStorage |
+| Deps | `react`, `react-dom`, `@supabase/supabase-js` |
 
 Built with love for Dean — the realest music head we know. Keep spinning. 🎵

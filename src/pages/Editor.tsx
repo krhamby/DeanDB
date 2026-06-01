@@ -35,13 +35,27 @@ const inputCls =
   "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
 
 export function Editor() {
-  const { data, update, replace, resetToPublished, dirty } = useStore();
+  const { data, update, replace, resetToPublished, dirty, supabaseEnabled, publishing, publish } =
+    useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [newArtist, setNewArtist] = useState({ name: "", genre: "", country: "", catalogSize: 1 });
   const [albumDraft, setAlbumDraft] = useState<Record<string, { title: string; year: string }>>({});
   const [trackDraft, setTrackDraft] = useState<Record<string, string>>({});
+  const [passcode, setPasscode] = useState(() => localStorage.getItem("deandb:passcode") ?? "");
+  const [publishMsg, setPublishMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (!data) return null;
+
+  const doPublish = async () => {
+    setPublishMsg(null);
+    localStorage.setItem("deandb:passcode", passcode);
+    const res = await publish(passcode);
+    setPublishMsg(
+      res.ok
+        ? { ok: true, text: "Published! Everyone can see it now. 🎉" }
+        : { ok: false, text: res.error ?? "Publish failed." },
+    );
+  };
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -145,7 +159,49 @@ export function Editor() {
     <div className="space-y-8">
       <SectionTitle kicker="Mission control" title="The Editor" />
 
-      {/* Publish workflow */}
+      {/* Live publish via Supabase */}
+      {supabaseEnabled && (
+        <Panel className="space-y-3 p-5">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400" />
+            <h3 className="font-display text-lg font-black text-white">Live Sync</h3>
+            <span className="text-xs text-zinc-500">connected to the cloud</span>
+          </div>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            Edits autosave to <span className="text-zinc-300">this browser</span>. Hit{" "}
+            <span className="text-gold">Publish</span> to push them live — everyone viewing DeanDB sees
+            the update instantly, no commit required. Writing requires your editor passcode.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="password"
+              className={`${inputCls} w-48`}
+              placeholder="Editor passcode"
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+            />
+            <button
+              onClick={doPublish}
+              disabled={publishing || !passcode}
+              className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+            >
+              {publishing ? "Publishing…" : dirty ? "⬆ Publish changes" : "✓ Up to date — Publish anyway"}
+            </button>
+            {dirty && (
+              <span className="rounded-full bg-dean/15 px-3 py-1 text-xs font-semibold text-dean ring-1 ring-dean/30">
+                ● Unpublished edits
+              </span>
+            )}
+          </div>
+          {publishMsg && (
+            <p className={`text-sm font-semibold ${publishMsg.ok ? "text-emerald-400" : "text-dean"}`}>
+              {publishMsg.text}
+            </p>
+          )}
+        </Panel>
+      )}
+
+      {/* Manual export / import (backup, or when offline) */}
       <Panel className="p-5">
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={exportJson} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110">
@@ -171,10 +227,20 @@ export function Editor() {
           )}
         </div>
         <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-          Edits save automatically to <span className="text-zinc-300">this browser</span> only. To make them
-          visible to everyone, click <span className="text-gold">Export</span>, then replace{" "}
-          <code className="rounded bg-black/40 px-1 text-gold">public/data/deandb.json</code> in the repo with the
-          downloaded file and push. GitHub Pages redeploys automatically. 🚀
+          {supabaseEnabled ? (
+            <>
+              Backup tools. <span className="text-zinc-300">Export</span> downloads a snapshot of the data;{" "}
+              <span className="text-zinc-300">Import</span> loads one back in. Handy for backups or seeding{" "}
+              <code className="rounded bg-black/40 px-1 text-gold">public/data/deandb.json</code>.
+            </>
+          ) : (
+            <>
+              Edits save automatically to <span className="text-zinc-300">this browser</span> only. To make
+              them visible to everyone, click <span className="text-gold">Export</span>, then replace{" "}
+              <code className="rounded bg-black/40 px-1 text-gold">public/data/deandb.json</code> in the repo
+              with the downloaded file and push. GitHub Pages redeploys automatically. 🚀
+            </>
+          )}
         </p>
       </Panel>
 
