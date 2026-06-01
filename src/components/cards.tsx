@@ -9,13 +9,38 @@ import { DeanMeter, ProgressBar, StatusBadge } from "./ui";
 export function Cover({
   colors,
   title,
+  coverUrl,
   size = "md",
 }: {
   colors: [string, string];
   title: string;
+  coverUrl?: string;
   size?: "sm" | "md" | "lg";
 }) {
   const dim = size === "lg" ? 220 : size === "sm" ? 96 : 150;
+
+  // Real cover art (e.g. Cover Art Archive) when we have it — no CORS needed
+  // for <img> display. The gradient stays as the backdrop while it loads.
+  if (coverUrl) {
+    return (
+      <div
+        className="relative overflow-hidden rounded-xl shadow-lg"
+        style={{ background: gradient(colors), width: dim, height: dim }}
+      >
+        <img
+          src={coverUrl}
+          alt={title}
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={(e) => {
+            // If the art 404s, hide the <img> and let the gradient show through.
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className="relative grid place-items-center overflow-hidden rounded-xl shadow-lg"
@@ -56,7 +81,7 @@ export function AlbumCard({
       className="group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1"
     >
       <div className="relative">
-        <Cover colors={album.cover} title={album.title} />
+        <Cover colors={album.cover} title={album.title} coverUrl={album.coverUrl} />
         {album.favorite && (
           <span className="absolute left-2 top-2 text-lg drop-shadow" title="Dean's favorite">
             ⭐

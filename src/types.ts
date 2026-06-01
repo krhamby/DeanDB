@@ -18,8 +18,12 @@ export interface Album {
   id: string;
   title: string;
   year: number | null;
-  /** Two hex colors used to auto-generate a unique cover gradient. */
+  /** Two hex colors used to auto-generate a unique cover gradient (fallback). */
   cover: [string, string];
+  /** Real cover art URL (e.g. from the Cover Art Archive). Falls back to the gradient. */
+  coverUrl?: string;
+  /** MusicBrainz release-group id, if matched, for re-fetching art/metadata. */
+  mbid?: string;
   status: AlbumStatus;
   /** "The Dean Meter" — Dean's overall album score, 0.0–10.0. null = unrated. */
   rating: number | null;
@@ -42,6 +46,8 @@ export interface Artist {
   /** Total albums in the artist's catalog (for discography % even before all are added). */
   catalogSize: number;
   bio: string;
+  /** MusicBrainz artist id, if matched, for catalog lookups. */
+  mbid?: string;
   albums: Album[];
 }
 

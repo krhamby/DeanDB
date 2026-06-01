@@ -53,7 +53,7 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
         <div className="absolute inset-0" style={{ background: gradient(album.cover) }} />
         <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
         <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-end">
-          <Cover colors={album.cover} title={album.title} size="lg" />
+          <Cover colors={album.cover} title={album.title} coverUrl={album.coverUrl} size="lg" />
           <div className="flex-1">
             <button
               onClick={() => navigate(`/artist/${artistId}`)}

@@ -9,12 +9,19 @@ DeanDB is a fast, single-page web app (React + Vite + TypeScript + Tailwind). It
 
 - **The Marathon Bar** — a live progress meter ticking toward the 250-hour goal.
 - **The Dean Meter** — Dean's signature 0–10 album score, shown as a glowing gauge.
+- **The Marathon Wheel** — a spinner that reveals the next artist in Dean's sequential queue.
 - **Discography progress** — per-artist completion bars (e.g. *12 / 18 albums*).
 - **Album pages** — status, review, runtime, and per-song ⭐ ratings.
 - **Hall of Fame** — a ranked leaderboard of Dean's highest-rated records + desert-island tracks.
 - **Achievements** — unlockable badges like *Discography Slayer*, *The Perfect Ten*, and *The Summit*.
-- **Generative cover art** — every album gets a unique vinyl-on-gradient cover, no image files needed.
+- **Real album art + discographies** — one-click import from [MusicBrainz](https://musicbrainz.org)
+  & the [Cover Art Archive](https://coverartarchive.org) (free, open data, no API key); falls back
+  to generative vinyl-on-gradient covers when art is missing.
 - **A built-in Editor** — add artists/albums/tracks and rate everything right in the browser.
+
+> **Data lives in the database only.** With Supabase configured, every viewer loads exactly what's
+> published — no bundled seed data is ever shown. The marathon starts empty until Dean adds his first
+> artist. (Without a backend, the app falls back to the bundled JSON for local dev.)
 
 ## 🚀 Running locally
 

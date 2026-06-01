@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useStore } from "../lib/store";
 import { slugify, uid } from "../lib/format";
+import { findAlbumCover, lookupArtist } from "../lib/musicbrainz";
 import { Panel, SectionTitle } from "../components/ui";
-import type { Artist, DeanDBData } from "../types";
+import type { Album, Artist, DeanDBData } from "../types";
 
 const PALETTE: [string, string][] = [
   ["#ef4444", "#7c2d12"],
@@ -35,16 +36,101 @@ const inputCls =
   "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
 
 export function Editor() {
-  const { data, update, replace, resetToPublished, dirty, supabaseEnabled, publishing, publish } =
-    useStore();
+  const {
+    data,
+    update,
+    replace,
+    resetToPublished,
+    dirty,
+    supabaseEnabled,
+    publishing,
+    publish,
+    hasLocalDraft,
+    restoreLocalDraft,
+  } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [newArtist, setNewArtist] = useState({ name: "", genre: "", country: "", catalogSize: 1 });
   const [albumDraft, setAlbumDraft] = useState<Record<string, { title: string; year: string }>>({});
   const [trackDraft, setTrackDraft] = useState<Record<string, string>>({});
   const [passcode, setPasscode] = useState(() => localStorage.getItem("deandb:passcode") ?? "");
   const [publishMsg, setPublishMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupMsg, setLookupMsg] = useState("");
+  const [coverBusy, setCoverBusy] = useState<Record<string, boolean>>({});
 
   if (!data) return null;
+
+  // Import an artist's whole studio discography (covers + years) from MusicBrainz.
+  const importArtist = async () => {
+    const name = newArtist.name.trim();
+    if (!name) return;
+    setLookupBusy(true);
+    setLookupMsg("Searching MusicBrainz…");
+    try {
+      const match = await lookupArtist(name);
+      if (!match) {
+        setLookupMsg(`No MusicBrainz match for “${name}”. Add it manually below.`);
+        return;
+      }
+      update((draft) => {
+        draft.artists.push({
+          id: `${slugify(match.name)}-${uid("a").slice(-4)}`,
+          name: match.name,
+          genre: newArtist.genre.trim() || "Unknown",
+          country: match.country ?? (newArtist.country.trim() || "—"),
+          color: pick(),
+          catalogSize: match.catalogSize || match.albums.length || 1,
+          bio: "",
+          mbid: match.mbid,
+          albums: match.albums.map((al) => ({
+            id: `${slugify(al.title)}-${uid("al").slice(-4)}`,
+            title: al.title,
+            year: al.year,
+            cover: pick(),
+            coverUrl: al.coverUrl,
+            mbid: al.mbid,
+            status: "want" as const,
+            rating: null,
+            review: "",
+            minutes: 40,
+            dateListened: null,
+            favorite: false,
+            tracks: [],
+          })),
+        });
+        return draft;
+      });
+      setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers.`);
+      setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
+    } catch {
+      setLookupMsg("MusicBrainz lookup failed (network/CORS). You can still add manually.");
+    } finally {
+      setLookupBusy(false);
+    }
+  };
+
+  // Pull a single album's cover art (and fill the year if missing).
+  const fetchCover = async (artist: Artist, al: Album) => {
+    setCoverBusy((s) => ({ ...s, [al.id]: true }));
+    try {
+      const m = await findAlbumCover(artist.name, al.title);
+      if (m) {
+        update((draft) => {
+          const t = draft.artists
+            .find((a) => a.id === artist.id)
+            ?.albums.find((x) => x.id === al.id);
+          if (t) {
+            t.coverUrl = m.coverUrl;
+            t.mbid = m.mbid;
+            if (t.year == null) t.year = m.year;
+          }
+          return draft;
+        });
+      }
+    } finally {
+      setCoverBusy((s) => ({ ...s, [al.id]: false }));
+    }
+  };
 
   const doPublish = async () => {
     setPublishMsg(null);
@@ -158,6 +244,29 @@ export function Editor() {
   return (
     <div className="space-y-8">
       <SectionTitle kicker="Mission control" title="The Editor" />
+
+      {/* Unpublished draft recovery — DB is loaded fresh, draft is only offered. */}
+      {hasLocalDraft && !dirty && (
+        <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold/40 bg-gold/5 p-4">
+          <span className="text-sm text-zinc-300">
+            💾 You have unpublished edits saved in this browser from a previous session.
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={restoreLocalDraft}
+              className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-black hover:brightness-110"
+            >
+              Restore draft
+            </button>
+            <button
+              onClick={() => resetToPublished()}
+              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-400 hover:text-dean"
+            >
+              Discard
+            </button>
+          </div>
+        </Panel>
+      )}
 
       {/* Live publish via Supabase */}
       {supabaseEnabled && (
@@ -288,9 +397,27 @@ export function Editor() {
             <input type="number" min={1} className={inputCls} value={newArtist.catalogSize} onChange={(e) => setNewArtist({ ...newArtist, catalogSize: Number(e.target.value) })} />
           </Field>
         </div>
-        <button onClick={addArtist} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110">
-          + Add artist
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={importArtist}
+            disabled={lookupBusy || !newArtist.name.trim()}
+            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+          >
+            {lookupBusy ? "🔎 Searching…" : "🔎 Import from MusicBrainz"}
+          </button>
+          <button
+            onClick={addArtist}
+            className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white"
+          >
+            + Add blank artist
+          </button>
+          {lookupMsg && <span className="text-xs text-zinc-400">{lookupMsg}</span>}
+        </div>
+        <p className="text-xs leading-relaxed text-zinc-500">
+          <span className="text-zinc-300">Import from MusicBrainz</span> auto-fills the full studio
+          discography with real album covers (free, open-data — no API key). Or add a blank artist and
+          fill it in by hand.
+        </p>
       </Panel>
 
       {/* Manage artists */}
@@ -320,9 +447,19 @@ export function Editor() {
                         {al.title} <span className="text-zinc-600">{al.year ?? ""}</span>
                         <span className="ml-2 text-xs text-zinc-500">· {al.tracks.length} tracks</span>
                       </span>
-                      <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-zinc-600 hover:text-dean">
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => fetchCover(artist, al)}
+                          disabled={coverBusy[al.id]}
+                          className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50"
+                          title="Fetch cover art from the Cover Art Archive"
+                        >
+                          {coverBusy[al.id] ? "🎨 …" : al.coverUrl ? "🎨 Refresh cover" : "🎨 Find cover"}
+                        </button>
+                        <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-zinc-600 hover:text-dean">
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2 flex gap-2">
                       <input

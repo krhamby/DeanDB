@@ -9,14 +9,22 @@ import {
   type ReactNode,
 } from "react";
 import type { DeanDBData } from "../types";
-import {
-  loadState,
-  saveState,
-  subscribe,
-  supabaseEnabled,
-} from "./supabase";
+import { loadState, saveState, subscribe, supabaseEnabled } from "./supabase";
 
 const LS_KEY = "deandb:working-copy:v1";
+
+// The shape shown before Dean has published anything (or if the cloud is
+// unreachable). A clean, empty marathon — never the old bundled seed.
+const EMPTY_MARATHON: DeanDBData = {
+  listener: {
+    name: "Dean",
+    handle: "@deanlistens",
+    tagline: "250 hours. Every album. No skips. One man's quest through the canon.",
+  },
+  goalHours: 250,
+  season: "The 2026 Marathon",
+  artists: [],
+};
 
 interface StoreValue {
   data: DeanDBData | null;
@@ -26,38 +34,51 @@ interface StoreValue {
   /** Whether a shared Supabase backend is wired up. */
   supabaseEnabled: boolean;
   publishing: boolean;
+  /** A saved-but-unpublished draft exists in this browser (offered, never auto-applied). */
+  hasLocalDraft: boolean;
   /** Apply an immutable update to the data and persist it locally. */
   update: (mutator: (draft: DeanDBData) => DeanDBData) => void;
   /** Replace the whole dataset (used by import). */
   replace: (next: DeanDBData) => void;
   /** Push local edits to the shared backend (Supabase). */
   publish: (passcode: string) => Promise<{ ok: boolean; error?: string }>;
-  /** Throw away local edits and reload the published data. */
+  /** Load the saved local draft into the editor. */
+  restoreLocalDraft: () => void;
+  /** Throw away local edits and reload the published (cloud) data. */
   resetToPublished: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
 
-/** Fallback source when Supabase is off: the JSON bundled with the build. */
+/** Dev-only convenience: the JSON bundled with the build (used only when no backend). */
 async function fetchBundled(): Promise<DeanDBData> {
-  const res = await fetch(`${import.meta.env.BASE_URL}data/deandb.json`, {
-    cache: "no-cache",
-  });
-  if (!res.ok) throw new Error(`Failed to load deandb.json (${res.status})`);
-  return (await res.json()) as DeanDBData;
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}data/deandb.json`, {
+      cache: "no-cache",
+    });
+    if (res.ok) return (await res.json()) as DeanDBData;
+  } catch {
+    /* ignore */
+  }
+  return EMPTY_MARATHON;
 }
 
-/** The published baseline: Supabase row if present, else bundled JSON. */
-async function fetchPublished(): Promise<DeanDBData> {
+/**
+ * The single source of truth is the Supabase row. If no row exists yet, the
+ * marathon is empty. We never silently fall back to bundled seed data when a
+ * backend is configured — the database is authoritative.
+ */
+async function fetchFromDb(): Promise<DeanDBData> {
   if (supabaseEnabled) {
     try {
       const remote = await loadState();
-      if (remote) return remote;
+      return remote ?? EMPTY_MARATHON;
     } catch (err) {
-      // Never let a backend hiccup blank the page — fall back to bundled data.
-      console.error("Supabase read failed; falling back to bundled JSON.", err);
+      console.error("Supabase read failed; showing an empty marathon.", err);
+      return EMPTY_MARATHON;
     }
   }
+  // No backend configured at all (e.g. local dev without keys): use bundled JSON.
   return fetchBundled();
 }
 
@@ -66,6 +87,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [hasLocalDraft, setHasLocalDraft] = useState(false);
   // Realtime callbacks need the latest `dirty` without re-subscribing.
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -73,25 +95,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Dean's unpublished local edits take priority over the published copy.
-      const stored = localStorage.getItem(LS_KEY);
-      if (stored) {
-        try {
-          if (!cancelled) {
-            setData(JSON.parse(stored) as DeanDBData);
-            setDirty(true);
-            setLoading(false);
-          }
-          return;
-        } catch {
-          localStorage.removeItem(LS_KEY);
-        }
-      }
+      // Always start from the database — viewers see exactly what's published.
+      // Any local draft is offered for recovery in the Editor, never auto-loaded.
+      setHasLocalDraft(Boolean(localStorage.getItem(LS_KEY)));
       try {
-        const published = await fetchPublished();
-        if (!cancelled) setData(published);
-      } catch (err) {
-        console.error(err);
+        const fresh = await fetchFromDb();
+        if (!cancelled) setData(fresh);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -118,12 +127,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return next;
     });
     setDirty(true);
+    setHasLocalDraft(true);
   }, []);
 
   const replace = useCallback((next: DeanDBData) => {
     setData(next);
     localStorage.setItem(LS_KEY, JSON.stringify(next));
     setDirty(true);
+    setHasLocalDraft(true);
+  }, []);
+
+  const restoreLocalDraft = useCallback(() => {
+    const stored = localStorage.getItem(LS_KEY);
+    if (!stored) return;
+    try {
+      setData(JSON.parse(stored) as DeanDBData);
+      setDirty(true);
+    } catch {
+      localStorage.removeItem(LS_KEY);
+      setHasLocalDraft(false);
+    }
   }, []);
 
   const publish = useCallback(
@@ -136,6 +159,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // Published copy is now the source of truth; drop the local draft.
           localStorage.removeItem(LS_KEY);
           setDirty(false);
+          setHasLocalDraft(false);
         }
         return result;
       } finally {
@@ -147,10 +171,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const resetToPublished = useCallback(async () => {
     localStorage.removeItem(LS_KEY);
+    setHasLocalDraft(false);
     setLoading(true);
     try {
-      const published = await fetchPublished();
-      setData(published);
+      const fresh = await fetchFromDb();
+      setData(fresh);
       setDirty(false);
     } finally {
       setLoading(false);
@@ -164,12 +189,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dirty,
       supabaseEnabled,
       publishing,
+      hasLocalDraft,
       update,
       replace,
       publish,
+      restoreLocalDraft,
       resetToPublished,
     }),
-    [data, loading, dirty, publishing, update, replace, publish, resetToPublished],
+    [
+      data,
+      loading,
+      dirty,
+      publishing,
+      hasLocalDraft,
+      update,
+      replace,
+      publish,
+      restoreLocalDraft,
+      resetToPublished,
+    ],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

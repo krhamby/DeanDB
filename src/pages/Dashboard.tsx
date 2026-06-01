@@ -4,13 +4,24 @@ import { fmtHours } from "../lib/format";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
 import { DeanMeter, Panel, ProgressBar, SectionTitle } from "../components/ui";
+import { EmptyState } from "../components/EmptyState";
+import { NextSpinner } from "../components/NextSpinner";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  // Long values (e.g. a genre name) get a smaller, wrapping treatment so they
+  // never spill past the card edge.
+  const long = value.length > 6;
   return (
-    <Panel className="p-4">
-      <div className="font-display text-3xl font-black text-white">{value}</div>
+    <Panel className="overflow-hidden p-4">
+      <div
+        className={`font-display font-black leading-tight text-white break-words ${
+          long ? "text-xl" : "text-3xl"
+        }`}
+      >
+        {value}
+      </div>
       <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
-      {sub && <div className="mt-1 text-xs text-gold">{sub}</div>}
+      {sub && <div className="mt-1 truncate text-xs text-gold">{sub}</div>}
     </Panel>
   );
 }
@@ -68,6 +79,13 @@ export function Dashboard() {
         </Panel>
       </section>
 
+      {data.artists.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          {/* ── What's next ── */}
+          <NextSpinner artists={data.artists} />
+
       {/* ── Stat grid ── */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Albums done" value={String(stats.albumsCompleted)} />
@@ -89,7 +107,7 @@ export function Dashboard() {
                 onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
                 className="group flex items-center gap-4 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent p-3 pr-6 transition-transform hover:-translate-y-0.5"
               >
-                <Cover colors={a.cover} title={a.title} size="sm" />
+                <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
                 <div className="text-left">
                   <div className="text-xs font-bold uppercase tracking-wide text-gold">▶ Live</div>
                   <div className="font-display text-lg font-black text-white">{a.title}</div>
@@ -112,7 +130,7 @@ export function Dashboard() {
                 onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
                 className="group flex flex-col items-center gap-2 transition-transform hover:-translate-y-1"
               >
-                <Cover colors={a.cover} title={a.title} size="sm" />
+                <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
                 <DeanMeter value={a.rating} size={44} />
               </button>
             ))}
@@ -146,6 +164,8 @@ export function Dashboard() {
           ))}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }

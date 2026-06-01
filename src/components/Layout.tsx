@@ -14,7 +14,7 @@ const NAV = [
 function Logo() {
   return (
     <button onClick={() => navigate("/")} className="flex items-center gap-2.5">
-      <span className="grid h-9 w-12 place-items-center rounded-md bg-gold font-display text-xl font-black text-black shadow-[0_2px_0_rgba(0,0,0,0.4)]">
+      <span className="grid h-9 place-items-center rounded-md bg-gold px-2.5 font-display text-xl font-black leading-none text-black shadow-[0_2px_0_rgba(0,0,0,0.4)]">
         Dean
       </span>
       <span className="font-display text-xl font-black tracking-tight text-white">

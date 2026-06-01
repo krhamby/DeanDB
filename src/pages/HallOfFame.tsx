@@ -39,7 +39,7 @@ export function HallOfFame() {
                 }`}
               >
                 <span className="w-10 text-center font-display text-xl font-black text-gold">{medal(i)}</span>
-                <Cover colors={a.cover} title={a.title} size="sm" />
+                <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-lg font-black text-white">{a.title}</div>
                   <div className="text-sm text-zinc-400">
