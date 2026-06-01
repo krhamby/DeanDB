@@ -1,0 +1,151 @@
+import { useStore } from "../lib/store";
+import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
+import { fmtHours } from "../lib/format";
+import { navigate } from "../lib/router";
+import { Cover } from "../components/cards";
+import { DeanMeter, Panel, ProgressBar, SectionTitle } from "../components/ui";
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <Panel className="p-4">
+      <div className="font-display text-3xl font-black text-white">{value}</div>
+      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
+      {sub && <div className="mt-1 text-xs text-gold">{sub}</div>}
+    </Panel>
+  );
+}
+
+export function Dashboard() {
+  const { data } = useStore();
+  if (!data) return null;
+  const stats = computeStats(data);
+  const achievements = computeAchievements(data, stats);
+  const unlocked = achievements.filter((a) => a.unlocked);
+
+  const albums = flattenAlbums(data);
+  const nowSpinning = albums.filter((a) => a.status === "listening");
+  const recent = albums
+    .filter((a) => a.status === "completed" && a.rating != null)
+    .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
+    .slice(0, 6);
+
+  return (
+    <div className="space-y-12">
+      {/* ── Hero / marathon meter ── */}
+      <section className="animate-pop">
+        <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-gold/80">
+          {data.season}
+        </div>
+        <h1 className="mt-1 font-display text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">
+          {data.listener.name}&apos;s Discography Marathon
+        </h1>
+        <p className="mt-2 max-w-2xl text-zinc-400">{data.listener.tagline}</p>
+
+        <Panel className="mt-6 p-6">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Total time logged
+              </div>
+              <div className="font-display text-5xl font-black text-gold">
+                {fmtHours(stats.hoursListened)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-display text-2xl font-black text-white">
+                {stats.goalPct.toFixed(1)}%
+              </div>
+              <div className="text-xs text-zinc-500">of {stats.goalHours}h goal</div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <ProgressBar pct={stats.goalPct} className="h-3" />
+            <div className="mt-2 flex justify-between text-xs text-zinc-600">
+              <span>0h</span>
+              <span>{stats.goalHours}h — The Summit 👑</span>
+            </div>
+          </div>
+        </Panel>
+      </section>
+
+      {/* ── Stat grid ── */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard label="Albums done" value={String(stats.albumsCompleted)} />
+        <StatCard label="Artists" value={String(stats.artistsTotal)} sub={`${stats.artistsConquered} conquered`} />
+        <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub="Dean Meter" />
+        <StatCard label="Songs rated" value={String(stats.songsRated)} />
+        <StatCard label="Now spinning" value={String(stats.albumsListening)} />
+        <StatCard label="Top genre" value={stats.topGenre ?? "—"} />
+      </section>
+
+      {/* ── Now spinning ── */}
+      {nowSpinning.length > 0 && (
+        <section>
+          <SectionTitle kicker="On the turntable" title="Now Spinning" />
+          <div className="flex flex-wrap gap-5">
+            {nowSpinning.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                className="group flex items-center gap-4 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent p-3 pr-6 transition-transform hover:-translate-y-0.5"
+              >
+                <Cover colors={a.cover} title={a.title} size="sm" />
+                <div className="text-left">
+                  <div className="text-xs font-bold uppercase tracking-wide text-gold">▶ Live</div>
+                  <div className="font-display text-lg font-black text-white">{a.title}</div>
+                  <div className="text-sm text-zinc-400">{a.artistName}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Recent verdicts ── */}
+      {recent.length > 0 && (
+        <section>
+          <SectionTitle kicker="Fresh off the needle" title="Latest Verdicts" />
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
+            {recent.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                className="group flex flex-col items-center gap-2 transition-transform hover:-translate-y-1"
+              >
+                <Cover colors={a.cover} title={a.title} size="sm" />
+                <DeanMeter value={a.rating} size={44} />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Achievements ── */}
+      <section>
+        <SectionTitle
+          kicker={`${unlocked.length} / ${achievements.length} unlocked`}
+          title="Achievements"
+        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {achievements.map((a) => (
+            <Panel
+              key={a.id}
+              className={`flex items-center gap-3 p-4 transition-opacity ${
+                a.unlocked ? "" : "opacity-50 grayscale"
+              }`}
+            >
+              <span className="text-3xl">{a.unlocked ? a.emoji : "🔒"}</span>
+              <div>
+                <div className="font-display font-black text-white">{a.title}</div>
+                <div className="text-xs text-zinc-500">{a.desc}</div>
+                {!a.unlocked && a.progress && (
+                  <div className="mt-0.5 text-xs font-semibold text-gold">{a.progress}</div>
+                )}
+              </div>
+            </Panel>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

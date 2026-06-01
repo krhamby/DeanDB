@@ -1,0 +1,278 @@
+{
+  "listener": {
+    "name": "Dean",
+    "handle": "@deanlistens",
+    "tagline": "250 hours. Every album. No skips. One man's quest through the canon."
+  },
+  "goalHours": 250,
+  "season": "The 2026 Marathon",
+  "artists": [
+    {
+      "id": "radiohead",
+      "name": "Radiohead",
+      "genre": "Alternative Rock",
+      "country": "UK",
+      "color": ["#ef4444", "#7c2d12"],
+      "catalogSize": 9,
+      "bio": "The Oxford five-piece that refused to make the same record twice. A rite of passage for any serious marathon.",
+      "albums": [
+        {
+          "id": "rh-okc",
+          "title": "OK Computer",
+          "year": 1997,
+          "cover": ["#dc2626", "#1f2937"],
+          "status": "completed",
+          "rating": 9.6,
+          "review": "Paranoid, gorgeous, prophetic. 'Let Down' on a night drive is a spiritual experience. Instant Hall of Fame.",
+          "minutes": 53,
+          "dateListened": "2026-01-12",
+          "favorite": true,
+          "tracks": [
+            { "id": "rh-okc-1", "title": "Airbag", "rating": 5, "favorite": false },
+            { "id": "rh-okc-2", "title": "Paranoid Android", "rating": 5, "favorite": true },
+            { "id": "rh-okc-3", "title": "Subterranean Homesick Alien", "rating": 4, "favorite": false },
+            { "id": "rh-okc-4", "title": "Let Down", "rating": 5, "favorite": true },
+            { "id": "rh-okc-5", "title": "Karma Police", "rating": 5, "favorite": false },
+            { "id": "rh-okc-6", "title": "No Surprises", "rating": 5, "favorite": false }
+          ]
+        },
+        {
+          "id": "rh-kid-a",
+          "title": "Kid A",
+          "year": 2000,
+          "cover": ["#b91c1c", "#0f172a"],
+          "status": "completed",
+          "rating": 9.2,
+          "review": "Took two listens to click, then it never let go. 'Idioteque' is the future arriving early.",
+          "minutes": 50,
+          "dateListened": "2026-01-15",
+          "favorite": false,
+          "tracks": [
+            { "id": "rh-kida-1", "title": "Everything in Its Right Place", "rating": 5, "favorite": true },
+            { "id": "rh-kida-2", "title": "Kid A", "rating": 4, "favorite": false },
+            { "id": "rh-kida-3", "title": "The National Anthem", "rating": 5, "favorite": false },
+            { "id": "rh-kida-4", "title": "Idioteque", "rating": 5, "favorite": true }
+          ]
+        },
+        {
+          "id": "rh-in-rainbows",
+          "title": "In Rainbows",
+          "year": 2007,
+          "cover": ["#f59e0b", "#7c2d12"],
+          "status": "listening",
+          "rating": null,
+          "review": "",
+          "minutes": 42,
+          "dateListened": null,
+          "favorite": false,
+          "tracks": [
+            { "id": "rh-ir-1", "title": "15 Step", "rating": null, "favorite": false },
+            { "id": "rh-ir-2", "title": "Bodysnatchers", "rating": null, "favorite": false },
+            { "id": "rh-ir-3", "title": "Nude", "rating": null, "favorite": false },
+            { "id": "rh-ir-4", "title": "Weird Fishes/Arpeggi", "rating": null, "favorite": false }
+          ]
+        },
+        {
+          "id": "rh-the-bends",
+          "title": "The Bends",
+          "year": 1995,
+          "cover": ["#991b1b", "#334155"],
+          "status": "want",
+          "rating": null,
+          "review": "",
+          "minutes": 48,
+          "dateListened": null,
+          "favorite": false,
+          "tracks": []
+        }
+      ]
+    },
+    {
+      "id": "kendrick",
+      "name": "Kendrick Lamar",
+      "genre": "Hip-Hop",
+      "country": "USA",
+      "color": ["#f59e0b", "#92400e"],
+      "catalogSize": 6,
+      "bio": "Compton's poet laureate. The discography that turns casual listeners into close-readers.",
+      "albums": [
+        {
+          "id": "kdot-tpab",
+          "title": "To Pimp a Butterfly",
+          "year": 2015,
+          "cover": ["#fbbf24", "#1c1917"],
+          "status": "completed",
+          "rating": 10,
+          "review": "A perfect score. Jazz, funk, fury and grace. 'Alright' is a generation's anthem. Nothing else sounds like this.",
+          "minutes": 79,
+          "dateListened": "2026-02-02",
+          "favorite": true,
+          "tracks": [
+            { "id": "tpab-1", "title": "Wesley's Theory", "rating": 5, "favorite": true },
+            { "id": "tpab-2", "title": "King Kunta", "rating": 5, "favorite": true },
+            { "id": "tpab-3", "title": "Alright", "rating": 5, "favorite": true },
+            { "id": "tpab-4", "title": "Mortal Man", "rating": 4, "favorite": false }
+          ]
+        },
+        {
+          "id": "kdot-gkmc",
+          "title": "good kid, m.A.A.d city",
+          "year": 2012,
+          "cover": ["#d97706", "#0c0a09"],
+          "status": "completed",
+          "rating": 9.4,
+          "review": "A short film on wax. The 'm.A.A.d city' beat switch still rearranges my furniture.",
+          "minutes": 68,
+          "dateListened": "2026-02-08",
+          "favorite": false,
+          "tracks": [
+            { "id": "gkmc-1", "title": "Bitch, Don't Kill My Vibe", "rating": 5, "favorite": false },
+            { "id": "gkmc-2", "title": "Money Trees", "rating": 5, "favorite": true },
+            { "id": "gkmc-3", "title": "m.A.A.d city", "rating": 5, "favorite": false }
+          ]
+        },
+        {
+          "id": "kdot-damn",
+          "title": "DAMN.",
+          "year": 2017,
+          "cover": ["#dc2626", "#fbbf24"],
+          "status": "want",
+          "rating": null,
+          "review": "",
+          "minutes": 55,
+          "dateListened": null,
+          "favorite": false,
+          "tracks": []
+        }
+      ]
+    },
+    {
+      "id": "fleetwood-mac",
+      "name": "Fleetwood Mac",
+      "genre": "Classic Rock",
+      "country": "UK/USA",
+      "color": ["#10b981", "#064e3b"],
+      "catalogSize": 18,
+      "bio": "Soap opera as supergroup. The marathon's mandatory comfort food.",
+      "albums": [
+        {
+          "id": "fm-rumours",
+          "title": "Rumours",
+          "year": 1977,
+          "cover": ["#34d399", "#1c1917"],
+          "status": "completed",
+          "rating": 9.8,
+          "review": "Five people falling apart in perfect harmony. 'The Chain' bass line is tattooed on my brain.",
+          "minutes": 40,
+          "dateListened": "2026-01-22",
+          "favorite": true,
+          "tracks": [
+            { "id": "fm-r-1", "title": "Dreams", "rating": 5, "favorite": true },
+            { "id": "fm-r-2", "title": "The Chain", "rating": 5, "favorite": true },
+            { "id": "fm-r-3", "title": "Go Your Own Way", "rating": 5, "favorite": false },
+            { "id": "fm-r-4", "title": "Gold Dust Woman", "rating": 4, "favorite": false }
+          ]
+        },
+        {
+          "id": "fm-tusk",
+          "title": "Tusk",
+          "year": 1979,
+          "cover": ["#059669", "#292524"],
+          "status": "want",
+          "rating": null,
+          "review": "",
+          "minutes": 74,
+          "dateListened": null,
+          "favorite": false,
+          "tracks": []
+        }
+      ]
+    },
+    {
+      "id": "daft-punk",
+      "name": "Daft Punk",
+      "genre": "Electronic",
+      "country": "France",
+      "color": ["#a855f7", "#4c1d95"],
+      "catalogSize": 4,
+      "bio": "Two robots, four albums, infinite replay value. A short discography — easy marathon points.",
+      "albums": [
+        {
+          "id": "dp-discovery",
+          "title": "Discovery",
+          "year": 2001,
+          "cover": ["#c084fc", "#1e1b4b"],
+          "status": "completed",
+          "rating": 9.5,
+          "review": "Pure serotonin. 'Digital Love' into 'Harder Better Faster Stronger' is a flawless run.",
+          "minutes": 61,
+          "dateListened": "2026-02-18",
+          "favorite": true,
+          "tracks": [
+            { "id": "dp-d-1", "title": "One More Time", "rating": 5, "favorite": true },
+            { "id": "dp-d-2", "title": "Digital Love", "rating": 5, "favorite": true },
+            { "id": "dp-d-3", "title": "Harder, Better, Faster, Stronger", "rating": 5, "favorite": false }
+          ]
+        },
+        {
+          "id": "dp-ram",
+          "title": "Random Access Memories",
+          "year": 2013,
+          "cover": ["#9333ea", "#0f172a"],
+          "status": "listening",
+          "rating": null,
+          "review": "",
+          "minutes": 74,
+          "dateListened": null,
+          "favorite": false,
+          "tracks": [
+            { "id": "dp-ram-1", "title": "Give Life Back to Music", "rating": null, "favorite": false },
+            { "id": "dp-ram-2", "title": "Get Lucky", "rating": null, "favorite": false },
+            { "id": "dp-ram-3", "title": "Instant Crush", "rating": null, "favorite": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "miles-davis",
+      "name": "Miles Davis",
+      "genre": "Jazz",
+      "country": "USA",
+      "color": ["#3b82f6", "#1e3a8a"],
+      "catalogSize": 50,
+      "bio": "The deep end. Fifty-plus albums of reinvention — the white whale of any marathon.",
+      "albums": [
+        {
+          "id": "md-kob",
+          "title": "Kind of Blue",
+          "year": 1959,
+          "cover": ["#60a5fa", "#0f172a"],
+          "status": "completed",
+          "rating": 9.7,
+          "review": "The album that taught me how to listen to jazz. 'So What' is the coolest two notes ever recorded.",
+          "minutes": 46,
+          "dateListened": "2026-03-01",
+          "favorite": true,
+          "tracks": [
+            { "id": "md-kob-1", "title": "So What", "rating": 5, "favorite": true },
+            { "id": "md-kob-2", "title": "Freddie Freeloader", "rating": 5, "favorite": false },
+            { "id": "md-kob-3", "title": "Blue in Green", "rating": 5, "favorite": true }
+          ]
+        },
+        {
+          "id": "md-bitches-brew",
+          "title": "Bitches Brew",
+          "year": 1970,
+          "cover": ["#2563eb", "#1c1917"],
+          "status": "want",
+          "rating": null,
+          "review": "",
+          "minutes": 107,
+          "dateListened": null,
+          "favorite": false,
+          "tracks": []
+        }
+      ]
+    }
+  ]
+}
