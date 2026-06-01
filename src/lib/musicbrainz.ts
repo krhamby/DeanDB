@@ -105,6 +105,47 @@ interface ArtistSearch {
   artists?: Array<{ id: string; name: string; country?: string }>;
 }
 
+interface Tagged {
+  name: string;
+  country?: string;
+  area?: { name?: string };
+  genres?: Array<{ name: string; count: number }>;
+  tags?: Array<{ name: string; count: number }>;
+}
+
+const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Best genre from MusicBrainz's community genres, falling back to tags. */
+function pickGenre(d: Tagged): string | null {
+  const top = (arr?: Array<{ name: string; count: number }>) =>
+    arr && arr.length ? [...arr].sort((a, b) => b.count - a.count)[0].name : null;
+  const g = top(d.genres) ?? top(d.tags);
+  return g ? titleCase(g) : null;
+}
+
+const readableCountry = (d: Tagged): string | null => d.area?.name ?? d.country ?? null;
+
+/** Genre + readable country for an artist (extra MusicBrainz call). */
+async function artistMeta(mbid: string): Promise<{ genre: string | null; country: string | null }> {
+  const d = await mbGet<Tagged>(`/artist/${mbid}?inc=genres+tags`);
+  return { genre: pickGenre(d), country: readableCountry(d) };
+}
+
+async function studioCount(mbid: string): Promise<number> {
+  const browse = await mbGet<RGBrowse>(`/release-group?artist=${mbid}&type=album&limit=100`);
+  return (browse["release-groups"] ?? []).filter(
+    (g) => !g["secondary-types"] || g["secondary-types"].length === 0,
+  ).length;
+}
+
+/** Re-pull genre, country, and catalog size for an already-matched artist. */
+export async function refreshArtistMeta(
+  mbid: string,
+): Promise<{ genre: string | null; country: string | null; catalogSize: number }> {
+  const [meta, catalogSize] = await Promise.all([artistMeta(mbid), studioCount(mbid)]);
+  return { ...meta, catalogSize };
+}
+
 interface RGBrowse {
   "release-groups"?: Array<{
     id: string;
@@ -118,6 +159,8 @@ export interface ArtistMatch {
   mbid: string;
   name: string;
   country: string | null;
+  /** Top community genre, if MusicBrainz has one. */
+  genre: string | null;
   /** Count of studio albums (excludes live/compilation/etc.). */
   catalogSize: number;
   /** Studio albums, oldest first, with covers ready to import. */
@@ -132,6 +175,17 @@ export async function lookupArtist(name: string): Promise<ArtistMatch | null> {
   const hit = search.artists?.[0];
   if (!hit) return null;
 
+  // Genre/country come from a detail call; failures shouldn't block the import.
+  let meta: { genre: string | null; country: string | null } = {
+    genre: null,
+    country: hit.country ?? null,
+  };
+  try {
+    meta = await artistMeta(hit.id);
+  } catch {
+    /* keep the search-result country */
+  }
+
   // Studio albums only: primary type Album, no secondary types (live, comp…).
   const browse = await mbGet<RGBrowse>(
     `/release-group?artist=${hit.id}&type=album&limit=100`,
@@ -145,7 +199,8 @@ export async function lookupArtist(name: string): Promise<ArtistMatch | null> {
   return {
     mbid: hit.id,
     name: hit.name,
-    country: hit.country ?? null,
+    country: meta.country ?? hit.country ?? null,
+    genre: meta.genre,
     catalogSize: studio.length,
     albums: studio.map((g) => ({
       mbid: g.id,

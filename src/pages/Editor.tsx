@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { useStore } from "../lib/store";
 import { slugify, uid } from "../lib/format";
-import { fetchTracklist, findAlbumCover, lookupArtist } from "../lib/musicbrainz";
-import { Panel, SectionTitle } from "../components/ui";
-import type { Album, Artist, DeanDBData } from "../types";
+import { fetchTracklist, findAlbumCover, lookupArtist, refreshArtistMeta } from "../lib/musicbrainz";
+import { DeanMeter, Panel, SectionTitle, Stars } from "../components/ui";
+import type { Album, AlbumStatus, Artist, DeanDBData } from "../types";
 
 const PALETTE: [string, string][] = [
   ["#ef4444", "#7c2d12"],
@@ -59,6 +59,8 @@ export function Editor() {
   const [coverBusy, setCoverBusy] = useState<Record<string, boolean>>({});
   const [trackBusy, setTrackBusy] = useState<Record<string, boolean>>({});
   const [bulkTracks, setBulkTracks] = useState<Record<string, string>>({});
+  const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (!data) return null;
 
@@ -78,7 +80,7 @@ export function Editor() {
         draft.artists.push({
           id: `${slugify(match.name)}-${uid("a").slice(-4)}`,
           name: match.name,
-          genre: newArtist.genre.trim() || "Unknown",
+          genre: match.genre ?? (newArtist.genre.trim() || "Unknown"),
           country: match.country ?? (newArtist.country.trim() || "—"),
           color: pick(),
           catalogSize: match.catalogSize || match.albums.length || 1,
@@ -197,6 +199,77 @@ export function Editor() {
       [artist.id]: `✓ Pulled tracklists for ${todo.length} album(s).`,
     }));
   };
+
+  // Refresh genre / country / catalog size from MusicBrainz for one artist.
+  const refreshMeta = async (artist: Artist) => {
+    setMetaBusy((s) => ({ ...s, [artist.id]: true }));
+    try {
+      let meta: { genre: string | null; country: string | null; catalogSize: number } | null = null;
+      let foundMbid = artist.mbid;
+      if (artist.mbid) {
+        meta = await refreshArtistMeta(artist.mbid);
+      } else {
+        const m = await lookupArtist(artist.name);
+        if (m) {
+          meta = { genre: m.genre, country: m.country, catalogSize: m.catalogSize };
+          foundMbid = m.mbid;
+        }
+      }
+      if (meta) {
+        update((draft) => {
+          const a = draft.artists.find((x) => x.id === artist.id);
+          if (a) {
+            if (meta!.genre) a.genre = meta!.genre;
+            if (meta!.country) a.country = meta!.country;
+            if (meta!.catalogSize) a.catalogSize = meta!.catalogSize;
+            if (foundMbid) a.mbid = foundMbid;
+          }
+          return draft;
+        });
+      }
+    } finally {
+      setMetaBusy((s) => ({ ...s, [artist.id]: false }));
+    }
+  };
+
+  // ── Inline rating helpers ──────────────────────────────────────
+  const patchAlbumField = (artistId: string, albumId: string, patch: Partial<Album>) =>
+    update((draft) => {
+      const al = draft.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
+      if (al) Object.assign(al, patch);
+      return draft;
+    });
+
+  const setAlbumStatus = (artistId: string, al: Album, status: AlbumStatus) =>
+    patchAlbumField(artistId, al.id, {
+      status,
+      dateListened:
+        status === "completed" && !al.dateListened
+          ? new Date().toISOString().slice(0, 10)
+          : al.dateListened,
+    });
+
+  const patchTrackField = (
+    artistId: string,
+    albumId: string,
+    trackId: string,
+    patch: Partial<Album["tracks"][number]>,
+  ) =>
+    update((draft) => {
+      const t = draft.artists
+        .find((a) => a.id === artistId)
+        ?.albums.find((x) => x.id === albumId)
+        ?.tracks.find((tr) => tr.id === trackId);
+      if (t) Object.assign(t, patch);
+      return draft;
+    });
+
+  const removeTrack = (artistId: string, albumId: string, trackId: string) =>
+    update((draft) => {
+      const al = draft.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
+      if (al) al.tracks = al.tracks.filter((t) => t.id !== trackId);
+      return draft;
+    });
 
   const doPublish = async () => {
     setPublishMsg(null);
@@ -500,6 +573,14 @@ export function Editor() {
               </div>
               <div className="flex items-center gap-3">
                 <button
+                  onClick={() => refreshMeta(artist)}
+                  disabled={metaBusy[artist.id]}
+                  className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50"
+                  title="Update genre, country & catalog size from MusicBrainz"
+                >
+                  {metaBusy[artist.id] ? "↻ …" : "↻ Genre & country"}
+                </button>
+                <button
                   onClick={() => loadAllTracks(artist)}
                   className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110"
                   title="Fetch tracklists for every album from MusicBrainz"
@@ -547,6 +628,86 @@ export function Editor() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Rate the album: status + Dean Meter + favorite */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {(["want", "listening", "completed"] as AlbumStatus[]).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setAlbumStatus(artist.id, al, s)}
+                          className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
+                            al.status === s ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          {s === "want" ? "Want" : s === "listening" ? "Listening" : "Done"}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => patchAlbumField(artist.id, al.id, { favorite: !al.favorite })}
+                        className="text-base transition-transform hover:scale-110"
+                        title="Favorite album"
+                      >
+                        {al.favorite ? "⭐" : "☆"}
+                      </button>
+                      <div className="ml-auto flex items-center gap-2">
+                        <DeanMeter value={al.rating} size={34} />
+                        <input
+                          type="range"
+                          min={0}
+                          max={10}
+                          step={0.1}
+                          value={al.rating ?? 0}
+                          onChange={(e) => patchAlbumField(artist.id, al.id, { rating: Number(e.target.value) })}
+                          className="w-32 accent-gold"
+                          title="Dean Meter — overall album score"
+                        />
+                        <span className="w-8 text-right text-xs font-bold text-gold">
+                          {al.rating != null ? al.rating.toFixed(1) : "—"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tracklist with per-song star ratings (collapsible) */}
+                    {al.tracks.length > 0 && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))}
+                          className="text-xs font-semibold text-zinc-400 hover:text-white"
+                        >
+                          {expanded[al.id] ? "▾" : "▸"} {al.tracks.length} tracks — rate songs
+                        </button>
+                        {expanded[al.id] && (
+                          <div className="mt-2 divide-y divide-edge/40 rounded-lg border border-edge/40 bg-panel/40">
+                            {al.tracks.map((t, i) => (
+                              <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
+                                <span className="w-5 text-right text-xs text-zinc-600">{i + 1}</span>
+                                <span className="flex-1 truncate text-sm text-white">{t.title}</span>
+                                <button
+                                  onClick={() => patchTrackField(artist.id, al.id, t.id, { favorite: !t.favorite })}
+                                  className="text-sm transition-transform hover:scale-110"
+                                  title="Favorite track"
+                                >
+                                  {t.favorite ? "⭐" : "☆"}
+                                </button>
+                                <Stars
+                                  value={t.rating}
+                                  size={15}
+                                  onChange={(v) => patchTrackField(artist.id, al.id, t.id, { rating: v || null })}
+                                />
+                                <button
+                                  onClick={() => removeTrack(artist.id, al.id, t.id)}
+                                  className="text-zinc-600 hover:text-dean"
+                                  title="Remove track"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="mt-2 flex gap-2">
                       <input
                         className={`${inputCls} flex-1`}
