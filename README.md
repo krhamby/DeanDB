@@ -47,10 +47,10 @@ You can edit that file by hand, **or** use the in-app **Editor** tab (the friend
 
 A workflow is already included at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
-1. Push this repo to GitHub (the app's base path assumes the repo is named **`deandb`** — see `vite.config.ts` if yours differs).
+1. Push this repo to GitHub (the app's base path assumes the repo is named **`DeanDB`** — see `vite.config.ts` if yours differs).
 2. In the repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 3. Push to `main`. The action builds and deploys automatically.
-4. Your site goes live at **`https://<your-username>.github.io/deandb/`**.
+4. Your site goes live at **`https://<your-username>.github.io/DeanDB/`**.
 
 ## 🛠 Tech
 
