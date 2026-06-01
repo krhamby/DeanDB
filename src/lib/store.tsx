@@ -50,8 +50,13 @@ async function fetchBundled(): Promise<DeanDBData> {
 /** The published baseline: Supabase row if present, else bundled JSON. */
 async function fetchPublished(): Promise<DeanDBData> {
   if (supabaseEnabled) {
-    const remote = await loadState();
-    if (remote) return remote;
+    try {
+      const remote = await loadState();
+      if (remote) return remote;
+    } catch (err) {
+      // Never let a backend hiccup blank the page — fall back to bundled data.
+      console.error("Supabase read failed; falling back to bundled JSON.", err);
+    }
   }
   return fetchBundled();
 }

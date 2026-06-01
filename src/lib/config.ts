@@ -11,7 +11,8 @@
 
 export const SUPABASE_URL = "https://ixpxefsjrswujuxmnwkk.supabase.co";
 
-// Paste your project's anon / publishable key here (Supabase → Project
-// Settings → API → "anon public"). Env var wins if provided at build time.
+// Project's publishable / anon key (Supabase → Project Settings → API).
+// Public-safe by design — RLS does the protecting. Env var wins if set.
 export const SUPABASE_ANON_KEY =
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ??
+  "sb_publishable_A2LJpp-CHwqN5Q9WNtCHzg_476cUgwu";
