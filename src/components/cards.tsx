@@ -2,7 +2,7 @@ import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import type { Album, Artist } from "../types";
 import { artistProgress } from "../lib/stats";
-import { DeanMeter, ProgressBar, StatusBadge } from "./ui";
+import { DeanMeter, LoggedBadge, ProgressBar, Score10, StatusBadge } from "./ui";
 
 // Generated "cover art" — a vinyl-on-poster look built from each album's
 // signature gradient. No external images needed; every cover is unique.
@@ -71,13 +71,16 @@ export function Cover({
 export function AlbumCard({
   album,
   artistId,
+  basePath = "",
 }: {
   album: Album;
   artistId: string;
+  /** Route prefix for links, e.g. "/u/dean" when viewing someone's journey. */
+  basePath?: string;
 }) {
   return (
     <button
-      onClick={() => navigate(`/album/${artistId}/${album.id}`)}
+      onClick={() => navigate(`${basePath}/album/${artistId}/${album.id}`)}
       className={`group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1 ${
         album.excluded ? "opacity-45" : ""
       }`}
@@ -113,12 +116,12 @@ export function AlbumCard({
   );
 }
 
-export function ArtistCard({ artist }: { artist: Artist }) {
+export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath?: string }) {
   const pct = artistProgress(artist) * 100;
   const completed = artist.albums.filter((a) => a.status === "completed").length;
   return (
     <button
-      onClick={() => navigate(`/artist/${artist.id}`)}
+      onClick={() => navigate(`${basePath}/artist/${artist.id}`)}
       className="group flex w-full items-center gap-4 rounded-2xl border border-edge/70 bg-panel/70 p-4 text-left transition-all hover:border-gold/40 hover:bg-panel-2"
     >
       <div
@@ -129,8 +132,18 @@ export function ArtistCard({ artist }: { artist: Artist }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate font-display text-lg font-black text-white">{artist.name}</span>
-          <span className="shrink-0 text-xs font-semibold text-gold">{Math.round(pct)}%</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-display text-lg font-black text-white">{artist.name}</span>
+            {artist.logged && <LoggedBadge />}
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            {artist.verdict != null && (
+              <span title="Overall artist verdict">
+                <Score10 value={artist.verdict} />
+              </span>
+            )}
+            <span className="text-xs font-semibold text-gold">{Math.round(pct)}%</span>
+          </span>
         </div>
         <div className="mb-2 text-xs text-zinc-500">
           {artist.genre} · {completed}/{artist.catalogSize} albums

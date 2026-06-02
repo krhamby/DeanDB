@@ -3,10 +3,11 @@
 //
 // The anon key is *public by design* — it ships in the browser bundle.
 // Security comes from Row Level Security in Supabase (see supabase/schema.sql),
-// NOT from hiding this key. Writes are gated behind an editor passcode.
+// NOT from hiding this key. Every row is scoped to the signed-in user via
+// auth.uid(); writes are gated by RLS, reads by per-journey visibility.
 //
-// Leave SUPABASE_ANON_KEY empty to disable Supabase entirely; the app then
-// falls back to the bundled JSON + localStorage (fully offline-capable).
+// Auth is email magic link (Supabase Auth). DeanDB requires this backend —
+// leaving SUPABASE_ANON_KEY empty shows a "backend not configured" screen.
 // ──────────────────────────────────────────────────────────────
 
 export const SUPABASE_URL = "https://ixpxefsjrswujuxmnwkk.supabase.co";

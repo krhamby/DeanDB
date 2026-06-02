@@ -1,16 +1,18 @@
-import { useRef, useState } from "react";
-import { useStore } from "../lib/store";
-import { fmtHours, slugify, uid } from "../lib/format";
+import { useState } from "react";
+import { useMyJourney, usePeopleSearch } from "../lib/store";
+import { navigate } from "../lib/router";
+import { fmtHours } from "../lib/format";
 import { computeStats } from "../lib/stats";
+import * as api from "../lib/api";
 import {
   fetchTracklist,
   findAlbumCover,
   lookupArtist,
   refreshArtistMeta,
-  type ArtistMatch,
 } from "../lib/musicbrainz";
-import { DeanMeter, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
-import type { Album, AlbumStatus, Artist, DeanDBData } from "../types";
+import { DeanMeter, LoggedBadge, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
+import { Avatar } from "../components/social";
+import type { Album, AlbumStatus, Artist, Profile } from "../types";
 
 const PALETTE: [string, string][] = [
   ["#ef4444", "#7c2d12"],
@@ -22,15 +24,13 @@ const PALETTE: [string, string][] = [
   ["#14b8a6", "#134e4a"],
   ["#f97316", "#7c2d12"],
 ];
-const pick = () => PALETTE[Math.floor(Math.random() * PALETTE.length)];
+const pick = (): [string, string] => PALETTE[Math.floor(Math.random() * PALETTE.length)];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+const inputCls =
+  "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
       {label}
@@ -39,31 +39,113 @@ function Field({
   );
 }
 
-const inputCls =
-  "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+type SetArtist = (
+  artistId: string,
+  patch: api.UserArtistPatch & { recommendedBy?: Artist["recommendedBy"] },
+) => void;
+
+/**
+ * Optional "who recommended this artist to me" control. Lets the owner link an
+ * on-platform person (search) and/or jot a free-text name for someone not on
+ * DeanDB. Kept separate from the peer-to-peer recommendations inbox.
+ */
+function RecommenderPicker({ artist, setArtist }: { artist: Artist; setArtist: SetArtist }) {
+  const [query, setQuery] = useState("");
+  const { results } = usePeopleSearch(query);
+  const rec = artist.recommendedBy;
+
+  const setText = (text: string) =>
+    setArtist(artist.id, {
+      recByText: text,
+      recommendedBy:
+        text || rec?.userId
+          ? {
+              userId: rec?.userId ?? null,
+              username: rec?.username ?? null,
+              displayName: rec?.displayName ?? null,
+              avatarUrl: rec?.avatarUrl ?? null,
+              text,
+            }
+          : undefined,
+    });
+
+  const pickUser = (p: Profile) => {
+    // Persist a name fallback in rec_by_text too: if this recommender is private
+    // and the viewer doesn't follow them, RLS hides the profile embed on reload,
+    // so without the fallback the credit would vanish entirely. With it, the row
+    // shows a linked @handle when visible and the plain name otherwise.
+    const text = rec?.text || p.displayName || p.username;
+    setArtist(artist.id, {
+      recByUser: p.id,
+      recByText: text,
+      recommendedBy: {
+        userId: p.id,
+        username: p.username,
+        displayName: p.displayName,
+        avatarUrl: p.avatarUrl,
+        text,
+      },
+    });
+    setQuery("");
+  };
+
+  const clearUser = () =>
+    setArtist(artist.id, {
+      recByUser: null,
+      recommendedBy: rec?.text
+        ? { userId: null, username: null, displayName: null, avatarUrl: null, text: rec.text }
+        : undefined,
+    });
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Recommended by</div>
+      {rec?.username && (
+        <div className="flex items-center gap-2">
+          <Avatar profile={{ username: rec.username, displayName: rec.displayName ?? rec.username, avatarUrl: rec.avatarUrl }} size={24} />
+          <span className="text-sm text-white">@{rec.username}</span>
+          <button onClick={clearUser} className="text-xs text-zinc-600 hover:text-dean" title="Unlink person">
+            ×
+          </button>
+        </div>
+      )}
+      <input
+        className={`${inputCls} w-full`}
+        placeholder="A name (e.g. a friend not on DeanDB)…"
+        value={rec?.text ?? ""}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <input
+        className={`${inputCls} w-full`}
+        placeholder="…or search people on DeanDB to link"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {results.length > 0 && (
+        <div className="divide-y divide-edge/40 overflow-hidden rounded-lg border border-edge/50 bg-panel-2/60">
+          {results.slice(0, 5).map((r) => (
+            <button
+              key={r.profile.id}
+              onClick={() => pickUser(r.profile)}
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/5"
+            >
+              <Avatar profile={r.profile} size={24} />
+              <span className="truncate text-sm text-white">{r.profile.displayName}</span>
+              <span className="truncate text-xs text-zinc-500">@{r.profile.username}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Editor() {
-  const {
-    data,
-    update,
-    replace,
-    resetToPublished,
-    dirty,
-    supabaseEnabled,
-    publishing,
-    publish,
-    hasLocalDraft,
-    restoreLocalDraft,
-    autoPublish,
-    setAutoPublish,
-    pauseAutoPublish,
-  } = useStore();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const { data, userId, patchLocal, reload, setAlbum, setTrack, setArtist } = useMyJourney();
+
   const [newArtist, setNewArtist] = useState({ name: "", genre: "", country: "", catalogSize: 1 });
   const [albumDraft, setAlbumDraft] = useState<Record<string, { title: string; year: string }>>({});
   const [trackDraft, setTrackDraft] = useState<Record<string, string>>({});
-  const [passcode, setPasscode] = useState(() => localStorage.getItem("deandb:passcode") ?? "");
-  const [publishMsg, setPublishMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupMsg, setLookupMsg] = useState("");
   const [coverBusy, setCoverBusy] = useState<Record<string, boolean>>({});
@@ -71,43 +153,17 @@ export function Editor() {
   const [bulkTracks, setBulkTracks] = useState<Record<string, string>>({});
   const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  // Albums collapse to a one-line summary by default; click to expand.
   const [albumOpen, setAlbumOpen] = useState<Record<string, boolean>>({});
+  const [artistPanelOpen, setArtistPanelOpen] = useState<Record<string, boolean>>({});
   const [bulkText, setBulkText] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkLog, setBulkLog] = useState<string[]>([]);
   const [rosterQuery, setRosterQuery] = useState("");
 
-  if (!data) return null;
+  if (!data || !userId) return null;
+  const uid = userId;
 
-  // Build a roster Artist from a MusicBrainz match (shared by single + bulk import).
-  const artistFromMatch = (match: ArtistMatch, genre?: string, country?: string): Artist => ({
-    id: `${slugify(match.name)}-${uid("a").slice(-4)}`,
-    name: match.name,
-    genre: match.genre ?? (genre?.trim() || "Unknown"),
-    country: match.country ?? (country?.trim() || "—"),
-    color: pick(),
-    catalogSize: match.catalogSize || match.albums.length || 1,
-    bio: "",
-    mbid: match.mbid,
-    albums: match.albums.map((al) => ({
-      id: `${slugify(al.title)}-${uid("al").slice(-4)}`,
-      title: al.title,
-      year: al.year,
-      cover: pick(),
-      coverUrl: al.coverUrl,
-      mbid: al.mbid,
-      status: "want" as const,
-      rating: null,
-      review: "",
-      minutes: 40,
-      dateListened: null,
-      favorite: false,
-      tracks: [],
-    })),
-  });
-
-  // Import a single artist's whole studio discography from MusicBrainz.
+  // ── Import a single artist's whole studio discography from MusicBrainz ──
   const importArtist = async () => {
     const name = newArtist.name.trim();
     if (!name) return;
@@ -119,28 +175,27 @@ export function Editor() {
         setLookupMsg(`No MusicBrainz match for “${name}”. Add it manually below.`);
         return;
       }
-      update((draft) => {
-        draft.artists.push(artistFromMatch(match, newArtist.genre, newArtist.country));
-        return draft;
-      });
-      setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers.`);
+      const artistId = await api.importArtistFromMatch(uid, match, pick(), pick);
+      const fresh = await reload();
+      setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers. Fetching tracklists…`);
       setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
+      // Single import → auto-pull tracklists (the bulk path deliberately skips
+      // this to stay within MusicBrainz's ~1 req/sec budget). Runs in the
+      // background with its own progress under the artist in the roster.
+      const imported = fresh?.artists.find((a) => a.id === artistId);
+      if (imported) void loadAllTracks(imported).catch((e) => console.error("auto track fetch failed", e));
     } catch (e) {
-      setLookupMsg(
-        e instanceof Error ? `${e.message}. You can still add manually.` : "Lookup failed.",
-      );
+      setLookupMsg(e instanceof Error ? `${e.message}. You can still add manually.` : "Lookup failed.");
     } finally {
       setLookupBusy(false);
     }
   };
 
-  // Bulk import: one artist name per line. Throttled to respect MusicBrainz,
-  // skips names already in the roster, and logs each result live.
+  // ── Bulk import: one artist per line, throttled, skipping the roster ──
   const bulkImport = async () => {
     const names = [...new Set(bulkText.split("\n").map((s) => s.trim()).filter(Boolean))];
     if (names.length === 0) return;
     setBulkImporting(true);
-    pauseAutoPublish(true); // hold auto-publish until the whole batch is done
     setBulkLog([`Starting bulk import of ${names.length} artist(s)…`]);
     const seen = new Set(data.artists.map((a) => a.name.toLowerCase()));
     let added = 0,
@@ -162,10 +217,7 @@ export function Editor() {
           log(`${tag} ${name} — no match ✗`);
           missed++;
         } else {
-          update((draft) => {
-            draft.artists.push(artistFromMatch(match));
-            return draft;
-          });
+          await api.importArtistFromMatch(uid, match, pick(), pick);
           seen.add(name.toLowerCase());
           seen.add(match.name.toLowerCase());
           log(`${tag} ${match.name} — ${match.albums.length} albums ✓`);
@@ -175,31 +227,37 @@ export function Editor() {
         log(`${tag} ${name} — ${e instanceof Error ? e.message : "error"} ✗`);
         missed++;
       }
-      await sleep(300); // small buffer; global limiter handles real spacing
+      await sleep(300);
     }
-    const tail = autoPublish ? "Auto-publishing now…" : "Now hit Publish!";
-    log(`✓ Done — added ${added}, skipped ${skipped}, not found ${missed}. ${tail}`);
+    await reload();
+    log(`✓ Done — added ${added}, skipped ${skipped}, not found ${missed}.`);
     setBulkText("");
     setBulkImporting(false);
-    pauseAutoPublish(false); // resume → triggers a single auto-publish if enabled
   };
 
-  // Pull a single album's cover art (and fill the year if missing).
+  // ── Cover art for one album (shared catalog) ──
   const fetchCover = async (artist: Artist, al: Album) => {
     setCoverBusy((s) => ({ ...s, [al.id]: true }));
     try {
       const m = await findAlbumCover(artist.name, al.title);
       if (m) {
-        update((draft) => {
-          const t = draft.artists
-            .find((a) => a.id === artist.id)
-            ?.albums.find((x) => x.id === al.id);
+        await api.refreshCatalogAlbum({
+          artistId: artist.id,
+          mbid: m.mbid,
+          title: al.title,
+          year: al.year ?? m.year,
+          cover: al.cover,
+          coverUrl: m.coverUrl,
+          runtimeMin: al.minutes,
+        });
+        patchLocal((d) => {
+          const t = d.artists.find((a) => a.id === artist.id)?.albums.find((x) => x.id === al.id);
           if (t) {
             t.coverUrl = m.coverUrl;
             t.mbid = m.mbid;
             if (t.year == null) t.year = m.year;
           }
-          return draft;
+          return d;
         });
       }
     } finally {
@@ -207,81 +265,59 @@ export function Editor() {
     }
   };
 
-  // Set tracks, and adopt MusicBrainz's real runtime when it has one.
-  const applyTracks = (
-    artistId: string,
-    albumId: string,
-    titles: string[],
-    runtimeMin: number,
-  ) =>
-    update((draft) => {
-      const al = draft.artists
-        .find((a) => a.id === artistId)
-        ?.albums.find((x) => x.id === albumId);
-      if (al) {
-        al.tracks = titles.map((title) => ({
-          id: uid("t"),
-          title,
-          rating: null,
-          favorite: false,
-        }));
-        if (runtimeMin > 0) al.minutes = runtimeMin;
+  // ── Set an album's tracklist (catalog) + adopt real runtime ──
+  const applyTracks = async (artistId: string, al: Album, titles: string[], runtimeMin: number) => {
+    const ids = await api.setCatalogTracks(al.id, titles);
+    patchLocal((d) => {
+      const album = d.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === al.id);
+      if (album) {
+        album.tracks = titles.map((title, i) => ({ id: ids[i], title, rating: null, favorite: false }));
+        if (runtimeMin > 0) album.minutes = runtimeMin;
       }
-      return draft;
+      return d;
     });
+    if (runtimeMin > 0) setAlbum(al.id, { minutes: runtimeMin });
+  };
 
-  // Pull one album's tracklist (resolving its MusicBrainz id first if needed).
   const fetchTracks = async (artist: Artist, al: Album) => {
     setTrackBusy((s) => ({ ...s, [al.id]: true }));
     try {
       const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
       if (!mbid) return;
       const tl = await fetchTracklist(mbid);
-      if (tl.titles.length) applyTracks(artist.id, al.id, tl.titles, tl.runtimeMin);
+      if (tl.titles.length) await applyTracks(artist.id, al, tl.titles, tl.runtimeMin);
     } catch {
-      /* leave tracks as-is on failure */
+      /* leave tracks as-is */
     } finally {
       setTrackBusy((s) => ({ ...s, [al.id]: false }));
     }
   };
 
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-  // Pull tracklists for every album that doesn't have them yet, throttled to
-  // ~1 request/second out of respect for MusicBrainz's rate limit.
   const loadAllTracks = async (artist: Artist) => {
     const todo = artist.albums.filter((a) => a.tracks.length === 0);
     if (todo.length === 0) {
       setBulkTracks((s) => ({ ...s, [artist.id]: "Every album already has tracks." }));
       return;
     }
-    pauseAutoPublish(true); // one publish after the whole batch
     let done = 0;
     for (const al of todo) {
-      setBulkTracks((s) => ({
-        ...s,
-        [artist.id]: `Loading tracklists… ${done}/${todo.length}`,
-      }));
+      setBulkTracks((s) => ({ ...s, [artist.id]: `Loading tracklists… ${done}/${todo.length}` }));
       try {
         const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
         if (mbid) {
           const tl = await fetchTracklist(mbid);
-          if (tl.titles.length) applyTracks(artist.id, al.id, tl.titles, tl.runtimeMin);
+          if (tl.titles.length) await applyTracks(artist.id, al, tl.titles, tl.runtimeMin);
         }
       } catch {
-        /* skip this album */
+        /* skip */
       }
       done++;
       await sleep(300);
     }
-    setBulkTracks((s) => ({
-      ...s,
-      [artist.id]: `✓ Pulled tracklists for ${todo.length} album(s).`,
-    }));
-    pauseAutoPublish(false);
+    setBulkTracks((s) => ({ ...s, [artist.id]: `✓ Pulled tracklists for ${todo.length} album(s).` }));
   };
 
-  // Refresh genre / country / catalog size from MusicBrainz for one artist.
+  // ── Refresh genre / country / catalog size from MusicBrainz ──
   const refreshMeta = async (artist: Artist) => {
     setMetaBusy((s) => ({ ...s, [artist.id]: true }));
     try {
@@ -297,15 +333,23 @@ export function Editor() {
         }
       }
       if (meta) {
-        update((draft) => {
-          const a = draft.artists.find((x) => x.id === artist.id);
+        await api.refreshCatalogArtist({
+          mbid: foundMbid,
+          name: artist.name,
+          genre: meta.genre,
+          country: meta.country,
+          catalogSize: meta.catalogSize,
+          color: artist.color,
+        });
+        patchLocal((d) => {
+          const a = d.artists.find((x) => x.id === artist.id);
           if (a) {
             if (meta!.genre) a.genre = meta!.genre;
             if (meta!.country) a.country = meta!.country;
             if (meta!.catalogSize) a.catalogSize = meta!.catalogSize;
             if (foundMbid) a.mbid = foundMbid;
           }
-          return draft;
+          return d;
         });
       }
     } finally {
@@ -313,54 +357,88 @@ export function Editor() {
     }
   };
 
-  // ── Inline rating helpers ──────────────────────────────────────
-  const patchAlbumField = (artistId: string, albumId: string, patch: Partial<Album>) =>
-    update((draft) => {
-      const al = draft.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
-      if (al) Object.assign(al, patch);
-      return draft;
-    });
-
-  const setAlbumStatus = (artistId: string, al: Album, status: AlbumStatus) =>
-    patchAlbumField(artistId, al.id, {
+  // ── Inline edits (optimistic local + persist) ──
+  const setAlbumStatus = (al: Album, status: AlbumStatus) =>
+    setAlbum(al.id, {
       status,
       dateListened:
-        status === "completed" && !al.dateListened
-          ? new Date().toISOString().slice(0, 10)
-          : al.dateListened,
+        status === "completed" && !al.dateListened ? new Date().toISOString().slice(0, 10) : al.dateListened,
     });
 
-  const patchTrackField = (
-    artistId: string,
-    albumId: string,
-    trackId: string,
-    patch: Partial<Album["tracks"][number]>,
-  ) =>
-    update((draft) => {
-      const t = draft.artists
-        .find((a) => a.id === artistId)
-        ?.albums.find((x) => x.id === albumId)
-        ?.tracks.find((tr) => tr.id === trackId);
-      if (t) Object.assign(t, patch);
-      return draft;
-    });
-
-  const removeTrack = (artistId: string, albumId: string, trackId: string) =>
-    update((draft) => {
-      const al = draft.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
-      if (al) al.tracks = al.tracks.filter((t) => t.id !== trackId);
-      return draft;
-    });
-
-  const doPublish = async () => {
-    setPublishMsg(null);
-    localStorage.setItem("deandb:passcode", passcode);
-    const res = await publish(passcode);
-    setPublishMsg(
-      res.ok
-        ? { ok: true, text: "Published! Everyone can see it now. 🎉" }
-        : { ok: false, text: res.error ?? "Publish failed." },
+  // ── Structural edits ──
+  const addArtist = async () => {
+    if (!newArtist.name.trim()) return;
+    await api.createUserArtist(
+      uid,
+      {
+        name: newArtist.name.trim(),
+        genre: newArtist.genre.trim() || null,
+        country: newArtist.country.trim() || null,
+        catalogSize: Math.max(1, newArtist.catalogSize),
+      },
+      pick(),
     );
+    await reload();
+    setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
+  };
+
+  const addAlbum = async (artistId: string) => {
+    const d = albumDraft[artistId];
+    if (!d?.title.trim()) return;
+    const albumId = await api.createUserAlbum(uid, artistId, {
+      title: d.title.trim(),
+      year: d.year ? Number(d.year) : null,
+      cover: pick(),
+    });
+    const fresh = await reload();
+    setAlbumDraft((s) => ({ ...s, [artistId]: { title: "", year: "" } }));
+    // Adding a single album → auto-fetch its cover + tracklist from MusicBrainz.
+    const artist = fresh?.artists.find((a) => a.id === artistId);
+    const al = artist?.albums.find((a) => a.id === albumId);
+    if (artist && al) {
+      await fetchCover(artist, al);
+      await fetchTracks(artist, al);
+    }
+  };
+
+  const addTrack = async (artistId: string, albumId: string) => {
+    const key = `${artistId}:${albumId}`;
+    const title = trackDraft[key];
+    if (!title?.trim()) return;
+    const id = await api.addCatalogTrack(albumId, title.trim());
+    patchLocal((d) => {
+      const al = d.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
+      al?.tracks.push({ id, title: title.trim(), rating: null, favorite: false });
+      return d;
+    });
+    setTrackDraft((s) => ({ ...s, [key]: "" }));
+  };
+
+  const removeTrack = async (artistId: string, albumId: string, trackId: string) => {
+    await api.removeCatalogTrack(trackId);
+    patchLocal((d) => {
+      const al = d.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
+      if (al) al.tracks = al.tracks.filter((t) => t.id !== trackId);
+      return d;
+    });
+  };
+
+  const removeAlbum = async (artistId: string, albumId: string) => {
+    await api.removeUserAlbum(uid, albumId);
+    patchLocal((d) => {
+      const ar = d.artists.find((a) => a.id === artistId);
+      if (ar) ar.albums = ar.albums.filter((a) => a.id !== albumId);
+      return d;
+    });
+  };
+
+  const removeArtist = async (artistId: string) => {
+    if (!confirm("Remove this artist and all their albums from your journey?")) return;
+    await api.removeUserArtist(artistId);
+    patchLocal((d) => {
+      d.artists = d.artists.filter((a) => a.id !== artistId);
+      return d;
+    });
   };
 
   const exportJson = () => {
@@ -368,106 +446,16 @@ export function Editor() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "deandb.json";
+    a.download = "my-deandb-journey.json";
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const importJson = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result)) as DeanDBData;
-        if (!parsed.artists) throw new Error("Missing artists");
-        replace(parsed);
-      } catch {
-        alert("That doesn't look like a valid deandb.json file.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const addArtist = () => {
-    if (!newArtist.name.trim()) return;
-    update((draft) => {
-      draft.artists.push({
-        id: `${slugify(newArtist.name)}-${uid("a").slice(-4)}`,
-        name: newArtist.name.trim(),
-        genre: newArtist.genre.trim() || "Unknown",
-        country: newArtist.country.trim() || "—",
-        color: pick(),
-        catalogSize: Math.max(1, newArtist.catalogSize),
-        bio: "",
-        albums: [],
-      });
-      return draft;
-    });
-    setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
-  };
-
-  const addAlbum = (artistId: string) => {
-    const d = albumDraft[artistId];
-    if (!d?.title.trim()) return;
-    update((draft) => {
-      const ar = draft.artists.find((a) => a.id === artistId);
-      ar?.albums.push({
-        id: `${slugify(d.title)}-${uid("al").slice(-4)}`,
-        title: d.title.trim(),
-        year: d.year ? Number(d.year) : null,
-        cover: pick(),
-        status: "want",
-        rating: null,
-        review: "",
-        minutes: 40,
-        dateListened: null,
-        favorite: false,
-        tracks: [],
-      });
-      return draft;
-    });
-    setAlbumDraft((s) => ({ ...s, [artistId]: { title: "", year: "" } }));
-  };
-
-  const addTrack = (artistId: string, albumId: string) => {
-    const key = `${artistId}:${albumId}`;
-    const title = trackDraft[key];
-    if (!title?.trim()) return;
-    update((draft) => {
-      const al = draft.artists.find((a) => a.id === artistId)?.albums.find((x) => x.id === albumId);
-      al?.tracks.push({ id: uid("t"), title: title.trim(), rating: null, favorite: false });
-      return draft;
-    });
-    setTrackDraft((s) => ({ ...s, [key]: "" }));
-  };
-
-  const removeAlbum = (artistId: string, albumId: string) =>
-    update((draft) => {
-      const ar = draft.artists.find((a) => a.id === artistId);
-      if (ar) ar.albums = ar.albums.filter((a) => a.id !== albumId);
-      return draft;
-    });
-
-  const removeArtist = (artistId: string) => {
-    if (!confirm("Remove this artist and all their albums?")) return;
-    update((draft) => {
-      draft.artists = draft.artists.filter((a) => a.id !== artistId);
-      return draft;
-    });
-  };
-
-  const patchListener = (patch: Partial<DeanDBData["listener"]>) =>
-    update((draft) => {
-      Object.assign(draft.listener, patch);
-      return draft;
-    });
-
-  // ── Roster search + global collapse ──
+  // ── Roster search + collapse ──
   const q = rosterQuery.trim().toLowerCase();
   const artistNameMatches = (a: Artist) => a.name.toLowerCase().includes(q);
   const visibleAlbums = (a: Artist) =>
-    !q || artistNameMatches(a)
-      ? a.albums
-      : a.albums.filter((al) => al.title.toLowerCase().includes(q));
+    !q || artistNameMatches(a) ? a.albums : a.albums.filter((al) => al.title.toLowerCase().includes(q));
   const shownArtists = !q
     ? data.artists
     : data.artists.filter(
@@ -476,7 +464,7 @@ export function Editor() {
   const allAlbumIds = data.artists.flatMap((a) => a.albums.map((al) => al.id));
   const allCollapsed = allAlbumIds.every((id) => !albumOpen[id]);
   const toggleAllAlbums = () => {
-    const open = !allCollapsed ? false : true; // if any open -> collapse; if all collapsed -> expand
+    const open = allCollapsed;
     setAlbumOpen(() => {
       const next: Record<string, boolean> = {};
       for (const id of allAlbumIds) next[id] = open;
@@ -486,169 +474,24 @@ export function Editor() {
 
   return (
     <div className="space-y-8">
-      <SectionTitle kicker="Mission control" title="The Editor" />
-
-      {/* Unpublished draft recovery — DB is loaded fresh, draft is only offered. */}
-      {hasLocalDraft && !dirty && (
-        <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold/40 bg-gold/5 p-4">
-          <span className="text-sm text-zinc-300">
-            💾 You have unpublished edits saved in this browser from a previous session.
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={restoreLocalDraft}
-              className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-black hover:brightness-110"
-            >
-              Restore draft
-            </button>
-            <button
-              onClick={() => resetToPublished()}
-              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-400 hover:text-dean"
-            >
-              Discard
-            </button>
-          </div>
-        </Panel>
-      )}
-
-      {/* Live publish via Supabase */}
-      {supabaseEnabled && (
-        <Panel className="space-y-3 p-5">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px] shadow-emerald-400" />
-            <h3 className="font-display text-lg font-black text-white">Live Sync</h3>
-            <span className="text-xs text-zinc-500">connected to the cloud</span>
-          </div>
-          <p className="text-xs leading-relaxed text-zinc-500">
-            Edits autosave to <span className="text-zinc-300">this browser</span>. Hit{" "}
-            <span className="text-gold">Publish</span> to push them live — everyone viewing DeanDB sees
-            the update instantly, no commit required. Writing requires your editor passcode.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="password"
-              className={`${inputCls} w-48`}
-              placeholder="Editor passcode"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-            />
-            <button
-              onClick={doPublish}
-              disabled={publishing || !passcode}
-              className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
-            >
-              {publishing ? "Publishing…" : dirty ? "⬆ Publish changes" : "✓ Up to date — Publish anyway"}
-            </button>
-            {dirty && (
-              <span className="rounded-full bg-dean/15 px-3 py-1 text-xs font-semibold text-dean ring-1 ring-dean/30">
-                ● Unpublished edits
-              </span>
-            )}
-          </div>
-
-          {/* Auto-publish toggle */}
-          <label className="flex cursor-pointer select-none items-center gap-2 pt-1 text-sm text-zinc-300">
-            <input
-              type="checkbox"
-              checked={autoPublish}
-              onChange={(e) => {
-                if (passcode) localStorage.setItem("deandb:passcode", passcode);
-                setAutoPublish(e.target.checked);
-              }}
-              className="h-4 w-4 accent-gold"
-            />
-            Auto-publish changes
-            <span className="text-xs text-zinc-600">
-              — pushes ~3s after you stop editing; waits for bulk imports to finish first
-            </span>
-          </label>
-          {autoPublish && (
-            <p className="text-xs font-semibold text-emerald-400">
-              {publishing
-                ? "Auto-publishing…"
-                : dirty
-                  ? "● Auto-publish queued…"
-                  : "✓ Everything's published automatically"}
-            </p>
-          )}
-
-          {publishMsg && (
-            <p className={`text-sm font-semibold ${publishMsg.ok ? "text-emerald-400" : "text-dean"}`}>
-              {publishMsg.text}
-            </p>
-          )}
-        </Panel>
-      )}
-
-      {/* Manual export / import (backup, or when offline) */}
-      <Panel className="p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={exportJson} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110">
-            ⬇ Export deandb.json
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionTitle kicker="Mission control" title="The Editor" />
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate("/settings")} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-white">
+            ⚙ Profile & sharing
           </button>
-          <button onClick={() => fileRef.current?.click()} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white">
-            ⬆ Import JSON
+          <button onClick={exportJson} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-white">
+            ⬇ Export backup
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            hidden
-            onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])}
-          />
-          <button onClick={() => resetToPublished()} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-zinc-400 hover:text-dean">
-            ↺ Discard local edits
-          </button>
-          {dirty && (
-            <span className="rounded-full bg-dean/15 px-3 py-1 text-xs font-semibold text-dean ring-1 ring-dean/30">
-              ● Unpublished local edits
-            </span>
-          )}
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
-          {supabaseEnabled ? (
-            <>
-              Backup tools. <span className="text-zinc-300">Export</span> downloads a snapshot of the data;{" "}
-              <span className="text-zinc-300">Import</span> loads one back in. Handy for backups or seeding{" "}
-              <code className="rounded bg-black/40 px-1 text-gold">public/data/deandb.json</code>.
-            </>
-          ) : (
-            <>
-              Edits save automatically to <span className="text-zinc-300">this browser</span> only. To make
-              them visible to everyone, click <span className="text-gold">Export</span>, then replace{" "}
-              <code className="rounded bg-black/40 px-1 text-gold">public/data/deandb.json</code> in the repo
-              with the downloaded file and push. GitHub Pages redeploys automatically. 🚀
-            </>
-          )}
-        </p>
-      </Panel>
+      </div>
 
-      {/* Marathon settings */}
-      <Panel className="space-y-4 p-5">
-        <h3 className="font-display text-lg font-black text-white">Marathon Settings</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Listener name">
-            <input className={inputCls} value={data.listener.name} onChange={(e) => patchListener({ name: e.target.value })} />
-          </Field>
-          <Field label="Handle">
-            <input className={inputCls} value={data.listener.handle} onChange={(e) => patchListener({ handle: e.target.value })} />
-          </Field>
-          <Field label="Season label">
-            <input className={inputCls} value={data.season} onChange={(e) => update((d) => ((d.season = e.target.value), d))} />
-          </Field>
-          <Field label="Goal — total runtime (auto)">
-            <input
-              readOnly
-              className={`${inputCls} cursor-default opacity-70`}
-              value={fmtHours(computeStats(data).totalRuntimeHours)}
-              title="The goal is the combined runtime of every album you're tracking. Load tracklists to make runtimes accurate."
-            />
-          </Field>
-        </div>
-        <Field label="Tagline">
-          <input className={inputCls} value={data.listener.tagline} onChange={(e) => patchListener({ tagline: e.target.value })} />
-        </Field>
-      </Panel>
+      <p className="text-sm text-zinc-500">
+        Every change saves to your account instantly. Your goal — {" "}
+        <span className="text-gold">{fmtHours(computeStats(data).totalRuntimeHours)}</span> of total runtime — grows
+        as you add albums. Set your season, goal and visibility in{" "}
+        <button onClick={() => navigate("/settings")} className="text-gold hover:underline">Settings</button>.
+      </p>
 
       {/* Add artist */}
       <Panel className="space-y-3 p-5">
@@ -668,25 +511,17 @@ export function Editor() {
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={importArtist}
-            disabled={lookupBusy || !newArtist.name.trim()}
-            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
-          >
+          <button onClick={importArtist} disabled={lookupBusy || !newArtist.name.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40">
             {lookupBusy ? "🔎 Searching…" : "🔎 Import from MusicBrainz"}
           </button>
-          <button
-            onClick={addArtist}
-            className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white"
-          >
+          <button onClick={addArtist} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white">
             + Add blank artist
           </button>
           {lookupMsg && <span className="text-xs text-zinc-400">{lookupMsg}</span>}
         </div>
         <p className="text-xs leading-relaxed text-zinc-500">
-          <span className="text-zinc-300">Import from MusicBrainz</span> auto-fills the full studio
-          discography with real album covers (free, open-data — no API key). Or add a blank artist and
-          fill it in by hand.
+          <span className="text-zinc-300">Import from MusicBrainz</span> auto-fills the full studio discography
+          with real album covers (free, open-data — no API key). Or add a blank artist and fill it in by hand.
         </p>
       </Panel>
 
@@ -694,9 +529,8 @@ export function Editor() {
       <Panel className="space-y-3 p-5">
         <h3 className="font-display text-lg font-black text-white">Bulk Import from MusicBrainz</h3>
         <p className="text-xs leading-relaxed text-zinc-500">
-          Paste one artist per line. Each is looked up on MusicBrainz (~1.5s apiece to stay polite),
-          names already in the roster are skipped, and full studio discographies arrive with covers.
-          Typos usually still match. When it finishes, hit <span className="text-gold">Publish</span>.
+          Paste one artist per line. Each is looked up on MusicBrainz (~1.5s apiece to stay polite), names already
+          in your roster are skipped, and full studio discographies arrive with covers.
         </p>
         <textarea
           value={bulkText}
@@ -706,11 +540,7 @@ export function Editor() {
           placeholder={"50 Cent\nAlice in Chains\nBig Thief\nTool\n…"}
           className={`${inputCls} w-full font-mono`}
         />
-        <button
-          onClick={bulkImport}
-          disabled={bulkImporting || !bulkText.trim()}
-          className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
-        >
+        <button onClick={bulkImport} disabled={bulkImporting || !bulkText.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40">
           {bulkImporting ? "⏳ Importing… (don't close this tab)" : "⇊ Import all from MusicBrainz"}
         </button>
         {bulkLog.length > 0 && (
@@ -727,9 +557,7 @@ export function Editor() {
       {/* Manage artists */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="font-display text-lg font-black text-white">
-            Roster ({data.artists.length})
-          </h3>
+          <h3 className="font-display text-lg font-black text-white">Roster ({data.artists.length})</h3>
           <input
             value={rosterQuery}
             onChange={(e) => setRosterQuery(e.target.value)}
@@ -737,10 +565,7 @@ export function Editor() {
             className={`${inputCls} flex-1 sm:max-w-xs`}
           />
           {allAlbumIds.length > 0 && (
-            <button
-              onClick={toggleAllAlbums}
-              className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white"
-            >
+            <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
               {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
             </button>
           )}
@@ -751,31 +576,47 @@ export function Editor() {
           )}
         </div>
         {shownArtists.length === 0 && (
-          <p className="py-6 text-center text-sm text-zinc-500">No artists or albums match “{rosterQuery}”.</p>
+          <p className="py-6 text-center text-sm text-zinc-500">
+            {data.artists.length === 0 ? "No artists yet — add your first above." : `No artists or albums match “${rosterQuery}”.`}
+          </p>
         )}
         {shownArtists.map((artist: Artist) => (
           <Panel key={artist.id} className="p-4">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-2">
                 <span className="font-display text-lg font-black text-white">{artist.name}</span>
-                <span className="ml-2 text-xs text-zinc-500">
+                {artist.logged && <LoggedBadge />}
+                <span className="ml-1 text-xs text-zinc-500">
                   {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => refreshMeta(artist)}
-                  disabled={metaBusy[artist.id]}
-                  className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50"
-                  title="Update genre, country & catalog size from MusicBrainz"
+                  onClick={() => setArtist(artist.id, { logged: !artist.logged })}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    artist.logged
+                      ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/40"
+                      : "border border-edge text-zinc-300 hover:text-white"
+                  }`}
+                  title={
+                    artist.logged
+                      ? "In your Library (already heard — out of the marathon). Click to move into the marathon."
+                      : "A marathon artist. Click to move to your Library (already heard)."
+                  }
                 >
-                  {metaBusy[artist.id] ? "↻ …" : "↻ Genre & country"}
+                  {artist.logged ? "📚 Library" : "🏃 Marathon"}
                 </button>
                 <button
-                  onClick={() => loadAllTracks(artist)}
+                  onClick={() => setArtistPanelOpen((s) => ({ ...s, [artist.id]: !s[artist.id] }))}
                   className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110"
-                  title="Fetch tracklists for every album from MusicBrainz"
+                  title="Set an overall verdict and who recommended this artist"
                 >
+                  {artistPanelOpen[artist.id] ? "▾ Verdict & credit" : "★ Verdict & credit"}
+                </button>
+                <button onClick={() => refreshMeta(artist)} disabled={metaBusy[artist.id]} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Update genre, country & catalog size from MusicBrainz">
+                  {metaBusy[artist.id] ? "↻ …" : "↻ Genre & country"}
+                </button>
+                <button onClick={() => loadAllTracks(artist)} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110" title="Fetch tracklists for every album from MusicBrainz">
                   🎵 Load all tracklists
                 </button>
                 {artist.albums.length > 0 && (
@@ -798,179 +639,166 @@ export function Editor() {
                 </button>
               </div>
             </div>
-            {bulkTracks[artist.id] && (
-              <p className="mt-2 text-xs text-zinc-400">{bulkTracks[artist.id]}</p>
+            {bulkTracks[artist.id] && <p className="mt-2 text-xs text-zinc-400">{bulkTracks[artist.id]}</p>}
+
+            {artistPanelOpen[artist.id] && (
+              <div className="mt-3 grid gap-4 rounded-xl border border-edge/60 bg-panel-2/40 p-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Overall verdict
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DeanMeter value={artist.verdict} size={34} />
+                    <input
+                      type="range"
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      value={artist.verdict ?? 0}
+                      onChange={(e) => setArtist(artist.id, { verdict: Number(e.target.value) })}
+                      className="h-6 flex-1 cursor-pointer accent-gold"
+                      title="One overall score for the whole artist"
+                    />
+                    <span className="w-8 text-right text-xs font-bold text-gold">
+                      {artist.verdict != null ? artist.verdict.toFixed(1) : "—"}
+                    </span>
+                    {artist.verdict != null && (
+                      <button
+                        onClick={() => setArtist(artist.id, { verdict: null })}
+                        className="text-xs text-zinc-600 hover:text-dean"
+                        title="Clear verdict"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    className={`${inputCls} w-full`}
+                    placeholder="A line on why…"
+                    value={artist.verdictNote}
+                    onChange={(e) => setArtist(artist.id, { verdictNote: e.target.value })}
+                  />
+                </div>
+                <RecommenderPicker artist={artist} setArtist={setArtist} />
+              </div>
             )}
 
             <div className="mt-3 space-y-2">
-              {visibleAlbums(artist).map((al) => {
-                const tkey = `${artist.id}:${al.id}`;
-                return (
-                  <div
-                    key={al.id}
-                    className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}
-                  >
-                    {/* Collapsed summary — click to expand */}
-                    <button
-                      onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))}
-                      className="flex w-full items-center gap-2 p-3 text-left hover:bg-white/5"
-                    >
-                      <span className="w-3 shrink-0 text-xs text-zinc-500">{albumOpen[al.id] ? "▾" : "▸"}</span>
-                      <span className="flex-1 truncate text-sm font-semibold text-white">
-                        {al.title} <span className="font-normal text-zinc-600">{al.year ?? ""}</span>
-                      </span>
-                      {al.excluded && <span className="shrink-0 text-xs text-dean" title="Excluded">🚫</span>}
-                      {al.favorite && <span className="shrink-0 text-xs" title="Favorite">⭐</span>}
-                      <span className="hidden shrink-0 text-xs text-zinc-600 sm:inline">{al.tracks.length} trk</span>
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        title={al.status}
-                        style={{
-                          background:
-                            al.status === "completed" ? "#34d399" : al.status === "listening" ? "#f5c518" : "#52525b",
-                        }}
-                      />
-                      <span
-                        className="w-9 shrink-0 text-right font-display text-sm font-black tabular-nums"
-                        style={{ color: scoreColor(al.rating) }}
-                      >
-                        {al.rating != null ? al.rating.toFixed(1) : "—"}
-                      </span>
-                    </button>
+              {visibleAlbums(artist).map((al) => (
+                <div key={al.id} className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}>
+                  <button onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))} className="flex w-full items-center gap-2 p-3 text-left hover:bg-white/5">
+                    <span className="w-3 shrink-0 text-xs text-zinc-500">{albumOpen[al.id] ? "▾" : "▸"}</span>
+                    <span className="flex-1 truncate text-sm font-semibold text-white">
+                      {al.title} <span className="font-normal text-zinc-600">{al.year ?? ""}</span>
+                    </span>
+                    {al.excluded && <span className="shrink-0 text-xs text-dean" title="Excluded">🚫</span>}
+                    {al.favorite && <span className="shrink-0 text-xs" title="Favorite">⭐</span>}
+                    <span className="hidden shrink-0 text-xs text-zinc-600 sm:inline">{al.tracks.length} trk</span>
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      title={al.status}
+                      style={{ background: al.status === "completed" ? "#34d399" : al.status === "listening" ? "#f5c518" : "#52525b" }}
+                    />
+                    <span className="w-9 shrink-0 text-right font-display text-sm font-black tabular-nums" style={{ color: scoreColor(al.rating) }}>
+                      {al.rating != null ? al.rating.toFixed(1) : "—"}
+                    </span>
+                  </button>
 
-                    {albumOpen[al.id] && (
+                  {albumOpen[al.id] && (
                     <div className="border-t border-edge/50 p-3">
-                    <div className="flex items-center justify-end">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => fetchCover(artist, al)}
-                          disabled={coverBusy[al.id]}
-                          className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50"
-                          title="Fetch cover art from the Cover Art Archive"
-                        >
-                          {coverBusy[al.id] ? "🎨 …" : al.coverUrl ? "🎨 Refresh cover" : "🎨 Find cover"}
-                        </button>
-                        <button
-                          onClick={() => fetchTracks(artist, al)}
-                          disabled={trackBusy[al.id]}
-                          className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50"
-                          title="Fetch this album's tracklist from MusicBrainz"
-                        >
-                          {trackBusy[al.id] ? "🎵 …" : al.tracks.length ? "🎵 Reload tracks" : "🎵 Get tracks"}
-                        </button>
-                        <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-zinc-600 hover:text-dean">
-                          Delete
-                        </button>
+                      <div className="flex items-center justify-end">
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => fetchCover(artist, al)} disabled={coverBusy[al.id]} className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch cover art from the Cover Art Archive">
+                            {coverBusy[al.id] ? "🎨 …" : al.coverUrl ? "🎨 Refresh cover" : "🎨 Find cover"}
+                          </button>
+                          <button onClick={() => fetchTracks(artist, al)} disabled={trackBusy[al.id]} className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch this album's tracklist from MusicBrainz">
+                            {trackBusy[al.id] ? "🎵 …" : al.tracks.length ? "🎵 Reload tracks" : "🎵 Get tracks"}
+                          </button>
+                          <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-zinc-600 hover:text-dean">
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Rate the album: status + Dean Meter + favorite */}
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      {(["want", "listening", "completed"] as AlbumStatus[]).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setAlbumStatus(artist.id, al, s)}
-                          className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${
-                            al.status === s ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"
-                          }`}
-                        >
-                          {s === "want" ? "Want" : s === "listening" ? "Listening" : "Done"}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {(["want", "listening", "completed"] as AlbumStatus[]).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setAlbumStatus(al, s)}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${al.status === s ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
+                          >
+                            {s === "want" ? "Want" : s === "listening" ? "Listening" : "Done"}
+                          </button>
+                        ))}
+                        <button onClick={() => setAlbum(al.id, { favorite: !al.favorite })} className="text-base transition-transform hover:scale-110" title="Favorite album">
+                          {al.favorite ? "⭐" : "☆"}
                         </button>
-                      ))}
-                      <button
-                        onClick={() => patchAlbumField(artist.id, al.id, { favorite: !al.favorite })}
-                        className="text-base transition-transform hover:scale-110"
-                        title="Favorite album"
-                      >
-                        {al.favorite ? "⭐" : "☆"}
-                      </button>
-                      <button
-                        onClick={() => patchAlbumField(artist.id, al.id, { excluded: !al.excluded })}
-                        className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                          al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-zinc-500 hover:text-white"
-                        }`}
-                        title="Exclude from the marathon (won't count toward runtime or progress)"
-                      >
-                        {al.excluded ? "🚫 Excluded" : "Exclude"}
-                      </button>
-                      <div className="ml-auto flex items-center gap-2">
-                        <DeanMeter value={al.rating} size={34} />
+                        <button
+                          onClick={() => setAlbum(al.id, { excluded: !al.excluded })}
+                          className={`rounded-md px-2 py-1 text-xs font-semibold ${al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-zinc-500 hover:text-white"}`}
+                          title="Exclude from the marathon (won't count toward runtime or progress)"
+                        >
+                          {al.excluded ? "🚫 Excluded" : "Exclude"}
+                        </button>
+                        <div className="ml-auto flex items-center gap-2">
+                          <DeanMeter value={al.rating} size={34} />
+                          <input
+                            type="range"
+                            min={0}
+                            max={10}
+                            step={0.1}
+                            value={al.rating ?? 0}
+                            onChange={(e) => setAlbum(al.id, { rating: Number(e.target.value) })}
+                            className="h-6 w-32 cursor-pointer accent-gold"
+                            title="Dean Meter — overall album score"
+                          />
+                          <span className="w-8 text-right text-xs font-bold text-gold">{al.rating != null ? al.rating.toFixed(1) : "—"}</span>
+                        </div>
+                      </div>
+
+                      {al.tracks.length > 0 && (
+                        <div className="mt-2">
+                          <button onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))} className="text-xs font-semibold text-zinc-400 hover:text-white">
+                            {expanded[al.id] ? "▾" : "▸"} {al.tracks.length} tracks — rate songs
+                          </button>
+                          {expanded[al.id] && (
+                            <div className="mt-2 divide-y divide-edge/40 rounded-lg border border-edge/40 bg-panel/40">
+                              {al.tracks.map((t, i) => (
+                                <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
+                                  <span className="w-5 text-right text-xs text-zinc-600">{i + 1}</span>
+                                  <span className="flex-1 truncate text-sm text-white">{t.title}</span>
+                                  <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="px-1 text-lg leading-none transition-transform hover:scale-110 sm:text-sm" title="Favorite track">
+                                    {t.favorite ? "⭐" : "☆"}
+                                  </button>
+                                  <Score10 value={t.rating} onChange={(v) => setTrack(al.id, t.id, { rating: v })} />
+                                  <button onClick={() => removeTrack(artist.id, al.id, t.id)} className="text-zinc-600 hover:text-dean" title="Remove track">
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-2 flex gap-2">
                         <input
-                          type="range"
-                          min={0}
-                          max={10}
-                          step={0.1}
-                          value={al.rating ?? 0}
-                          onChange={(e) => patchAlbumField(artist.id, al.id, { rating: Number(e.target.value) })}
-                          className="w-32 accent-gold"
-                          title="Dean Meter — overall album score"
+                          className={`${inputCls} flex-1`}
+                          placeholder="Add a track…"
+                          value={trackDraft[`${artist.id}:${al.id}`] ?? ""}
+                          onChange={(e) => setTrackDraft((s) => ({ ...s, [`${artist.id}:${al.id}`]: e.target.value }))}
+                          onKeyDown={(e) => e.key === "Enter" && addTrack(artist.id, al.id)}
                         />
-                        <span className="w-8 text-right text-xs font-bold text-gold">
-                          {al.rating != null ? al.rating.toFixed(1) : "—"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Tracklist with per-song star ratings (collapsible) */}
-                    {al.tracks.length > 0 && (
-                      <div className="mt-2">
-                        <button
-                          onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))}
-                          className="text-xs font-semibold text-zinc-400 hover:text-white"
-                        >
-                          {expanded[al.id] ? "▾" : "▸"} {al.tracks.length} tracks — rate songs
+                        <button onClick={() => addTrack(artist.id, al.id)} className="rounded-lg border border-edge px-3 text-sm text-zinc-300 hover:text-white">
+                          +
                         </button>
-                        {expanded[al.id] && (
-                          <div className="mt-2 divide-y divide-edge/40 rounded-lg border border-edge/40 bg-panel/40">
-                            {al.tracks.map((t, i) => (
-                              <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                                <span className="w-5 text-right text-xs text-zinc-600">{i + 1}</span>
-                                <span className="flex-1 truncate text-sm text-white">{t.title}</span>
-                                <button
-                                  onClick={() => patchTrackField(artist.id, al.id, t.id, { favorite: !t.favorite })}
-                                  className="text-sm transition-transform hover:scale-110"
-                                  title="Favorite track"
-                                >
-                                  {t.favorite ? "⭐" : "☆"}
-                                </button>
-                                <Score10
-                                  value={t.rating}
-                                  onChange={(v) => patchTrackField(artist.id, al.id, t.id, { rating: v })}
-                                />
-                                <button
-                                  onClick={() => removeTrack(artist.id, al.id, t.id)}
-                                  className="text-zinc-600 hover:text-dean"
-                                  title="Remove track"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    )}
-
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        className={`${inputCls} flex-1`}
-                        placeholder="Add a track…"
-                        value={trackDraft[tkey] ?? ""}
-                        onChange={(e) => setTrackDraft((s) => ({ ...s, [tkey]: e.target.value }))}
-                        onKeyDown={(e) => e.key === "Enter" && addTrack(artist.id, al.id)}
-                      />
-                      <button onClick={() => addTrack(artist.id, al.id)} className="rounded-lg border border-edge px-3 text-sm text-zinc-300 hover:text-white">
-                        +
-                      </button>
                     </div>
-                    </div>
-                    )}
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              ))}
             </div>
 
-            {/* add album */}
             <div className="mt-3 flex flex-wrap gap-2">
               <input
                 className={`${inputCls} flex-1`}

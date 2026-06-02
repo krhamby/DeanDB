@@ -1,18 +1,16 @@
 import { useMemo, useState } from "react";
-import { useStore } from "../lib/store";
-import { artistProgress } from "../lib/stats";
+import { artistProgress, libraryArtists, marathonArtists } from "../lib/stats";
 import { ArtistCard } from "../components/cards";
 import { SectionTitle } from "../components/ui";
+import type { Artist, DeanDBData } from "../types";
 
 type Sort = "progress" | "name" | "albums";
 
-export function Artists() {
-  const { data } = useStore();
+export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: string }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>("progress");
 
   const artists = useMemo(() => {
-    if (!data) return [];
     const filtered = data.artists.filter((a) =>
       `${a.name} ${a.genre}`.toLowerCase().includes(q.toLowerCase()),
     );
@@ -23,11 +21,23 @@ export function Artists() {
     });
   }, [data, q, sort]);
 
-  if (!data) return null;
+  const marathon = marathonArtists(artists);
+  const library = libraryArtists(artists);
+  const section = (kicker: string, title: string, list: Artist[]) =>
+    list.length > 0 && (
+      <section className="mb-8">
+        <SectionTitle kicker={kicker} title={title} />
+        <div className="grid gap-3 md:grid-cols-2">
+          {list.map((a) => (
+            <ArtistCard key={a.id} artist={a} basePath={basePath} />
+          ))}
+        </div>
+      </section>
+    );
 
   return (
     <div>
-      <SectionTitle kicker="The roster" title="Artists in the Marathon" />
+      <SectionTitle kicker="The roster" title="Artists" />
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <input
           value={q}
@@ -50,11 +60,8 @@ export function Artists() {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {artists.map((a) => (
-          <ArtistCard key={a.id} artist={a} />
-        ))}
-      </div>
+      {section("In the marathon", "The Marathon", marathon)}
+      {section("Already heard", "The Library", library)}
       {artists.length === 0 && (
         <p className="py-12 text-center text-zinc-500">No artists match “{q}”.</p>
       )}

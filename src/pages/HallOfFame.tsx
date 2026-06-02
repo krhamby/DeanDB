@@ -1,13 +1,10 @@
-import { useStore } from "../lib/store";
 import { flattenAlbums } from "../lib/stats";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
 import { DeanMeter, Panel, SectionTitle } from "../components/ui";
+import type { DeanDBData } from "../types";
 
-export function HallOfFame() {
-  const { data } = useStore();
-  if (!data) return null;
-
+export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath?: string }) {
   const ranked = flattenAlbums(data)
     .filter((a) => a.rating != null)
     .sort((a, b) => (b.rating as number) - (a.rating as number));
@@ -25,7 +22,7 @@ export function HallOfFame() {
   return (
     <div className="space-y-12">
       <div>
-        <SectionTitle kicker="The greatest of all time (so far)" title="Dean's Hall of Fame" />
+        <SectionTitle kicker="The greatest of all time (so far)" title={`${data.listener.name}'s Hall of Fame`} />
         {ranked.length === 0 ? (
           <p className="py-8 text-zinc-500">No rated albums yet — the Hall awaits its first inductee.</p>
         ) : (
@@ -33,7 +30,7 @@ export function HallOfFame() {
             {ranked.map((a, i) => (
               <button
                 key={a.id}
-                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
                 className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${
                   i < 3 ? "border-gold/40 bg-gradient-to-r from-gold/10 to-transparent" : "border-edge/70 bg-panel/70"
                 }`}
@@ -55,7 +52,7 @@ export function HallOfFame() {
 
       {favTracks.length > 0 && (
         <div>
-          <SectionTitle kicker="On permanent repeat" title="Dean's Desert-Island Tracks" />
+          <SectionTitle kicker="On permanent repeat" title={`${data.listener.name}'s Desert-Island Tracks`} />
           <div className="grid gap-2 sm:grid-cols-2">
             {favTracks.map((t, i) => (
               <Panel key={i} className="flex items-center gap-3 p-3">

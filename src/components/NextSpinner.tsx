@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { Artist } from "../types";
 import { gradient } from "../lib/format";
+import { marathonArtists } from "../lib/stats";
 import { navigate } from "../lib/router";
 import { Panel } from "./ui";
 
@@ -19,9 +20,12 @@ function isConquered(a: Artist): boolean {
   );
 }
 
-export function NextSpinner({ artists }: { artists: Artist[] }) {
+export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; basePath?: string }) {
+  // Only forward-marathon artists are on the wheel — logged "Library" artists
+  // are already-heard and never queued.
+  const pool = marathonArtists(artists);
   // Queue order = the order artists were added. Next = first un-started one.
-  const queue = artists.filter((a) => !isConquered(a));
+  const queue = pool.filter((a) => !isConquered(a));
   const current = queue.find(isStarted) ?? null;
   const upNext = queue.find((a) => !isStarted(a)) ?? null;
 
@@ -30,7 +34,7 @@ export function NextSpinner({ artists }: { artists: Artist[] }) {
   const [revealed, setRevealed] = useState(false);
   const timer = useRef<number | null>(null);
 
-  if (artists.length === 0) return null;
+  if (pool.length === 0) return null;
 
   const spin = () => {
     if (spinning || !upNext) return;
@@ -42,7 +46,7 @@ export function NextSpinner({ artists }: { artists: Artist[] }) {
     const tick = () => {
       const elapsed = Date.now() - start;
       // Cycle visible names, decelerating as we approach the end.
-      setDisplay(artists[i % artists.length]);
+      setDisplay(pool[i % pool.length]);
       i++;
       if (elapsed >= duration) {
         setDisplay(upNext);
@@ -117,7 +121,7 @@ export function NextSpinner({ artists }: { artists: Artist[] }) {
             </button>
             {revealed && shown && (
               <button
-                onClick={() => navigate(`/artist/${shown.id}`)}
+                onClick={() => navigate(`${basePath}/artist/${shown.id}`)}
                 className="rounded-xl border border-gold/40 px-5 py-2.5 font-semibold text-gold transition hover:bg-gold/10"
               >
                 Open {shown.name} →

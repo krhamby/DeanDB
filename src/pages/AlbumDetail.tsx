@@ -1,50 +1,68 @@
-import { useState } from "react";
-import { useStore } from "../lib/store";
+import { useEffect, useState } from "react";
 import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
+import { useAuth } from "../lib/store";
+import * as api from "../lib/api";
 import { Cover } from "../components/cards";
 import { DeanMeter, Panel, StatusBadge, Score10 } from "../components/ui";
-import type { Album, AlbumStatus, DeanDBData } from "../types";
+import { RecommendModal } from "../components/social";
+import type { AlbumAggregate, AlbumStatus, DeanDBData } from "../types";
 
-export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: string }) {
-  const { data, update, isEditor } = useStore();
+export function AlbumDetail({
+  data,
+  artistId,
+  albumId,
+  canEdit = false,
+  basePath = "",
+  setAlbum,
+  setTrack,
+}: {
+  data: DeanDBData;
+  artistId: string;
+  albumId: string;
+  canEdit?: boolean;
+  basePath?: string;
+  setAlbum?: (albumId: string, patch: api.UserAlbumPatch) => void;
+  setTrack?: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
+}) {
+  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [agg, setAgg] = useState<AlbumAggregate | null>(null);
+  const [recommending, setRecommending] = useState(false);
 
-  const artist = data?.artists.find((a) => a.id === artistId);
+  const artist = data.artists.find((a) => a.id === artistId);
   const album = artist?.albums.find((a) => a.id === albumId);
+
+  useEffect(() => {
+    if (album) api.albumAggregate(album.id).then(setAgg).catch(() => setAgg(null));
+  }, [album?.id]);
 
   if (!artist || !album) {
     return (
       <div className="py-16 text-center">
         <p className="text-zinc-400">Album not found.</p>
-        <button onClick={() => navigate("/")} className="mt-4 text-gold hover:underline">
-          ← Back home
+        <button onClick={() => navigate(basePath || "/")} className="mt-4 text-gold hover:underline">
+          ← Back
         </button>
       </div>
     );
   }
 
-  // helper to mutate this specific album immutably
-  const patchAlbum = (patch: Partial<Album>) =>
-    update((draft: DeanDBData) => {
-      const ar = draft.artists.find((a) => a.id === artistId);
-      const al = ar?.albums.find((a) => a.id === albumId);
-      if (al) Object.assign(al, patch);
-      return draft;
-    });
-
-  const patchTrack = (trackId: string, patch: Partial<Album["tracks"][number]>) =>
-    update((draft: DeanDBData) => {
-      const ar = draft.artists.find((a) => a.id === artistId);
-      const al = ar?.albums.find((a) => a.id === albumId);
-      const tr = al?.tracks.find((t) => t.id === trackId);
-      if (tr) Object.assign(tr, patch);
-      return draft;
-    });
+  const patchAlbum = (patch: api.UserAlbumPatch) => setAlbum?.(album.id, patch);
+  const patchTrack = (trackId: string, patch: { rating?: number | null; favorite?: boolean }) =>
+    setTrack?.(album.id, trackId, patch);
 
   return (
     <div>
-      <button onClick={() => navigate(`/artist/${artistId}`)} className="mb-4 text-sm text-zinc-500 hover:text-gold">
+      {recommending && (
+        <RecommendModal
+          subject={{ albumId: album.id }}
+          label={`${album.title} — ${artist.name}`}
+          onClose={() => setRecommending(false)}
+        />
+      )}
+
+      <button onClick={() => navigate(`${basePath}/artist/${artistId}`)} className="mb-4 text-sm text-zinc-500 hover:text-gold">
         ← {artist.name}
       </button>
 
@@ -56,7 +74,7 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
           <Cover colors={album.cover} title={album.title} coverUrl={album.coverUrl} size="lg" />
           <div className="flex-1">
             <button
-              onClick={() => navigate(`/artist/${artistId}`)}
+              onClick={() => navigate(`${basePath}/artist/${artistId}`)}
               className="text-sm font-semibold text-white/70 hover:text-white"
             >
               {artist.name}
@@ -70,32 +88,48 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
               <span>· {fmtMinutes(album.minutes)}</span>
               {album.dateListened && <span>· Finished {fmtDate(album.dateListened)}</span>}
               {album.favorite && <span title="Favorite">⭐</span>}
+              {agg && agg.listenerCount > 0 && (
+                <span title="Community average across all listeners">
+                  · 🌍 {agg.avgRating?.toFixed(1)} avg ({agg.listenerCount})
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-center gap-1">
             <DeanMeter value={album.rating} size={88} />
             <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
-              Dean Meter
+              {data.listener.name} Meter
             </span>
           </div>
         </div>
       </div>
 
-      {/* Edit toggle */}
-      <div className="mt-5 flex items-center justify-between">
+      {/* Actions */}
+      <div className="mt-5 flex items-center justify-between gap-3">
         <h2 className="font-display text-xl font-black text-white">
-          {album.review ? "Dean's Review" : "The Verdict"}
+          {album.review ? `${data.listener.name}'s Review` : "The Verdict"}
         </h2>
-        {isEditor && (
-          <button
-            onClick={() => setEditing((e) => !e)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-              editing ? "bg-gold text-black" : "border border-edge text-zinc-300 hover:text-white"
-            }`}
-          >
-            {editing ? "Done" : "✎ Edit"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {user && (
+            <button
+              onClick={() => setRecommending(true)}
+              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-gold"
+              title="Recommend this to a friend"
+            >
+              ✉ Recommend
+            </button>
+          )}
+          {canEdit && setAlbum && (
+            <button
+              onClick={() => setEditing((e) => !e)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+                editing ? "bg-gold text-black" : "border border-edge text-zinc-300 hover:text-white"
+              }`}
+            >
+              {editing ? "Done" : "✎ Edit"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Review */}
@@ -133,7 +167,7 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <label className="text-sm font-semibold uppercase tracking-wide text-zinc-500 sm:text-xs">
                 Dean Meter: <span className="text-gold">{album.rating?.toFixed(1) ?? "—"}</span>
               </label>
               <input
@@ -143,7 +177,7 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
                 step={0.1}
                 value={album.rating ?? 0}
                 onChange={(e) => patchAlbum({ rating: Number(e.target.value) })}
-                className="mt-1 w-full accent-gold"
+                className="mt-1 h-6 w-full cursor-pointer accent-gold"
               />
             </div>
 
@@ -158,21 +192,12 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
                   className="ml-2 w-20 rounded-md border border-edge bg-panel-2 px-2 py-1 text-white"
                 />
               </label>
-              <label className="text-sm text-zinc-400">
-                Year
-                <input
-                  type="number"
-                  value={album.year ?? ""}
-                  onChange={(e) => patchAlbum({ year: e.target.value ? Number(e.target.value) : null })}
-                  className="ml-2 w-24 rounded-md border border-edge bg-panel-2 px-2 py-1 text-white"
-                />
-              </label>
             </div>
 
             <textarea
               value={album.review}
               onChange={(e) => patchAlbum({ review: e.target.value })}
-              placeholder="What's the verdict, Dean?"
+              placeholder="What's the verdict?"
               rows={4}
               className="w-full rounded-xl border border-edge bg-panel-2 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
             />
@@ -180,7 +205,7 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
         ) : album.review ? (
           <p className="whitespace-pre-wrap leading-relaxed text-zinc-300">“{album.review}”</p>
         ) : (
-          <p className="italic text-zinc-500">No review yet. Dean hasn&apos;t weighed in.</p>
+          <p className="italic text-zinc-500">No review yet.</p>
         )}
       </Panel>
 
@@ -193,13 +218,17 @@ export function AlbumDetail({ artistId, albumId }: { artistId: string; albumId: 
               <div key={t.id} className="flex items-center gap-3 p-3">
                 <span className="w-6 text-right font-display text-sm text-zinc-600">{i + 1}</span>
                 <span className="flex-1 truncate text-sm text-white">{t.title}</span>
-                <button
-                  onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
-                  className="text-base transition-transform hover:scale-125"
-                  title="Favorite track"
-                >
-                  {t.favorite ? "⭐" : "☆"}
-                </button>
+                {editing ? (
+                  <button
+                    onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
+                    className="px-1 text-xl leading-none transition-transform hover:scale-125 sm:text-base"
+                    title="Favorite track"
+                  >
+                    {t.favorite ? "⭐" : "☆"}
+                  </button>
+                ) : (
+                  t.favorite && <span className="text-xl sm:text-base">⭐</span>
+                )}
                 <Score10 value={t.rating} onChange={editing ? (v) => patchTrack(t.id, { rating: v }) : undefined} />
               </div>
             ))}

@@ -1,4 +1,3 @@
-import { useStore } from "../lib/store";
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { fmtHours } from "../lib/format";
 import { navigate } from "../lib/router";
@@ -6,6 +5,7 @@ import { Cover } from "../components/cards";
 import { DeanMeter, Panel, ProgressBar, SectionTitle } from "../components/ui";
 import { EmptyState } from "../components/EmptyState";
 import { NextSpinner } from "../components/NextSpinner";
+import type { DeanDBData } from "../types";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   // Long values (e.g. a genre name) get a smaller, wrapping treatment so they
@@ -26,15 +26,24 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-export function Dashboard() {
-  const { data } = useStore();
-  if (!data) return null;
+export function Dashboard({
+  data,
+  basePath = "",
+  canEdit = false,
+}: {
+  data: DeanDBData;
+  /** Route prefix for links, e.g. "/u/dean" when viewing another journey. */
+  basePath?: string;
+  canEdit?: boolean;
+}) {
   const stats = computeStats(data);
   const achievements = computeAchievements(data, stats);
   const unlocked = achievements.filter((a) => a.unlocked);
 
   const albums = flattenAlbums(data);
-  const nowSpinning = albums.filter((a) => a.status === "listening");
+  // "Now spinning" is a marathon concept — logged Library artists aren't queued.
+  const nowSpinning = albums.filter((a) => a.status === "listening" && !a.artistLogged);
+  // Latest verdicts span the whole collection (a freshly logged favorite counts).
   const recent = albums
     .filter((a) => a.status === "completed" && a.rating != null)
     .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
@@ -80,16 +89,47 @@ export function Dashboard() {
       </section>
 
       {data.artists.length === 0 ? (
-        <EmptyState />
+        canEdit ? (
+          <EmptyState />
+        ) : (
+          <Panel className="px-6 py-16 text-center text-zinc-400">
+            {data.listener.name} hasn&apos;t added any artists yet. 🎙️
+          </Panel>
+        )
       ) : (
         <>
           {/* ── What's next ── */}
-          <NextSpinner artists={data.artists} />
+          {stats.marathonArtistsTotal > 0 ? (
+            <NextSpinner artists={data.artists} basePath={basePath} />
+          ) : (
+            <Panel className="px-6 py-10 text-center text-zinc-400">
+              <div className="mb-2 text-4xl">📚</div>
+              Everything here is in the Library — no marathon artists yet.
+              {canEdit && (
+                <>
+                  {" "}
+                  Start one in the{" "}
+                  <button onClick={() => navigate("/editor")} className="text-gold hover:underline">
+                    Editor
+                  </button>
+                  .
+                </>
+              )}
+            </Panel>
+          )}
 
       {/* ── Stat grid ── */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Albums done" value={String(stats.albumsCompleted)} />
-        <StatCard label="Artists" value={String(stats.artistsTotal)} sub={`${stats.artistsConquered} conquered`} />
+        <StatCard
+          label="Artists"
+          value={String(stats.marathonArtistsTotal)}
+          sub={
+            stats.libraryArtistsTotal > 0
+              ? `${stats.artistsConquered} conquered · ${stats.libraryArtistsTotal} library`
+              : `${stats.artistsConquered} conquered`
+          }
+        />
         <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub="Dean Meter" />
         <StatCard label="Songs rated" value={String(stats.songsRated)} />
         <StatCard label="Now spinning" value={String(stats.albumsListening)} />
@@ -104,7 +144,7 @@ export function Dashboard() {
             {nowSpinning.map((a) => (
               <button
                 key={a.id}
-                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
                 className="group flex items-center gap-4 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent p-3 pr-6 transition-transform hover:-translate-y-0.5"
               >
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
@@ -127,7 +167,7 @@ export function Dashboard() {
             {recent.map((a) => (
               <button
                 key={a.id}
-                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
                 className="group flex flex-col items-center gap-2 transition-transform hover:-translate-y-1"
               >
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
