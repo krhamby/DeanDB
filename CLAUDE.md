@@ -90,8 +90,9 @@ src/
     Feed.tsx            Activity from people you follow
     People.tsx          Search + follow + accept requests + following list
     Recommendations.tsx Recommendation inbox
-supabase/schema.sql     Full schema: catalog, profiles, user_* tables, follows, recommendations,
-                        RLS, helper fns, catalog RPCs, feed view, legacy-row migration
+supabase/migrations/    DB schema as Supabase migrations (baseline *_init.sql): catalog, profiles,
+                        user_* tables, follows, recommendations, RLS, helper fns, catalog RPCs,
+                        feed view, legacy-row migration. config.toml links the CLI/integration.
 .github/workflows/deploy.yml  Build + deploy to GitHub Pages on push to main
 .claude/                SessionStart hook (npm install on web) + settings.json
 vite.config.ts          base = "/DeanDB/" in build (Pages subpath), "/" in dev
@@ -105,7 +106,7 @@ vite.config.ts          base = "/DeanDB/" in build (Pages subpath), "/" in dev
 `favorite`). Plus account/social types: `Profile`, `PersonResult`, `FeedItem`,
 `Recommendation`, `AlbumAggregate`, `Visibility`, `FollowStatus`.
 
-**Database (`supabase/schema.sql`):**
+**Database (`supabase/migrations/` — applied via the Supabase GitHub integration / `supabase db push`, or pasted into the SQL editor):**
 - **Shared catalog** (`catalog_artists/albums/tracks`) — deduped by MusicBrainz `mbid`; world-readable; written only via SECURITY DEFINER `upsert_catalog_*` RPCs so cross-user rating aggregates and recommendations point at canonical rows.
 - **`profiles`** — one per `auth.users` (username, display_name, visibility, season, goal_hours). Auto-created by a trigger on signup.
 - **Per-user journey** (`user_artists/user_albums/user_tracks`) — the rateable layer, owned by `auth.uid()`.
@@ -154,10 +155,10 @@ routes go through `RequireAuth`.
 
 - `vite.config.ts`: `base "/DeanDB/"` in production (case-sensitive Pages subpath), `"/"` in dev. Use `import.meta.env.BASE_URL` for asset/redirect URLs.
 - `.github/workflows/deploy.yml` builds on push to `main` and deploys `dist/` to Pages.
-- Supabase setup: run `supabase/schema.sql`, set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`), and **add the site URL to Supabase Auth → URL Configuration → Redirect URLs** (magic links return to `…/DeanDB/#/me`). Production email needs Supabase SMTP configured.
+- Supabase setup: apply the migration in `supabase/migrations/` (Supabase GitHub integration on merge, `supabase db push`, or paste into the SQL editor), set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`), and **add the site URL to Supabase Auth → URL Configuration → Redirect URLs** (magic links return to `…/DeanDB/#/me`). Production email needs Supabase SMTP configured.
 
 ## Working agreements
 
 - This session develops on branch `claude/claude-md-docs-8B97s`. Commit/push there; do **not** open a PR or push elsewhere unless asked.
 - After code changes, verify with `npm run build` / `npm run typecheck`. There are no automated tests.
-- The legacy single-row marathon migrates into a real account via `migrate_deandb_state('<user-uuid>')` (see the bottom of `schema.sql`).
+- The legacy single-row marathon migrates into a real account via `migrate_deandb_state('<user-uuid>')` (see the bottom of the init migration in `supabase/migrations/`). It's operator-only (execute revoked from anon/authenticated) and won't migrate an account other than the caller's own.

@@ -45,7 +45,9 @@ You need a Supabase project configured (below) — DeanDB requires the backend.
 ## 🔌 Supabase setup (~5 minutes)
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor**, paste in [`supabase/schema.sql`](supabase/schema.sql), and **Run**. This creates the catalog, profiles, per-user journey tables, the social graph, all RLS policies, and helper RPCs. It's safe to re-run.
+2. Apply the database schema. It lives as a migration in [`supabase/migrations/`](supabase/migrations/) (creates the catalog, profiles, per-user journey tables, the social graph, all RLS policies, and helper RPCs; idempotent — safe to re-run). Either:
+   - **Automatic:** connect the [Supabase GitHub integration](https://supabase.com/docs/guides/deployment/branching) so migrations apply on merge to `main`; or run `supabase db push` against the linked project; **or**
+   - **Manual:** open the **SQL Editor**, paste in the migration file, and **Run**.
 3. In Supabase, go to **Project Settings → API** and copy:
    - the **Project URL** → `SUPABASE_URL` in [`src/lib/config.ts`](src/lib/config.ts)
    - the **anon / publishable key** → `SUPABASE_ANON_KEY` (public-safe by design — RLS does the protecting).
@@ -56,7 +58,9 @@ You need a Supabase project configured (below) — DeanDB requires the backend.
 > legacy `deandb_state` row. Sign in once as Dean to create his account, grab his
 > user id from **Authentication → Users**, then run
 > `select migrate_deandb_state('<dean-uuid>');` in the SQL Editor (instructions
-> are at the bottom of `schema.sql`).
+> are at the bottom of the init migration in `supabase/migrations/`). It's
+> operator-only and migrates only the named account; the journey stays private
+> until you flip it in Settings.
 
 ## 🌐 Deploying to GitHub Pages
 

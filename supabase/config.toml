@@ -1,0 +1,10 @@
+# Supabase CLI / GitHub-integration config.
+#
+# Its presence alongside supabase/migrations/ is what lets `supabase db push`
+# and the Supabase GitHub integration discover and apply the migrations. The
+# remote project is linked out-of-band — via the Supabase dashboard GitHub
+# integration, or locally with `supabase link --project-ref <your-ref>`.
+#
+# Kept minimal on purpose; run `supabase init` if you want the full template
+# (local API/db/studio ports, auth, etc.) for `supabase start`.
+project_id = "deandb"
