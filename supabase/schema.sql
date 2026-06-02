@@ -627,8 +627,11 @@ with (security_invoker = on) as
     ua.rating,
     ua.review,
     ua.favorite,
-    coalesce(uar.logged, false) as logged,   -- drives the "logged an old favorite" feed verb
-    ua.updated_at
+    ua.updated_at,
+    -- NOTE: new columns MUST be appended at the END. CREATE OR REPLACE VIEW
+    -- cannot reorder/rename existing output columns, so inserting before
+    -- updated_at would break the idempotent re-run on an existing database.
+    coalesce(uar.logged, false) as logged   -- drives the "logged an old favorite" feed verb
   from public.user_albums ua
   join public.catalog_albums  ca  on ca.id = ua.album_id
   join public.catalog_artists car on car.id = ca.artist_id

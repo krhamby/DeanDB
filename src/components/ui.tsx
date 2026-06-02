@@ -70,7 +70,7 @@ export function Score10({
   const color = scoreColor(value);
   if (!onChange) {
     return (
-      <span className="font-display text-sm font-black tabular-nums" style={{ color }}>
+      <span className="font-display text-base font-black tabular-nums sm:text-sm" style={{ color }}>
         {value == null ? "—" : value.toFixed(1)}
       </span>
     );
@@ -88,7 +88,8 @@ export function Score10({
           const v = e.target.value;
           onChange(v === "" ? null : Math.max(0, Math.min(10, Number(v))));
         }}
-        className="w-14 rounded-md border border-edge bg-panel-2 px-1.5 py-0.5 text-right text-sm font-bold tabular-nums outline-none focus:border-gold/50"
+        // Roomy tap target on phones; trims back down on ≥sm screens.
+        className="h-10 w-16 rounded-md border border-edge bg-panel-2 px-2 text-right text-base font-bold tabular-nums outline-none focus:border-gold/50 sm:h-8 sm:w-14 sm:text-sm"
         style={{ color }}
         aria-label="Song score out of 10"
       />

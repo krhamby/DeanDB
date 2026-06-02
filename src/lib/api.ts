@@ -396,23 +396,23 @@ export interface UserArtistPatch {
 }
 
 /**
- * Update one of my artists' per-user fields (logged / verdict / recommender).
- * Uses UPDATE (not upsert) because the user_artists row always pre-exists for an
- * artist already in the roster — this avoids resetting unlisted columns (color).
+ * Set one of my artists' per-user fields (logged / verdict / recommender).
+ * Upsert on (user_id, artist_id): the row normally pre-exists (added when the
+ * artist joined the roster), so this hits the ON CONFLICT UPDATE path and only
+ * the listed columns change — `color` is never in the payload, so it is never
+ * reset. If the row is somehow missing it is created (with catalog-default
+ * color) rather than the write silently affecting zero rows.
  */
 export async function upsertUserArtist(userId: string, artistId: string, patch: UserArtistPatch): Promise<void> {
-  const row: Record<string, unknown> = {};
+  const row: Record<string, unknown> = { user_id: userId, artist_id: artistId };
   if (patch.logged !== undefined) row.logged = patch.logged;
   if (patch.verdict !== undefined) row.verdict = patch.verdict;
   if (patch.verdictNote !== undefined) row.verdict_note = patch.verdictNote;
   if (patch.recByUser !== undefined) row.rec_by_user = patch.recByUser;
   if (patch.recByText !== undefined) row.rec_by_text = patch.recByText;
-  if (Object.keys(row).length === 0) return;
   const { error } = await requireClient()
     .from("user_artists")
-    .update(row)
-    .eq("user_id", userId)
-    .eq("artist_id", artistId);
+    .upsert(row, { onConflict: "user_id,artist_id" });
   if (error) throw error;
 }
 

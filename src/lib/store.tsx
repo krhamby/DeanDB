@@ -136,7 +136,8 @@ interface MyJourneyValue {
   data: DeanDBData | null;
   loading: boolean;
   userId: string | null;
-  reload: () => Promise<void>;
+  /** Reload the journey from the server and return the fresh copy. */
+  reload: () => Promise<DeanDBData | null>;
   /** Optimistically mutate the local view (no DB write) — used after bulk ops. */
   patchLocal: (mutator: (d: DeanDBData) => DeanDBData) => void;
   /** Optimistic local edit + persist for one of my albums. */
@@ -169,11 +170,13 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     if (!profile) {
       setData(null);
-      return;
+      return null;
     }
     setLoading(true);
     try {
-      setData(await api.fetchJourney(profile));
+      const fresh = await api.fetchJourney(profile);
+      setData(fresh);
+      return fresh;
     } finally {
       setLoading(false);
     }

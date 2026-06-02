@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { Artist } from "../types";
 import { gradient } from "../lib/format";
+import { marathonArtists } from "../lib/stats";
 import { navigate } from "../lib/router";
 import { Panel } from "./ui";
 
@@ -22,7 +23,7 @@ function isConquered(a: Artist): boolean {
 export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; basePath?: string }) {
   // Only forward-marathon artists are on the wheel — logged "Library" artists
   // are already-heard and never queued.
-  const pool = artists.filter((a) => !a.logged);
+  const pool = marathonArtists(artists);
   // Queue order = the order artists were added. Next = first un-started one.
   const queue = pool.filter((a) => !isConquered(a));
   const current = queue.find(isStarted) ?? null;

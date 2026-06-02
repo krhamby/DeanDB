@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { artistProgress } from "../lib/stats";
+import { artistProgress, libraryArtists, marathonArtists } from "../lib/stats";
 import { ArtistCard } from "../components/cards";
 import { SectionTitle } from "../components/ui";
-import type { DeanDBData } from "../types";
+import type { Artist, DeanDBData } from "../types";
 
 type Sort = "progress" | "name" | "albums";
 
@@ -20,6 +20,20 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
       return artistProgress(b) - artistProgress(a);
     });
   }, [data, q, sort]);
+
+  const marathon = marathonArtists(artists);
+  const library = libraryArtists(artists);
+  const section = (kicker: string, title: string, list: Artist[]) =>
+    list.length > 0 && (
+      <section className="mb-8">
+        <SectionTitle kicker={kicker} title={title} />
+        <div className="grid gap-3 md:grid-cols-2">
+          {list.map((a) => (
+            <ArtistCard key={a.id} artist={a} basePath={basePath} />
+          ))}
+        </div>
+      </section>
+    );
 
   return (
     <div>
@@ -46,37 +60,11 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
         </div>
       </div>
 
-      {(() => {
-        const marathon = artists.filter((a) => !a.logged);
-        const library = artists.filter((a) => a.logged);
-        return (
-          <>
-            {marathon.length > 0 && (
-              <section className="mb-8">
-                <SectionTitle kicker="In the marathon" title="The Marathon" />
-                <div className="grid gap-3 md:grid-cols-2">
-                  {marathon.map((a) => (
-                    <ArtistCard key={a.id} artist={a} basePath={basePath} />
-                  ))}
-                </div>
-              </section>
-            )}
-            {library.length > 0 && (
-              <section>
-                <SectionTitle kicker="Already heard" title="The Library" />
-                <div className="grid gap-3 md:grid-cols-2">
-                  {library.map((a) => (
-                    <ArtistCard key={a.id} artist={a} basePath={basePath} />
-                  ))}
-                </div>
-              </section>
-            )}
-            {artists.length === 0 && (
-              <p className="py-12 text-center text-zinc-500">No artists match “{q}”.</p>
-            )}
-          </>
-        );
-      })()}
+      {section("In the marathon", "The Marathon", marathon)}
+      {section("Already heard", "The Library", library)}
+      {artists.length === 0 && (
+        <p className="py-12 text-center text-zinc-500">No artists match “{q}”.</p>
+      )}
     </div>
   );
 }

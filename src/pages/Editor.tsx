@@ -70,14 +70,20 @@ function RecommenderPicker({ artist, setArtist }: { artist: Artist; setArtist: S
     });
 
   const pickUser = (p: Profile) => {
+    // Persist a name fallback in rec_by_text too: if this recommender is private
+    // and the viewer doesn't follow them, RLS hides the profile embed on reload,
+    // so without the fallback the credit would vanish entirely. With it, the row
+    // shows a linked @handle when visible and the plain name otherwise.
+    const text = rec?.text || p.displayName || p.username;
     setArtist(artist.id, {
       recByUser: p.id,
+      recByText: text,
       recommendedBy: {
         userId: p.id,
         username: p.username,
         displayName: p.displayName,
         avatarUrl: p.avatarUrl,
-        text: rec?.text ?? "",
+        text,
       },
     });
     setQuery("");
@@ -169,10 +175,15 @@ export function Editor() {
         setLookupMsg(`No MusicBrainz match for “${name}”. Add it manually below.`);
         return;
       }
-      await api.importArtistFromMatch(uid, match, pick(), pick);
-      await reload();
-      setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers.`);
+      const artistId = await api.importArtistFromMatch(uid, match, pick(), pick);
+      const fresh = await reload();
+      setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers. Fetching tracklists…`);
       setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
+      // Single import → auto-pull tracklists (the bulk path deliberately skips
+      // this to stay within MusicBrainz's ~1 req/sec budget). Runs in the
+      // background with its own progress under the artist in the roster.
+      const imported = fresh?.artists.find((a) => a.id === artistId);
+      if (imported) void loadAllTracks(imported);
     } catch (e) {
       setLookupMsg(e instanceof Error ? `${e.message}. You can still add manually.` : "Lookup failed.");
     } finally {
@@ -374,13 +385,20 @@ export function Editor() {
   const addAlbum = async (artistId: string) => {
     const d = albumDraft[artistId];
     if (!d?.title.trim()) return;
-    await api.createUserAlbum(uid, artistId, {
+    const albumId = await api.createUserAlbum(uid, artistId, {
       title: d.title.trim(),
       year: d.year ? Number(d.year) : null,
       cover: pick(),
     });
-    await reload();
+    const fresh = await reload();
     setAlbumDraft((s) => ({ ...s, [artistId]: { title: "", year: "" } }));
+    // Adding a single album → auto-fetch its cover + tracklist from MusicBrainz.
+    const artist = fresh?.artists.find((a) => a.id === artistId);
+    const al = artist?.albums.find((a) => a.id === albumId);
+    if (artist && al) {
+      await fetchCover(artist, al);
+      await fetchTracks(artist, al);
+    }
   };
 
   const addTrack = async (artistId: string, albumId: string) => {
@@ -638,7 +656,7 @@ export function Editor() {
                       step={0.1}
                       value={artist.verdict ?? 0}
                       onChange={(e) => setArtist(artist.id, { verdict: Number(e.target.value) })}
-                      className="flex-1 accent-gold"
+                      className="h-6 flex-1 cursor-pointer accent-gold"
                       title="One overall score for the whole artist"
                     />
                     <span className="w-8 text-right text-xs font-bold text-gold">
@@ -731,7 +749,7 @@ export function Editor() {
                             step={0.1}
                             value={al.rating ?? 0}
                             onChange={(e) => setAlbum(al.id, { rating: Number(e.target.value) })}
-                            className="w-32 accent-gold"
+                            className="h-6 w-32 cursor-pointer accent-gold"
                             title="Dean Meter — overall album score"
                           />
                           <span className="w-8 text-right text-xs font-bold text-gold">{al.rating != null ? al.rating.toFixed(1) : "—"}</span>
@@ -749,7 +767,7 @@ export function Editor() {
                                 <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
                                   <span className="w-5 text-right text-xs text-zinc-600">{i + 1}</span>
                                   <span className="flex-1 truncate text-sm text-white">{t.title}</span>
-                                  <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="text-sm transition-transform hover:scale-110" title="Favorite track">
+                                  <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="px-1 text-lg leading-none transition-transform hover:scale-110 sm:text-sm" title="Favorite track">
                                     {t.favorite ? "⭐" : "☆"}
                                   </button>
                                   <Score10 value={t.rating} onChange={(v) => setTrack(al.id, t.id, { rating: v })} />

@@ -2,7 +2,7 @@ import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import type { Album, Artist } from "../types";
 import { artistProgress } from "../lib/stats";
-import { DeanMeter, LoggedBadge, ProgressBar, StatusBadge, scoreColor } from "./ui";
+import { DeanMeter, LoggedBadge, ProgressBar, Score10, StatusBadge } from "./ui";
 
 // Generated "cover art" — a vinyl-on-poster look built from each album's
 // signature gradient. No external images needed; every cover is unique.
@@ -136,17 +136,14 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
             <span className="truncate font-display text-lg font-black text-white">{artist.name}</span>
             {artist.logged && <LoggedBadge />}
           </span>
-          {artist.verdict != null ? (
-            <span
-              className="shrink-0 font-display text-sm font-black tabular-nums"
-              style={{ color: scoreColor(artist.verdict) }}
-              title="Overall artist verdict"
-            >
-              {artist.verdict.toFixed(1)}
-            </span>
-          ) : (
-            <span className="shrink-0 text-xs font-semibold text-gold">{Math.round(pct)}%</span>
-          )}
+          <span className="flex shrink-0 items-center gap-2">
+            {artist.verdict != null && (
+              <span title="Overall artist verdict">
+                <Score10 value={artist.verdict} />
+              </span>
+            )}
+            <span className="text-xs font-semibold text-gold">{Math.round(pct)}%</span>
+          </span>
         </div>
         <div className="mb-2 text-xs text-zinc-500">
           {artist.genre} · {completed}/{artist.catalogSize} albums

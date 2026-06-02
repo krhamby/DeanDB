@@ -167,7 +167,7 @@ export function AlbumDetail({
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <label className="text-sm font-semibold uppercase tracking-wide text-zinc-500 sm:text-xs">
                 Dean Meter: <span className="text-gold">{album.rating?.toFixed(1) ?? "—"}</span>
               </label>
               <input
@@ -177,7 +177,7 @@ export function AlbumDetail({
                 step={0.1}
                 value={album.rating ?? 0}
                 onChange={(e) => patchAlbum({ rating: Number(e.target.value) })}
-                className="mt-1 w-full accent-gold"
+                className="mt-1 h-6 w-full cursor-pointer accent-gold"
               />
             </div>
 
@@ -221,13 +221,13 @@ export function AlbumDetail({
                 {editing ? (
                   <button
                     onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
-                    className="text-base transition-transform hover:scale-125"
+                    className="px-1 text-xl leading-none transition-transform hover:scale-125 sm:text-base"
                     title="Favorite track"
                   >
                     {t.favorite ? "⭐" : "☆"}
                   </button>
                 ) : (
-                  t.favorite && <span className="text-base">⭐</span>
+                  t.favorite && <span className="text-xl sm:text-base">⭐</span>
                 )}
                 <Score10 value={t.rating} onChange={editing ? (v) => patchTrack(t.id, { rating: v }) : undefined} />
               </div>

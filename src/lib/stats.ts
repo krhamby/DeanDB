@@ -51,6 +51,11 @@ export function flattenAlbums(data: DeanDBData): AlbumWithArtist[] {
   );
 }
 
+/** Forward-marathon artists (not in the already-heard Library). */
+export const marathonArtists = (artists: Artist[]): Artist[] => artists.filter((a) => !a.logged);
+/** Already-heard "Library" artists (logged), excluded from the marathon. */
+export const libraryArtists = (artists: Artist[]): Artist[] => artists.filter((a) => a.logged);
+
 /** Discography completion for one artist (0–1). Excluded albums don't count. */
 export function artistProgress(artist: Artist): number {
   const tracked = artist.albums.filter((a) => !a.excluded);
@@ -106,7 +111,7 @@ export function computeStats(data: DeanDBData): Stats {
   const topGenre =
     [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
-  const libraryArtistsTotal = data.artists.filter((a) => a.logged).length;
+  const libraryArtistsTotal = libraryArtists(data.artists).length;
 
   return {
     // Marathon-scoped
