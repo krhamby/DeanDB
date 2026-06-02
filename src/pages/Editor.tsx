@@ -183,7 +183,7 @@ export function Editor() {
       // this to stay within MusicBrainz's ~1 req/sec budget). Runs in the
       // background with its own progress under the artist in the roster.
       const imported = fresh?.artists.find((a) => a.id === artistId);
-      if (imported) void loadAllTracks(imported);
+      if (imported) void loadAllTracks(imported).catch((e) => console.error("auto track fetch failed", e));
     } catch (e) {
       setLookupMsg(e instanceof Error ? `${e.message}. You can still add manually.` : "Lookup failed.");
     } finally {

@@ -399,9 +399,9 @@ export interface UserArtistPatch {
  * Set one of my artists' per-user fields (logged / verdict / recommender).
  * Upsert on (user_id, artist_id): the row normally pre-exists (added when the
  * artist joined the roster), so this hits the ON CONFLICT UPDATE path and only
- * the listed columns change — `color` is never in the payload, so it is never
- * reset. If the row is somehow missing it is created (with catalog-default
- * color) rather than the write silently affecting zero rows.
+ * the listed columns change. This function never writes `color`, so a user's
+ * custom color is untouched here. If the row is somehow missing it is created
+ * (with catalog-default color) rather than the write silently affecting zero rows.
  */
 export async function upsertUserArtist(userId: string, artistId: string, patch: UserArtistPatch): Promise<void> {
   const row: Record<string, unknown> = { user_id: userId, artist_id: artistId };

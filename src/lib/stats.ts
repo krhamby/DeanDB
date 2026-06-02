@@ -103,6 +103,8 @@ export function computeStats(data: DeanDBData): Stats {
     0,
   );
 
+  // Collection-scoped on purpose: top genre reflects overall taste, so logged
+  // Library artists' completed albums still count here (like avgRating).
   const genreCounts = new Map<string, number>();
   for (const artist of data.artists) {
     const c = artist.albums.filter((a) => a.status === "completed").length;
