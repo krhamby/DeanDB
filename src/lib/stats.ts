@@ -156,7 +156,8 @@ export function computeAchievements(data: DeanDBData, stats: Stats): Achievement
   const albumsF = flattenAlbums(data).filter((a) => !a.excluded);
   const completedF = albumsF.filter((a) => a.status === "completed");
   const hasPerfectScore = albumsF.some((a) => a.rating === 10);
-  const longestAlbum = Math.max(0, ...albumsF.map((a) => a.minutes));
+  // Endurance Test requires *completing* a >90min album — only completed albums count.
+  const longestAlbum = Math.max(0, ...completedF.map((a) => a.minutes));
   const distinctGenres = new Set(
     data.artists
       .filter((a) => a.albums.some((al) => al.status === "completed"))
