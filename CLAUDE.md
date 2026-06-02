@@ -4,15 +4,17 @@ Guidance for AI assistants (and humans) working in this repository.
 
 ## What DeanDB is
 
-DeanDB is an IMDb-style single-page web app that tracks "Dean's" 250-hour
-discography marathon — every artist, album, and track, rated and reviewed. It's
-a **client-only React app** with no custom backend server: data lives either in
-a single Supabase JSONB row (shared, live) or, when no backend is configured, in
-a bundled JSON file + browser `localStorage`. It's built to be deployed once to
-GitHub Pages and shared with friends.
+DeanDB is an IMDb-style **multi-user social platform** for tracking listening
+"journeys" — each account works through artists, albums, and tracks, rating and
+reviewing them, and shares the journey socially (public profiles, follow/friends,
+an activity feed, recommendations). It started life as a single-person tracker
+for "Dean's" 250-hour marathon; that shape survives as the per-user journey.
 
-Read `README.md` for the product/feature tour and Supabase/Pages setup steps.
-This file focuses on how the code is organized and how to work in it.
+It's a **client-only React SPA** with **no custom server** — all logic is in the
+browser, backed by Supabase (Postgres + Auth + RLS + RPCs). It deploys as static
+files to GitHub Pages; Supabase is reached directly with the public anon key.
+
+Read `README.md` for the product tour and Supabase/Pages setup.
 
 ## Tech stack
 
@@ -21,14 +23,14 @@ This file focuses on how the code is organized and how to work in it.
 | Framework | React 18 (`StrictMode`, function components + hooks only) |
 | Build     | Vite 6 (ESM, `type: module`) |
 | Language  | TypeScript 5, **strict** (`noUnusedLocals`/`noUnusedParameters`/`noFallthroughCasesInSwitch`) |
-| Styling   | Tailwind CSS v4 via `@tailwindcss/vite` — config-less, theme tokens in `src/index.css` |
+| Styling   | Tailwind CSS v4 via `@tailwindcss/vite` — config-less; theme tokens in `src/index.css` |
 | Routing   | Tiny custom **hash** router (`src/lib/router.ts`) — no React Router |
-| State      | One React Context store (`src/lib/store.tsx`), no Redux/Zustand |
-| Data       | Supabase (`@supabase/supabase-js`) with automatic fallback to bundled JSON + `localStorage` |
-| External   | MusicBrainz + Cover Art Archive (free, no API key) for art/discographies |
+| State     | React Context (`src/lib/store.tsx`): `useAuth` + `useMyJourney`, plus per-page hooks |
+| Backend   | Supabase: Auth (email magic link), Postgres with **Row Level Security**, RPCs, a feed view |
+| External  | MusicBrainz + Cover Art Archive (free, no API key) for art/discographies |
 
-There is **no test runner, no ESLint, no Prettier config** in this repo. The
-type checker is the gate — keep it green.
+There is **no test runner, no ESLint, no Prettier**. The type checker is the gate
+— keep `npm run typecheck` / `npm run build` green.
 
 ## Commands
 
@@ -36,108 +38,126 @@ type checker is the gate — keep it green.
 npm install
 npm run dev        # Vite dev server at http://localhost:5173
 npm run build      # tsc -b (type-check) then vite build -> dist/
-npm run preview    # serve the production build locally
-npm run typecheck  # tsc -b --noEmit  (use this to verify changes compile)
+npm run preview    # serve the production build
+npm run typecheck  # tsc -b --noEmit  (verify changes compile)
 ```
 
-Before considering a change done, run `npm run build` (or at least
-`npm run typecheck`). Strict TS with `noUnusedLocals`/`noUnusedParameters` means
-unused imports/vars are hard errors, not warnings.
+A SessionStart hook (`.claude/hooks/session-start.sh`) runs `npm install` in
+Claude Code on the web sessions so the above work immediately.
+
+## Architecture: the keystone
+
+**`DeanDBData` is the in-memory view model.** The display pages and **all of
+`src/lib/stats.ts`** consume a single `DeanDBData` object (one user's journey).
+The database is normalized, so `src/lib/api.ts`'s `fetchJourney(profile)`
+reassembles a user's normalized rows back into `DeanDBData`. This is why the
+backend is fully relational yet `stats.ts`, `cards.tsx`, `ui.tsx`, and the
+journey pages barely changed. **When touching data flow, preserve the
+`DeanDBData` shape** (`src/types.ts`) — drift there breaks stats/achievements.
 
 ## Project layout
 
 ```
 src/
-  main.tsx              App entry: <StrictMode><StoreProvider><App/>
-  App.tsx               Top-level <Router/> switch over the hash route
-  types.ts              THE data model (DeanDBData / Artist / Album / Track) — start here
+  main.tsx              Entry: <StrictMode><AuthProvider><App/>
+  App.tsx               Hash-route switch; RequireAuth gating; #/u/:username → Profile
+  types.ts              DeanDBData view model + account/social types (Profile, FeedItem, …)
   index.css             Tailwind import + @theme design tokens + keyframes
   lib/
-    store.tsx           Global state: load/edit/publish, editor auth, auto-publish, drafts
-    supabase.ts         Supabase client + load/save/check-passcode/subscribe RPC wrappers
-    config.ts           SUPABASE_URL / SUPABASE_ANON_KEY (anon key is public by design)
-    router.ts           Hash router: useHashRoute, navigate, parseRoute
-    stats.ts            computeStats, artistProgress, flattenAlbums, computeAchievements
-    format.ts           fmtHours/fmtMinutes/fmtDate/gradient/slugify/uid helpers
-    musicbrainz.ts      MusicBrainz + Cover Art Archive lookups (rate-limited)
+    supabase.ts         Supabase client (persistSession), authRedirectTo, requireClient
+    api.ts              ALL data access: auth, profiles, fetchJourney reassembly,
+                        catalog upserts, per-user mutations, follows, feed, recs
+    store.tsx           useAuth (session+profile) · useMyJourney (own editable journey)
+                        · useJourney(username) · useFeed/useRecommendations/usePeopleSearch
+    config.ts           SUPABASE_URL / SUPABASE_ANON_KEY (anon key public by design)
+    router.ts           Hash router: useHashRoute, navigate, parseRoute, parseUserRoute
+    stats.ts            computeStats/computeAchievements/artistProgress/flattenAlbums (DeanDBData-shaped; unchanged)
+    format.ts           fmtHours/fmtMinutes/fmtDate/gradient/slugify/uid
+    musicbrainz.ts      Rate-limited MusicBrainz + Cover Art Archive lookups (reused verbatim)
   components/
-    Layout.tsx          Header/nav, marathon ticker, footer (wraps every page)
-    ui.tsx              Reusable bits: DeanMeter, Score10, StatusBadge, ProgressBar, Panel, SectionTitle, scoreColor
-    cards.tsx           Cover (art w/ gradient fallback), AlbumCard, ArtistCard
-    NextSpinner.tsx     The "Marathon Wheel" next-artist spinner
-    EmptyState.tsx      Shown when the marathon has no data yet
+    Layout.tsx          Header/nav (Feed, People, Recs badge), avatar menu, ticker, footer
+    ui.tsx              DeanMeter, Score10, StatusBadge, ProgressBar, Panel, SectionTitle, scoreColor
+    cards.tsx           Cover, AlbumCard, ArtistCard (take a `basePath` for journey-scoped links)
+    social.tsx          Avatar, PersonRow, FollowButton, RecommendModal
+    NextSpinner.tsx     "Marathon Wheel" next-artist spinner (takes basePath)
+    EmptyState.tsx      Shown for your own empty journey
   pages/
-    Dashboard.tsx       Home: marathon bar, stats, spinner, achievements
-    Artists.tsx         Artist index
-    ArtistDetail.tsx    One artist + their albums
-    AlbumDetail.tsx     Album status/review/runtime + per-track ratings
-    HallOfFame.tsx      Ranked leaderboard + desert-island tracks
-    Editor.tsx          Dean's in-browser editor (largest file, ~1k lines) — add/rate/import/publish
-    Login.tsx           Editor passcode gate
-public/data/deandb.json Bundled fallback data (used only when Supabase is unconfigured)
-supabase/schema.sql     Run-once SQL for the Supabase backend (tables, RLS, RPCs, realtime)
+    Dashboard/Artists/ArtistDetail/AlbumDetail/HallOfFame  read-only, journey-scoped (props: data, basePath, canEdit)
+    Editor.tsx          Edit MY journey: add/import artists, rate, per-user row writes
+    Profile.tsx         #/u/:username wrapper → resolves journey via useJourney, renders the read-only pages
+    Login.tsx           Magic-link sign in
+    Settings.tsx        Profile fields + visibility toggle + Share link
+    Feed.tsx            Activity from people you follow
+    People.tsx          Search + follow + accept requests + following list
+    Recommendations.tsx Recommendation inbox
+supabase/schema.sql     Full schema: catalog, profiles, user_* tables, follows, recommendations,
+                        RLS, helper fns, catalog RPCs, feed view, legacy-row migration
 .github/workflows/deploy.yml  Build + deploy to GitHub Pages on push to main
+.claude/                SessionStart hook (npm install on web) + settings.json
 vite.config.ts          base = "/DeanDB/" in build (Pages subpath), "/" in dev
 ```
 
-## Data model (`src/types.ts`)
+## Data model
 
-The whole app is a function of one `DeanDBData` document:
+**View model (`src/types.ts`):** `DeanDBData { listener, goalHours, season, artists[] }`
+→ `Artist` → `Album` (status `want|listening|completed`, `rating` 0–10 nullable,
+`review`, `minutes`, `excluded`, `tracks[]`) → `Track` (`rating` 0–10 nullable,
+`favorite`). Plus account/social types: `Profile`, `PersonResult`, `FeedItem`,
+`Recommendation`, `AlbumAggregate`, `Visibility`, `FollowStatus`.
 
-- `DeanDBData` → `listener` (branding), `goalHours`, `season`, `artists[]`
-- `Artist` → metadata (`genre`, `country`, `color` gradient, `catalogSize`, `mbid`) + `albums[]`
-- `Album` → `status` (`"want" | "listening" | "completed"`), `rating` (0–10 "Dean Meter", nullable), `review`, `minutes` (runtime, fuels the marathon bar), `cover` gradient / `coverUrl`, `excluded` flag, `tracks[]`
-- `Track` → `title`, `rating` (1–5 stars, nullable), `favorite`
+**Database (`supabase/schema.sql`):**
+- **Shared catalog** (`catalog_artists/albums/tracks`) — deduped by MusicBrainz `mbid`; world-readable; written only via SECURITY DEFINER `upsert_catalog_*` RPCs so cross-user rating aggregates and recommendations point at canonical rows.
+- **`profiles`** — one per `auth.users` (username, display_name, visibility, season, goal_hours). Auto-created by a trigger on signup.
+- **Per-user journey** (`user_artists/user_albums/user_tracks`) — the rateable layer, owned by `auth.uid()`.
+- **Social** — `follows` (pending/accepted), `recommendations`, and `feed_items` (a `security_invoker` view).
 
-Conventions baked into the model and stats:
-- `rating: null` always means **unrated** — distinguish it from 0.
-- `excluded: true` albums are kept for reference but **excluded from all stats/marathon math** (see `stats.ts`).
-- The marathon goal is *derived*: `goalHours` in stats is the total runtime of all tracked albums, not the literal `goalHours` field.
-- `mbid` fields link entities back to MusicBrainz for re-fetching art/metadata.
-
-When changing the data shape, update `src/types.ts`, the readers in
-`src/lib/stats.ts`, the Editor in `src/pages/Editor.tsx`, and (if shape changes)
-`public/data/deandb.json`.
+Conventions baked in: `rating: null` means **unrated**; `excluded` albums are out
+of all stats/marathon math; the marathon goal is *derived* (`stats.goalHours` =
+total tracked runtime, not the literal field). View-model ids (`artist.id` etc.)
+are the catalog row uuids, used directly in routes.
 
 ## State & data flow (`src/lib/store.tsx`)
 
-- A single `StoreProvider`/`useStore()` context is the only global state. Access data via `useStore()`; never read `localStorage`/Supabase directly from components.
-- **Source of truth:** when Supabase is configured, the published DB row is authoritative — viewers always load exactly what's published, never the bundled seed. With no backend, it falls back to `public/data/deandb.json`, then to an empty marathon.
-- **Editing:** `update(mutator)` takes an immutable mutator over a `structuredClone` of the data, persists a working copy to `localStorage` (`deandb:working-copy:v1`), and marks state `dirty`. `replace(next)` swaps the whole dataset (used by import).
-- **Drafts:** local edits are saved but never auto-applied on load — they're *offered* for recovery (`hasLocalDraft` / `restoreLocalDraft`). `resetToPublished()` discards them.
-- **Auth:** editing is gated behind an editor passcode checked server-side. `isEditor` unlocks the Editor; with no backend, editing is open. Flags live under `deandb:*` localStorage keys.
-- **Publishing:** `publish(passcode)` calls the `save_deandb` RPC. `autoPublish` debounces a publish ~3s after edits settle; `pauseAutoPublish(true)` wraps batch ops (bulk imports) so it pushes once at the end.
-- **Realtime:** `subscribe()` applies remote changes live, but only when there are no unpublished local edits (so Dean isn't clobbered mid-edit).
+- `useAuth()` — `{ session, user, profile, signIn(email), signOut, updateProfile, ... }`. Owns the Supabase `onAuthStateChange` subscription. `AuthProvider` wraps the app and nests `MyJourneyProvider`.
+- `useMyJourney()` — the signed-in user's own journey as `DeanDBData` plus mutators. `setAlbum`/`setTrack` are optimistic-local + fire-and-forget DB write (hot path). `patchLocal` mutates the local view after a structural API call; `reload()` refetches after bulk ops (imports). There is **no publish/draft step** — every edit persists immediately under the user's session.
+- `useJourney(username)` — read-only view of **any** user, RLS-gated. Returns `{ data, owner, canEdit, denied, notFound, relationship }`. Special-cases your own username to reuse the live `useMyJourney` copy.
+- `useFeed` / `useRecommendations` / `usePeopleSearch` — page-level hooks.
 
-## Backend (`supabase/`, `src/lib/supabase.ts`)
+**Never** read Supabase or build SQL from components — go through `src/lib/api.ts`.
 
-- The entire document is **one JSONB row** (`deandb_state`, `id = 1`).
-- The anon key in `src/lib/config.ts` is **public by design** — it ships in the browser bundle. Security is Row Level Security, not key secrecy: anon can read the state row, and writes go only through `SECURITY DEFINER` RPCs (`save_deandb`, `check_passcode`) that verify the editor passcode stored in `deandb_config` (which anon can't read).
-- To stand up a backend, run `supabase/schema.sql` in the Supabase SQL Editor (change the passcode first) and set the URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`).
-- Set `SUPABASE_ANON_KEY` empty to disable Supabase entirely (offline JSON + localStorage mode).
+## Security model (read before touching auth/RLS)
 
-## MusicBrainz / Cover Art Archive (`src/lib/musicbrainz.ts`)
+- Auth is **email magic link**. The anon key is public by design; safety comes from RLS keyed on `auth.uid()`, evaluated server-side.
+- Journeys default to **private**. Visibility is decided in one place: the `can_view_journey(owner)` SQL helper = `owner = auth.uid() OR profile public OR accepted-follow edge`. Every per-user table's SELECT policy and the `profiles` read policy use it.
+- **Critical invariant:** an `accepted` follow edge grants read access to a private journey. So follows can only be self-inserted as `accepted` toward a **public** target (INSERT policy + a BEFORE-INSERT trigger force `pending` for private targets); only the followee can flip `pending → accepted`. Don't weaken this.
+- Discovery uses SECURITY DEFINER RPCs (`search_profiles`, `profile_header`) that expose only public identity (username/display name/avatar) for any user, so private users are still followable without leaking journey content.
 
-- Free, no-API-key, browser-callable. **All requests funnel through a serial rate limiter** (`schedule`, ~1.1s spacing) because MusicBrainz asks for ~1 req/s and 503s otherwise; 503/429 are retried with backoff. Don't bypass the limiter or fire raw `fetch`es to MusicBrainz.
-- Used by the Editor to import an artist's studio discography, covers, tracklists, genre/country, and catalog size. Cover art URLs (`coverArtUrl`) drop straight into `<img>` and fall back to generative gradients when art is missing.
+## Routing (`src/lib/router.ts`, `src/App.tsx`)
+
+Hash routes only (zero Pages rewrite config). `#/` (feed when signed in, else
+landing), `#/login`, `#/me[/...]` (own journey, editable), `#/editor`,
+`#/settings`, `#/feed`, `#/people`, `#/recommendations`, and `#/u/:username/...`
+(others' journeys, read-only). `parseUserRoute` splits the `u/:username` prefix;
+`Profile.tsx` renders the read-only pages with `basePath="/u/:username"`. Bare
+`#/artist|/album|/artists|/hall-of-fame` resolve to your own journey. Auth-gated
+routes go through `RequireAuth`.
 
 ## Conventions
 
-- **Routing:** hash routes only (`#/`, `#/artists`, `#/artist/:id`, `#/album/:artist/:id`, `#/hall-of-fame`, `#/editor`, `#/login`). Navigate with `navigate("/path")` from `lib/router.ts`; add new routes to the `switch` in `App.tsx`. Hash routing is deliberate — it needs zero rewrite config on GitHub Pages.
-- **Styling:** Tailwind utility classes inline. Use the theme tokens from `index.css` — `ink`, `panel`, `panel-2`, `edge`, `gold`, `gold-soft`, `dean` colors and the `display` font — rather than hardcoded hex. Reuse `Panel`, `SectionTitle`, `DeanMeter`, `Score10`, `StatusBadge`, `ProgressBar` from `components/ui.tsx` and the `Cover`/cards from `components/cards.tsx` instead of re-rolling them.
-- **Components:** function components with hooks; props are inline-typed. Files export named functions (`export function Foo`), except `App.tsx` (default export).
-- **Helpers:** format/display via `lib/format.ts` (`fmtHours`, `fmtMinutes`, `fmtDate`, `gradient`); derived numbers via `lib/stats.ts`. New IDs/slugs use `uid()` / `slugify()` from `format.ts`.
-- **Imports:** use `import type { ... }` for type-only imports (`isolatedModules` is on). Relative paths only — no path aliases configured.
-- **Style of the codebase:** small, dependency-light, heavily commented with intent ("why", not "what"). Match the surrounding density and tone when editing.
+- **Styling:** Tailwind utilities inline; use theme tokens from `index.css` (`ink`, `panel`, `panel-2`, `edge`, `gold`, `gold-soft`, `dean`, `display` font) and reuse `Panel`/`SectionTitle`/`DeanMeter`/`Score10`/`StatusBadge`/`ProgressBar` and the `cards.tsx`/`social.tsx` components rather than re-rolling.
+- **Links:** journey pages and cards take a `basePath` prop so the same component links correctly for `#/me` vs `#/u/:username`. Always thread it through.
+- **MusicBrainz:** all requests funnel through the serial rate limiter in `musicbrainz.ts` (~1 req/s) — never bypass it. The Editor feeds its results into catalog upserts.
+- **Imports:** `import type { … }` for type-only imports (`isolatedModules`). Relative paths only.
+- **Components:** named-export function components with inline-typed props (`App.tsx` is the only default export). Small, dependency-light, comments explain *why*.
 
 ## Build & deploy
 
-- `vite.config.ts` sets `base: "/DeanDB/"` for production builds (the GitHub Pages subpath — note the **case-sensitive** repo name) and `"/"` for dev/preview. If the repo is renamed, update this.
-- `.github/workflows/deploy.yml` builds on push to `main` (Node 22, `npm ci && npm run build`) and deploys `dist/` to GitHub Pages. The deploy requires repo Settings → Pages → Source = "GitHub Actions".
-- Use `import.meta.env.BASE_URL` when constructing asset URLs (see how `store.tsx` fetches the bundled JSON) so paths work under the subpath.
+- `vite.config.ts`: `base "/DeanDB/"` in production (case-sensitive Pages subpath), `"/"` in dev. Use `import.meta.env.BASE_URL` for asset/redirect URLs.
+- `.github/workflows/deploy.yml` builds on push to `main` and deploys `dist/` to Pages.
+- Supabase setup: run `supabase/schema.sql`, set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`), and **add the site URL to Supabase Auth → URL Configuration → Redirect URLs** (magic links return to `…/DeanDB/#/me`). Production email needs Supabase SMTP configured.
 
-## Working agreements for this repo
+## Working agreements
 
-- This session develops on branch `claude/claude-md-docs-8B97s`. Commit and push there; do **not** open a PR or push elsewhere unless explicitly asked.
-- Updating the marathon data is a data-only change: edit `public/data/deandb.json` (offline mode) or publish via the Editor (Supabase mode). It does not require code changes.
-- After code changes, verify with `npm run build` / `npm run typecheck`. There are no automated tests to run.
+- This session develops on branch `claude/claude-md-docs-8B97s`. Commit/push there; do **not** open a PR or push elsewhere unless asked.
+- After code changes, verify with `npm run build` / `npm run typecheck`. There are no automated tests.
+- The legacy single-row marathon migrates into a real account via `migrate_deandb_state('<user-uuid>')` (see the bottom of `schema.sql`).
