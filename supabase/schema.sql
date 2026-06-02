@@ -677,11 +677,16 @@ exception when duplicate_object then null; end $$;
 -- To migrate:
 --   1. Sign in once as Dean via the app (magic link) to create his auth user.
 --      Grab his uuid from Supabase → Authentication → Users.
---   2. Run:  select public.migrate_deandb_state('<dean-uuid>'::uuid);
---   3. Verify Dean's journey, then optionally drop the legacy objects:
+--   2. Run (from the SQL editor / service role):
+--        select public.migrate_deandb_state('<dean-uuid>'::uuid);
+--   3. Verify Dean's journey, set it public in Settings if desired (migration
+--      leaves visibility at the private default), then optionally drop the
+--      legacy objects:
 --        drop table if exists public.deandb_state, public.deandb_config cascade;
 --        drop function if exists public.save_deandb, public.check_passcode;
--- The function is a no-op if the legacy table doesn't exist.
+-- The function is a no-op if the legacy table doesn't exist. It is operator-only:
+-- execute is revoked from anon/authenticated (see the REVOKE after the function),
+-- and it refuses to migrate any account other than the caller's own.
 -- ════════════════════════════════════════════════════════════════════════════
 create or replace function public.migrate_deandb_state(target_user uuid)
 returns text
@@ -700,6 +705,14 @@ declare
   t_ids    uuid[];
   k        int;
 begin
+  -- Operator-only migration. The REVOKE below removes it from the PostgREST RPC
+  -- surface (anon/authenticated cannot call it); it runs from the SQL editor /
+  -- service role, where auth.uid() is null. Defense in depth: if a user session
+  -- ever reaches it, only allow migrating one's OWN account — never another user.
+  if auth.uid() is not null and auth.uid() <> target_user then
+    raise exception 'migrate_deandb_state: not authorized to migrate another user';
+  end if;
+
   if to_regclass('public.deandb_state') is null then
     return 'No legacy deandb_state table found — nothing to migrate.';
   end if;
@@ -707,13 +720,14 @@ begin
   select data into doc from public.deandb_state where id = 1;
   if doc is null then return 'Legacy row empty — nothing to migrate.'; end if;
 
-  -- Profile branding from the legacy listener block.
+  -- Profile branding from the legacy listener block. Visibility is intentionally
+  -- left untouched (journeys default to PRIVATE) — the owner can make it public
+  -- in Settings after verifying the migration, rather than this forcing it.
   update public.profiles set
     display_name = coalesce(doc->'listener'->>'name', display_name),
     handle       = coalesce(doc->'listener'->>'handle', handle),
     tagline      = coalesce(doc->'listener'->>'tagline', tagline),
-    season       = coalesce(doc->>'season', season),
-    journey_visibility = 'public'
+    season       = coalesce(doc->>'season', season)
   where id = target_user;
 
   for artist in select * from jsonb_array_elements(coalesce(doc->'artists', '[]'::jsonb)) loop
@@ -770,6 +784,13 @@ begin
   return 'Migrated legacy marathon into user ' || target_user::text;
 end;
 $$;
+
+-- Lock this SECURITY DEFINER maintenance function down: it must NOT be callable
+-- from the public RPC surface. Revoke the default PUBLIC execute (and any role
+-- grants) so only the table owner / service role can run it (e.g. the SQL
+-- editor). Idempotent — safe to re-run.
+revoke execute on function public.migrate_deandb_state(uuid) from public;
+revoke execute on function public.migrate_deandb_state(uuid) from anon, authenticated;
 
 -- Done. Set SUPABASE_URL / SUPABASE_ANON_KEY in src/lib/config.ts (or
 -- VITE_SUPABASE_ANON_KEY), and add your site URL (e.g.
