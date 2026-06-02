@@ -608,29 +608,58 @@ export async function relationshipTo(
   };
 }
 
-/** People who follow me (for the requests / followers list). */
-export async function listFollowers(userId: string): Promise<PersonResult[]> {
-  const c = requireClient();
-  const { data } = await c
-    .from("follows")
-    .select(`status, profile:profiles!follows_follower_id_fkey ( ${PROFILE_COLS} )`)
-    .eq("followee_id", userId);
-  const rows = (data ?? []) as unknown as { status: "pending" | "accepted"; profile: ProfileRow }[];
-  return rows
-    .filter((r) => r.profile)
-    .map((r) => ({ profile: mapProfile(r.profile), followStatus: null, followsMe: r.status === "accepted" }));
+/**
+ * A follow edge with the counterparty's PUBLIC identity, returned by the
+ * `list_followers`/`list_following` SECURITY DEFINER RPCs. Those bypass the
+ * `profiles` RLS so a PRIVATE user's follow request/edge is never silently
+ * dropped (a plain join would hide their profile and lose the row) — they expose
+ * only public-identity fields, exactly like `search_profiles`.
+ */
+interface FollowEdgeRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  visibility: "private" | "public";
+  status: "pending" | "accepted";
 }
 
-export async function listFollowing(userId: string): Promise<PersonResult[]> {
-  const c = requireClient();
-  const { data } = await c
-    .from("follows")
-    .select(`status, profile:profiles!follows_followee_id_fkey ( ${PROFILE_COLS} )`)
-    .eq("follower_id", userId);
-  const rows = (data ?? []) as unknown as { status: "pending" | "accepted"; profile: ProfileRow }[];
-  return rows
-    .filter((r) => r.profile)
-    .map((r) => ({ profile: mapProfile(r.profile), followStatus: r.status, followsMe: false }));
+function followEdgeToPerson(
+  r: FollowEdgeRow,
+  followsMe: boolean,
+  followStatus: "pending" | "accepted" | null,
+): PersonResult {
+  return {
+    profile: {
+      id: r.id,
+      username: r.username,
+      displayName: r.display_name,
+      handle: null,
+      tagline: "",
+      bio: "",
+      avatarUrl: r.avatar_url,
+      season: "",
+      goalHours: 0,
+      visibility: r.visibility,
+    },
+    followStatus,
+    followsMe,
+  };
+}
+
+/**
+ * People who follow me — accepted followers AND pending requests. The RPC scopes
+ * to auth.uid() internally; `userId` is kept for the call sites but unused.
+ */
+export async function listFollowers(_userId: string): Promise<PersonResult[]> {
+  const { data } = await requireClient().rpc("list_followers");
+  return ((data ?? []) as FollowEdgeRow[]).map((r) => followEdgeToPerson(r, r.status === "accepted", null));
+}
+
+/** People I follow (accepted) + requests I've sent (pending), via the same RPC. */
+export async function listFollowing(_userId: string): Promise<PersonResult[]> {
+  const { data } = await requireClient().rpc("list_following");
+  return ((data ?? []) as FollowEdgeRow[]).map((r) => followEdgeToPerson(r, false, r.status));
 }
 
 interface SearchRow {
