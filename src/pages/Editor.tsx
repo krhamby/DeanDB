@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMyJourney } from "../lib/store";
+import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
 import { fmtHours } from "../lib/format";
 import { computeStats } from "../lib/stats";
@@ -10,8 +10,9 @@ import {
   lookupArtist,
   refreshArtistMeta,
 } from "../lib/musicbrainz";
-import { DeanMeter, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
-import type { Album, AlbumStatus, Artist } from "../types";
+import { DeanMeter, LoggedBadge, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
+import { Avatar } from "../components/social";
+import type { Album, AlbumStatus, Artist, Profile } from "../types";
 
 const PALETTE: [string, string][] = [
   ["#ef4444", "#7c2d12"],
@@ -38,8 +39,103 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+type SetArtist = (
+  artistId: string,
+  patch: api.UserArtistPatch & { recommendedBy?: Artist["recommendedBy"] },
+) => void;
+
+/**
+ * Optional "who recommended this artist to me" control. Lets the owner link an
+ * on-platform person (search) and/or jot a free-text name for someone not on
+ * DeanDB. Kept separate from the peer-to-peer recommendations inbox.
+ */
+function RecommenderPicker({ artist, setArtist }: { artist: Artist; setArtist: SetArtist }) {
+  const [query, setQuery] = useState("");
+  const { results } = usePeopleSearch(query);
+  const rec = artist.recommendedBy;
+
+  const setText = (text: string) =>
+    setArtist(artist.id, {
+      recByText: text,
+      recommendedBy:
+        text || rec?.userId
+          ? {
+              userId: rec?.userId ?? null,
+              username: rec?.username ?? null,
+              displayName: rec?.displayName ?? null,
+              avatarUrl: rec?.avatarUrl ?? null,
+              text,
+            }
+          : undefined,
+    });
+
+  const pickUser = (p: Profile) => {
+    setArtist(artist.id, {
+      recByUser: p.id,
+      recommendedBy: {
+        userId: p.id,
+        username: p.username,
+        displayName: p.displayName,
+        avatarUrl: p.avatarUrl,
+        text: rec?.text ?? "",
+      },
+    });
+    setQuery("");
+  };
+
+  const clearUser = () =>
+    setArtist(artist.id, {
+      recByUser: null,
+      recommendedBy: rec?.text
+        ? { userId: null, username: null, displayName: null, avatarUrl: null, text: rec.text }
+        : undefined,
+    });
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Recommended by</div>
+      {rec?.username && (
+        <div className="flex items-center gap-2">
+          <Avatar profile={{ username: rec.username, displayName: rec.displayName ?? rec.username, avatarUrl: rec.avatarUrl }} size={24} />
+          <span className="text-sm text-white">@{rec.username}</span>
+          <button onClick={clearUser} className="text-xs text-zinc-600 hover:text-dean" title="Unlink person">
+            ×
+          </button>
+        </div>
+      )}
+      <input
+        className={`${inputCls} w-full`}
+        placeholder="A name (e.g. a friend not on DeanDB)…"
+        value={rec?.text ?? ""}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <input
+        className={`${inputCls} w-full`}
+        placeholder="…or search people on DeanDB to link"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {results.length > 0 && (
+        <div className="divide-y divide-edge/40 overflow-hidden rounded-lg border border-edge/50 bg-panel-2/60">
+          {results.slice(0, 5).map((r) => (
+            <button
+              key={r.profile.id}
+              onClick={() => pickUser(r.profile)}
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/5"
+            >
+              <Avatar profile={r.profile} size={24} />
+              <span className="truncate text-sm text-white">{r.profile.displayName}</span>
+              <span className="truncate text-xs text-zinc-500">@{r.profile.username}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Editor() {
-  const { data, userId, patchLocal, reload, setAlbum, setTrack } = useMyJourney();
+  const { data, userId, patchLocal, reload, setAlbum, setTrack, setArtist } = useMyJourney();
 
   const [newArtist, setNewArtist] = useState({ name: "", genre: "", country: "", catalogSize: 1 });
   const [albumDraft, setAlbumDraft] = useState<Record<string, { title: string; year: string }>>({});
@@ -52,6 +148,7 @@ export function Editor() {
   const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [albumOpen, setAlbumOpen] = useState<Record<string, boolean>>({});
+  const [artistPanelOpen, setArtistPanelOpen] = useState<Record<string, boolean>>({});
   const [bulkText, setBulkText] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkLog, setBulkLog] = useState<string[]>([]);
@@ -468,13 +565,36 @@ export function Editor() {
         {shownArtists.map((artist: Artist) => (
           <Panel key={artist.id} className="p-4">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-2">
                 <span className="font-display text-lg font-black text-white">{artist.name}</span>
-                <span className="ml-2 text-xs text-zinc-500">
+                {artist.logged && <LoggedBadge />}
+                <span className="ml-1 text-xs text-zinc-500">
                   {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setArtist(artist.id, { logged: !artist.logged })}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    artist.logged
+                      ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/40"
+                      : "border border-edge text-zinc-300 hover:text-white"
+                  }`}
+                  title={
+                    artist.logged
+                      ? "In your Library (already heard — out of the marathon). Click to move into the marathon."
+                      : "A marathon artist. Click to move to your Library (already heard)."
+                  }
+                >
+                  {artist.logged ? "📚 Library" : "🏃 Marathon"}
+                </button>
+                <button
+                  onClick={() => setArtistPanelOpen((s) => ({ ...s, [artist.id]: !s[artist.id] }))}
+                  className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110"
+                  title="Set an overall verdict and who recommended this artist"
+                >
+                  {artistPanelOpen[artist.id] ? "▾ Verdict & credit" : "★ Verdict & credit"}
+                </button>
                 <button onClick={() => refreshMeta(artist)} disabled={metaBusy[artist.id]} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Update genre, country & catalog size from MusicBrainz">
                   {metaBusy[artist.id] ? "↻ …" : "↻ Genre & country"}
                 </button>
@@ -502,6 +622,48 @@ export function Editor() {
               </div>
             </div>
             {bulkTracks[artist.id] && <p className="mt-2 text-xs text-zinc-400">{bulkTracks[artist.id]}</p>}
+
+            {artistPanelOpen[artist.id] && (
+              <div className="mt-3 grid gap-4 rounded-xl border border-edge/60 bg-panel-2/40 p-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Overall verdict
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DeanMeter value={artist.verdict} size={34} />
+                    <input
+                      type="range"
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      value={artist.verdict ?? 0}
+                      onChange={(e) => setArtist(artist.id, { verdict: Number(e.target.value) })}
+                      className="flex-1 accent-gold"
+                      title="One overall score for the whole artist"
+                    />
+                    <span className="w-8 text-right text-xs font-bold text-gold">
+                      {artist.verdict != null ? artist.verdict.toFixed(1) : "—"}
+                    </span>
+                    {artist.verdict != null && (
+                      <button
+                        onClick={() => setArtist(artist.id, { verdict: null })}
+                        className="text-xs text-zinc-600 hover:text-dean"
+                        title="Clear verdict"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    className={`${inputCls} w-full`}
+                    placeholder="A line on why…"
+                    value={artist.verdictNote}
+                    onChange={(e) => setArtist(artist.id, { verdictNote: e.target.value })}
+                  />
+                </div>
+                <RecommenderPicker artist={artist} setArtist={setArtist} />
+              </div>
+            )}
 
             <div className="mt-3 space-y-2">
               {visibleAlbums(artist).map((al) => (

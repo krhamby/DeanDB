@@ -41,7 +41,9 @@ export function Dashboard({
   const unlocked = achievements.filter((a) => a.unlocked);
 
   const albums = flattenAlbums(data);
-  const nowSpinning = albums.filter((a) => a.status === "listening");
+  // "Now spinning" is a marathon concept — logged Library artists aren't queued.
+  const nowSpinning = albums.filter((a) => a.status === "listening" && !a.artistLogged);
+  // Latest verdicts span the whole collection (a freshly logged favorite counts).
   const recent = albums
     .filter((a) => a.status === "completed" && a.rating != null)
     .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
@@ -97,12 +99,37 @@ export function Dashboard({
       ) : (
         <>
           {/* ── What's next ── */}
-          <NextSpinner artists={data.artists} basePath={basePath} />
+          {stats.marathonArtistsTotal > 0 ? (
+            <NextSpinner artists={data.artists} basePath={basePath} />
+          ) : (
+            <Panel className="px-6 py-10 text-center text-zinc-400">
+              <div className="mb-2 text-4xl">📚</div>
+              Everything here is in the Library — no marathon artists yet.
+              {canEdit && (
+                <>
+                  {" "}
+                  Start one in the{" "}
+                  <button onClick={() => navigate("/editor")} className="text-gold hover:underline">
+                    Editor
+                  </button>
+                  .
+                </>
+              )}
+            </Panel>
+          )}
 
       {/* ── Stat grid ── */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Albums done" value={String(stats.albumsCompleted)} />
-        <StatCard label="Artists" value={String(stats.artistsTotal)} sub={`${stats.artistsConquered} conquered`} />
+        <StatCard
+          label="Artists"
+          value={String(stats.marathonArtistsTotal)}
+          sub={
+            stats.libraryArtistsTotal > 0
+              ? `${stats.artistsConquered} conquered · ${stats.libraryArtistsTotal} library`
+              : `${stats.artistsConquered} conquered`
+          }
+        />
         <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub="Dean Meter" />
         <StatCard label="Songs rated" value={String(stats.songsRated)} />
         <StatCard label="Now spinning" value={String(stats.albumsListening)} />

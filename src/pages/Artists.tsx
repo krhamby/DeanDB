@@ -23,7 +23,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
 
   return (
     <div>
-      <SectionTitle kicker="The roster" title="Artists in the Marathon" />
+      <SectionTitle kicker="The roster" title="Artists" />
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <input
           value={q}
@@ -46,14 +46,37 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {artists.map((a) => (
-          <ArtistCard key={a.id} artist={a} basePath={basePath} />
-        ))}
-      </div>
-      {artists.length === 0 && (
-        <p className="py-12 text-center text-zinc-500">No artists match “{q}”.</p>
-      )}
+      {(() => {
+        const marathon = artists.filter((a) => !a.logged);
+        const library = artists.filter((a) => a.logged);
+        return (
+          <>
+            {marathon.length > 0 && (
+              <section className="mb-8">
+                <SectionTitle kicker="In the marathon" title="The Marathon" />
+                <div className="grid gap-3 md:grid-cols-2">
+                  {marathon.map((a) => (
+                    <ArtistCard key={a.id} artist={a} basePath={basePath} />
+                  ))}
+                </div>
+              </section>
+            )}
+            {library.length > 0 && (
+              <section>
+                <SectionTitle kicker="Already heard" title="The Library" />
+                <div className="grid gap-3 md:grid-cols-2">
+                  {library.map((a) => (
+                    <ArtistCard key={a.id} artist={a} basePath={basePath} />
+                  ))}
+                </div>
+              </section>
+            )}
+            {artists.length === 0 && (
+              <p className="py-12 text-center text-zinc-500">No artists match “{q}”.</p>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

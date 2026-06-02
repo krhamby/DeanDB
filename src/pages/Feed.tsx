@@ -2,7 +2,16 @@ import { useFeed } from "../lib/store";
 import { navigate } from "../lib/router";
 import { fmtDate } from "../lib/format";
 import { Cover } from "../components/cards";
-import { DeanMeter, Panel, SectionTitle, StatusBadge } from "../components/ui";
+import { DeanMeter, LoggedBadge, Panel, SectionTitle, StatusBadge } from "../components/ui";
+import type { FeedItem } from "../types";
+
+/** How to phrase the activity, e.g. "logged an old favorite" vs "rated". */
+function feedVerb(it: FeedItem): string {
+  if (it.logged) return "logged an old favorite";
+  if (it.status === "listening") return "is now spinning";
+  if (it.rating != null) return "rated";
+  return "added";
+}
 
 export function Feed() {
   const { items, loading } = useFeed();
@@ -25,14 +34,17 @@ export function Feed() {
           <Panel key={it.userAlbumId} className="flex items-center gap-4 p-3">
             <Cover colors={it.cover} title={it.albumTitle} coverUrl={it.coverUrl ?? undefined} size="sm" />
             <div className="min-w-0 flex-1">
-              <button
-                onClick={() => navigate(`/u/${it.username}`)}
-                className="text-xs font-semibold text-gold hover:underline"
-              >
-                {it.displayName}
-              </button>
+              <div className="text-xs text-zinc-500">
+                <button
+                  onClick={() => navigate(`/u/${it.username}`)}
+                  className="font-semibold text-gold hover:underline"
+                >
+                  {it.displayName}
+                </button>{" "}
+                {feedVerb(it)}
+              </div>
               <div className="flex items-center gap-2">
-                <StatusBadge status={it.status} />
+                {it.logged ? <LoggedBadge /> : <StatusBadge status={it.status} />}
                 <button
                   onClick={() => navigate(`/u/${it.username}/album/${it.artistId}/${it.albumId}`)}
                   className="truncate font-display text-lg font-black text-white hover:text-gold"

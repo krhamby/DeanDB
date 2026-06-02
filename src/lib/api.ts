@@ -148,6 +148,11 @@ export async function fetchProfileHeader(
 
 interface UserArtistRow {
   color: string[] | null;
+  logged: boolean;
+  verdict: number | null;
+  verdict_note: string;
+  rec_by_text: string;
+  rec_by: { id: string; username: string; display_name: string; avatar_url: string | null } | null;
   artist: {
     id: string;
     name: string;
@@ -196,7 +201,11 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
   const [artistsRes, albumsRes, tracksRes] = await Promise.all([
     c
       .from("user_artists")
-      .select("color, artist:catalog_artists!inner ( id, name, genre, country, catalog_size, bio, mbid, color )")
+      .select(
+        "color, logged, verdict, verdict_note, rec_by_text, " +
+          "rec_by:profiles!user_artists_rec_by_user_fkey ( id, username, display_name, avatar_url ), " +
+          "artist:catalog_artists!inner ( id, name, genre, country, catalog_size, bio, mbid, color )",
+      )
       .eq("user_id", profile.id),
     c
       .from("user_albums")
@@ -219,6 +228,8 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
   const artistById = new Map<string, Artist>();
   for (const ua of userArtists) {
     const a = ua.artist;
+    const recText = ua.rec_by_text ?? "";
+    const recProfile = ua.rec_by;
     artistById.set(a.id, {
       id: a.id,
       name: a.name,
@@ -228,6 +239,22 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       catalogSize: a.catalog_size,
       bio: a.bio ?? "",
       mbid: a.mbid ?? undefined,
+      logged: ua.logged ?? false,
+      verdict: ua.verdict,
+      verdictNote: ua.verdict_note ?? "",
+      // Set only when there's something to show. A private, non-followed
+      // recommender's profile is hidden by RLS (rec_by is null) — we then fall
+      // back to the free-text name.
+      recommendedBy:
+        recProfile || recText
+          ? {
+              userId: recProfile?.id ?? null,
+              username: recProfile?.username ?? null,
+              displayName: recProfile?.display_name ?? null,
+              avatarUrl: recProfile?.avatar_url ?? null,
+              text: recText,
+            }
+          : undefined,
       albums: [],
     });
   }
@@ -354,6 +381,38 @@ export async function addUserArtist(userId: string, artistId: string, color: [st
 
 export async function removeUserArtist(artistId: string): Promise<void> {
   const { error } = await requireClient().rpc("remove_user_artist", { p_artist_id: artistId });
+  if (error) throw error;
+}
+
+/** Fields a listener controls on one of their artists (the per-user row). */
+export interface UserArtistPatch {
+  logged?: boolean;
+  verdict?: number | null;
+  verdictNote?: string;
+  /** On-platform recommender (profile id), or null to clear. */
+  recByUser?: string | null;
+  /** Free-text recommender (off-platform), or "" to clear. */
+  recByText?: string;
+}
+
+/**
+ * Update one of my artists' per-user fields (logged / verdict / recommender).
+ * Uses UPDATE (not upsert) because the user_artists row always pre-exists for an
+ * artist already in the roster — this avoids resetting unlisted columns (color).
+ */
+export async function upsertUserArtist(userId: string, artistId: string, patch: UserArtistPatch): Promise<void> {
+  const row: Record<string, unknown> = {};
+  if (patch.logged !== undefined) row.logged = patch.logged;
+  if (patch.verdict !== undefined) row.verdict = patch.verdict;
+  if (patch.verdictNote !== undefined) row.verdict_note = patch.verdictNote;
+  if (patch.recByUser !== undefined) row.rec_by_user = patch.recByUser;
+  if (patch.recByText !== undefined) row.rec_by_text = patch.recByText;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await requireClient()
+    .from("user_artists")
+    .update(row)
+    .eq("user_id", userId)
+    .eq("artist_id", artistId);
   if (error) throw error;
 }
 
@@ -633,6 +692,7 @@ interface FeedRow {
   rating: number | null;
   review: string;
   favorite: boolean;
+  logged: boolean;
   updated_at: string;
 }
 
@@ -668,6 +728,7 @@ export async function fetchFeed(userId: string): Promise<FeedItem[]> {
     rating: r.rating,
     review: r.review,
     favorite: r.favorite,
+    logged: r.logged ?? false,
     updatedAt: r.updated_at,
   }));
 }

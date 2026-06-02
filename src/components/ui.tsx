@@ -112,6 +112,18 @@ export function StatusBadge({ status }: { status: AlbumStatus }) {
   );
 }
 
+/** Marks an artist as an already-heard "Library" pick rather than a marathon one. */
+export function LoggedBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-violet-300 ring-1 ring-violet-500/30 ${className}`}
+      title="Already listened — kept for ratings & Hall of Fame, but out of the marathon"
+    >
+      📚 Library
+    </span>
+  );
+}
+
 export function ProgressBar({ pct, className = "" }: { pct: number; className?: string }) {
   return (
     <div className={`h-2 w-full overflow-hidden rounded-full bg-white/8 ${className}`}>

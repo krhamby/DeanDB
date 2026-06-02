@@ -20,8 +20,11 @@ function isConquered(a: Artist): boolean {
 }
 
 export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; basePath?: string }) {
+  // Only forward-marathon artists are on the wheel — logged "Library" artists
+  // are already-heard and never queued.
+  const pool = artists.filter((a) => !a.logged);
   // Queue order = the order artists were added. Next = first un-started one.
-  const queue = artists.filter((a) => !isConquered(a));
+  const queue = pool.filter((a) => !isConquered(a));
   const current = queue.find(isStarted) ?? null;
   const upNext = queue.find((a) => !isStarted(a)) ?? null;
 
@@ -30,7 +33,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
   const [revealed, setRevealed] = useState(false);
   const timer = useRef<number | null>(null);
 
-  if (artists.length === 0) return null;
+  if (pool.length === 0) return null;
 
   const spin = () => {
     if (spinning || !upNext) return;
@@ -42,7 +45,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
     const tick = () => {
       const elapsed = Date.now() - start;
       // Cycle visible names, decelerating as we approach the end.
-      setDisplay(artists[i % artists.length]);
+      setDisplay(pool[i % pool.length]);
       i++;
       if (elapsed >= duration) {
         setDisplay(upNext);

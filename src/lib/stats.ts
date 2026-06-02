@@ -4,23 +4,35 @@ export interface AlbumWithArtist extends Album {
   artistId: string;
   artistName: string;
   artistColor: [string, string];
+  /** True when the host artist is a logged "Library" artist (out of the marathon). */
+  artistLogged: boolean;
 }
 
+// Stats come in two scopes:
+//   • MARATHON scope = forward-looking artists only (logged/library excluded).
+//     Drives the meter, goal, queue and "conquered" — logged backlog must not
+//     inflate progress.
+//   • COLLECTION scope = everything (logged included). Drives ratings, Hall of
+//     Fame energy, song counts and taste — a logged favorite is a real rating.
 export interface Stats {
+  // ── Marathon-scoped ──
   totalMinutesListened: number;
   hoursListened: number;
-  /** Total runtime of every tracked album — the real "size" of the marathon. */
+  /** Total runtime of every tracked MARATHON album — the real "size" of the marathon. */
   totalRuntimeMinutes: number;
   totalRuntimeHours: number;
-  /** The goal IS the full runtime (in hours). */
+  /** The goal IS the full marathon runtime (in hours). */
   goalHours: number;
   goalPct: number;
-  albumsCompleted: number;
   albumsListening: number;
   albumsWant: number;
+  artistsConquered: number; // every owned album completed AND catalog fully covered
+  marathonArtistsTotal: number;
+  // ── Collection-scoped (logged included) ──
+  albumsCompleted: number;
   albumsTotal: number;
   artistsTotal: number;
-  artistsConquered: number; // every owned album completed AND catalog fully logged
+  libraryArtistsTotal: number;
   songsRated: number;
   favoriteSongs: number;
   avgRating: number | null;
@@ -34,6 +46,7 @@ export function flattenAlbums(data: DeanDBData): AlbumWithArtist[] {
       artistId: a.id,
       artistName: a.name,
       artistColor: a.color,
+      artistLogged: a.logged,
     })),
   );
 }
@@ -49,25 +62,38 @@ export function artistProgress(artist: Artist): number {
 
 export function computeStats(data: DeanDBData): Stats {
   // Excluded albums (e.g. ones Dean will never finish) are out of all math.
-  const albums = flattenAlbums(data).filter((a) => !a.excluded);
-  const completed = albums.filter((a) => a.status === "completed");
-  const totalMinutes = completed.reduce((sum, a) => sum + (a.minutes || 0), 0);
+  const collection = flattenAlbums(data).filter((a) => !a.excluded);
+  // The marathon ignores logged "Library" artists entirely.
+  const marathon = collection.filter((a) => !a.artistLogged);
+
+  // ── Marathon scope: progress, goal, queue ──
+  const marathonCompleted = marathon.filter((a) => a.status === "completed");
+  const totalMinutes = marathonCompleted.reduce((sum, a) => sum + (a.minutes || 0), 0);
   const hours = totalMinutes / 60;
+  // The goal is the actual total runtime of everything in the marathon.
+  const runtimeMinutes = marathon.reduce((sum, a) => sum + (a.minutes || 0), 0);
 
-  // The goal is the actual total runtime of everything Dean is working through.
-  const runtimeMinutes = albums.reduce((sum, a) => sum + (a.minutes || 0), 0);
+  const artistsConquered = data.artists.filter(
+    (a) =>
+      !a.logged &&
+      a.albums.length > 0 &&
+      a.albums.every((al) => al.status === "completed") &&
+      a.albums.length >= a.catalogSize,
+  ).length;
 
-  const rated = completed.filter((a) => a.rating != null);
+  // ── Collection scope: ratings, songs, taste (logged included) ──
+  const collectionCompleted = collection.filter((a) => a.status === "completed");
+  const rated = collectionCompleted.filter((a) => a.rating != null);
   const avgRating =
     rated.length > 0
       ? rated.reduce((s, a) => s + (a.rating as number), 0) / rated.length
       : null;
 
-  const songsRated = albums.reduce(
+  const songsRated = collection.reduce(
     (s, a) => s + a.tracks.filter((t) => t.rating != null).length,
     0,
   );
-  const favoriteSongs = albums.reduce(
+  const favoriteSongs = collection.reduce(
     (s, a) => s + a.tracks.filter((t) => t.favorite).length,
     0,
   );
@@ -80,26 +106,25 @@ export function computeStats(data: DeanDBData): Stats {
   const topGenre =
     [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
-  const artistsConquered = data.artists.filter(
-    (a) =>
-      a.albums.length > 0 &&
-      a.albums.every((al) => al.status === "completed") &&
-      a.albums.length >= a.catalogSize,
-  ).length;
+  const libraryArtistsTotal = data.artists.filter((a) => a.logged).length;
 
   return {
+    // Marathon-scoped
     totalMinutesListened: totalMinutes,
     hoursListened: hours,
     totalRuntimeMinutes: runtimeMinutes,
     totalRuntimeHours: runtimeMinutes / 60,
     goalHours: runtimeMinutes / 60,
     goalPct: runtimeMinutes > 0 ? Math.min((totalMinutes / runtimeMinutes) * 100, 100) : 0,
-    albumsCompleted: completed.length,
-    albumsListening: albums.filter((a) => a.status === "listening").length,
-    albumsWant: albums.filter((a) => a.status === "want").length,
-    albumsTotal: albums.length,
-    artistsTotal: data.artists.length,
+    albumsListening: marathon.filter((a) => a.status === "listening").length,
+    albumsWant: marathon.filter((a) => a.status === "want").length,
     artistsConquered,
+    marathonArtistsTotal: data.artists.length - libraryArtistsTotal,
+    // Collection-scoped
+    albumsCompleted: collectionCompleted.length,
+    albumsTotal: collection.length,
+    artistsTotal: data.artists.length,
+    libraryArtistsTotal,
     songsRated,
     favoriteSongs,
     avgRating,

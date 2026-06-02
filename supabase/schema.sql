@@ -141,6 +141,22 @@ create table if not exists public.user_artists (
   unique (user_id, artist_id)
 );
 
+-- Logged "Library" flag + per-user artist verdict + self-attributed recommender.
+-- Added idempotently so re-running this file upgrades an existing database.
+--   • logged: an already-listened artist (kept for ratings/Hall of Fame but
+--     OUT of the marathon — goal hours, progress, the wheel). Defaults false so
+--     every existing row and new import stays a marathon artist.
+--   • verdict / verdict_note: one overall 0–10 score for the whole artist.
+--   • rec_by_user / rec_by_text: who recommended this artist to the listener —
+--     an on-platform profile (FK to profiles, so the feed/detail can embed
+--     their identity) and/or a free-text name for someone off-platform.
+alter table public.user_artists
+  add column if not exists logged       boolean not null default false,
+  add column if not exists verdict      numeric(3,1),
+  add column if not exists verdict_note text not null default '',
+  add column if not exists rec_by_user  uuid references public.profiles(id) on delete set null,
+  add column if not exists rec_by_text  text not null default '';
+
 create table if not exists public.user_albums (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users(id) on delete cascade,
@@ -611,11 +627,17 @@ with (security_invoker = on) as
     ua.rating,
     ua.review,
     ua.favorite,
+    coalesce(uar.logged, false) as logged,   -- drives the "logged an old favorite" feed verb
     ua.updated_at
   from public.user_albums ua
   join public.catalog_albums  ca  on ca.id = ua.album_id
   join public.catalog_artists car on car.id = ca.artist_id
   join public.profiles        p   on p.id = ua.user_id
+  -- LEFT join: a feed row should still show even if the artist isn't in the
+  -- user's roster. Logged favorites already pass the rating/status filter below,
+  -- so the flag only changes how the activity is labeled, not whether it appears.
+  left join public.user_artists uar
+    on uar.user_id = ua.user_id and uar.artist_id = car.id
   where ua.excluded = false
     and (ua.status <> 'want' or ua.rating is not null)
   order by ua.updated_at desc;

@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import type { DeanDBData, FeedItem, PersonResult, Profile, Recommendation } from "../types";
+import type { Artist, DeanDBData, FeedItem, PersonResult, Profile, Recommendation } from "../types";
 import { supabase, supabaseEnabled } from "./supabase";
 import * as api from "./api";
 
@@ -143,6 +143,15 @@ interface MyJourneyValue {
   setAlbum: (albumId: string, patch: api.UserAlbumPatch) => void;
   /** Optimistic local edit + persist for one of my tracks. */
   setTrack: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
+  /**
+   * Optimistic local edit + persist for one of my artists (logged / verdict /
+   * recommender). Pass `recommendedBy` to update the resolved display object
+   * locally alongside the `recByUser`/`recByText` columns that are persisted.
+   */
+  setArtist: (
+    artistId: string,
+    patch: api.UserArtistPatch & { recommendedBy?: Artist["recommendedBy"] },
+  ) => void;
 }
 
 const MyJourneyContext = createContext<MyJourneyValue | null>(null);
@@ -224,9 +233,27 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
     [userId, patchLocal],
   );
 
+  const setArtist = useCallback<MyJourneyValue["setArtist"]>(
+    (artistId, patch) => {
+      if (!userId) return;
+      patchLocal((d) => {
+        const ar = d.artists.find((a) => a.id === artistId);
+        if (ar) {
+          if (patch.logged !== undefined) ar.logged = patch.logged;
+          if (patch.verdict !== undefined) ar.verdict = patch.verdict;
+          if (patch.verdictNote !== undefined) ar.verdictNote = patch.verdictNote;
+          if (patch.recommendedBy !== undefined) ar.recommendedBy = patch.recommendedBy;
+        }
+        return d;
+      });
+      void api.upsertUserArtist(userId, artistId, patch).catch((e) => console.error("save artist failed", e));
+    },
+    [userId, patchLocal],
+  );
+
   const value = useMemo<MyJourneyValue>(
-    () => ({ data, loading, userId, reload, patchLocal, setAlbum, setTrack }),
-    [data, loading, userId, reload, patchLocal, setAlbum, setTrack],
+    () => ({ data, loading, userId, reload, patchLocal, setAlbum, setTrack, setArtist }),
+    [data, loading, userId, reload, patchLocal, setAlbum, setTrack, setArtist],
   );
 
   return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;

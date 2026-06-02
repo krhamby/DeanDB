@@ -50,6 +50,30 @@ export interface Artist {
   bio: string;
   /** MusicBrainz artist id, if matched, for catalog lookups. */
   mbid?: string;
+  /**
+   * Logged = an already-listened "Library" artist (a backlog the listener
+   * heard long ago), as opposed to a forward-looking marathon artist. Logged
+   * artists keep their ratings/reviews/favorites and count toward the
+   * collection (Hall of Fame, community averages), but are EXCLUDED from the
+   * marathon: goal hours, the progress meter, the Marathon Wheel queue,
+   * "Now Spinning" and "Up Next". Defaults to false (a marathon artist).
+   */
+  logged: boolean;
+  /** Overall score for the whole artist on the 0–10 Dean Meter. null = none. */
+  verdict: number | null;
+  /** Optional short note accompanying the verdict. */
+  verdictNote: string;
+  /**
+   * Who recommended this artist to the listener (optional). May reference an
+   * on-platform profile and/or carry a free-text name for someone off-platform.
+   */
+  recommendedBy?: {
+    userId: string | null;
+    username: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+    text: string;
+  };
   albums: Album[];
 }
 
@@ -114,6 +138,8 @@ export interface FeedItem {
   rating: number | null;
   review: string;
   favorite: boolean;
+  /** True when the album's artist is a logged/library artist — changes the feed verb. */
+  logged: boolean;
   updatedAt: string;
 }
 
