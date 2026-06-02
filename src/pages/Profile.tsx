@@ -1,0 +1,90 @@
+import { useJourney } from "../lib/store";
+import { Avatar, FollowButton } from "../components/social";
+import { Panel } from "../components/ui";
+import { Dashboard } from "./Dashboard";
+import { Artists } from "./Artists";
+import { ArtistDetail } from "./ArtistDetail";
+import { AlbumDetail } from "./AlbumDetail";
+import { HallOfFame } from "./HallOfFame";
+
+/**
+ * Resolves `#/u/:username/...` to that user's read-only journey, gated by RLS.
+ * `rest` is the remaining route segments after the username.
+ */
+export function Profile({ username, rest }: { username: string; rest: string[] }) {
+  const view = useJourney(username);
+  const basePath = `/u/${username}`;
+
+  if (view.loading) {
+    return <div className="py-16 text-center text-zinc-500">Loading…</div>;
+  }
+
+  if (view.notFound || !view.owner) {
+    return (
+      <Panel className="mx-auto max-w-md px-6 py-16 text-center text-zinc-400">
+        <div className="mb-3 text-5xl">🤷</div>
+        No journey found at <span className="text-gold">@{username}</span>.
+      </Panel>
+    );
+  }
+
+  const owner = view.owner;
+
+  const Header = (
+    <Panel className="mb-6 flex flex-wrap items-center gap-4 p-5">
+      <Avatar profile={owner} size={64} />
+      <div className="min-w-0 flex-1">
+        <h1 className="font-display text-2xl font-black text-white">{owner.displayName}</h1>
+        <div className="text-sm text-zinc-500">
+          @{owner.username}
+          {owner.visibility === "private" && " · 🔒 private"}
+        </div>
+      </div>
+      <FollowButton target={owner} initialStatus={view.relationship?.followStatus ?? null} onChanged={view.reloadRelationship} />
+    </Panel>
+  );
+
+  if (view.denied || !view.data) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        {Header}
+        <Panel className="px-6 py-16 text-center text-zinc-400">
+          <div className="mb-3 text-5xl">🔒</div>
+          <p className="font-display text-lg font-black text-white">This journey is private</p>
+          <p className="mt-1 text-sm">Follow {owner.displayName} and wait for them to accept to see their marathon.</p>
+        </Panel>
+      </div>
+    );
+  }
+
+  const data = view.data;
+  const [head, a, b] = rest;
+
+  let content;
+  switch (head) {
+    case undefined:
+      content = <Dashboard data={data} basePath={basePath} />;
+      break;
+    case "artists":
+      content = <Artists data={data} basePath={basePath} />;
+      break;
+    case "artist":
+      content = <ArtistDetail data={data} artistId={a} basePath={basePath} />;
+      break;
+    case "album":
+      content = <AlbumDetail data={data} artistId={a} albumId={b} basePath={basePath} />;
+      break;
+    case "hall-of-fame":
+      content = <HallOfFame data={data} basePath={basePath} />;
+      break;
+    default:
+      content = <Dashboard data={data} basePath={basePath} />;
+  }
+
+  return (
+    <div>
+      {Header}
+      {content}
+    </div>
+  );
+}

@@ -8,286 +8,421 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { DeanDBData } from "../types";
-import { checkPasscode, loadState, saveState, subscribe, supabaseEnabled } from "./supabase";
+import type { Session, User } from "@supabase/supabase-js";
+import type { DeanDBData, FeedItem, PersonResult, Profile, Recommendation } from "../types";
+import { supabase, supabaseEnabled } from "./supabase";
+import * as api from "./api";
 
-const EDITOR_FLAG = "deandb:editor";
-const PASSCODE_KEY = "deandb:passcode";
-const AUTOPUBLISH_KEY = "deandb:autopublish";
+// ──────────────────────────────────────────────────────────────
+// State for the multi-user platform, split into two concerns:
+//   • Auth/session + the current user's profile          → useAuth()
+//   • The logged-in user's own editable journey          → useMyJourney()
+// Other users' journeys are fetched read-only via useJourney(username).
+// ──────────────────────────────────────────────────────────────
 
-const LS_KEY = "deandb:working-copy:v1";
+// ════════════════════════════════════════════════════════════════
+// Auth
+// ════════════════════════════════════════════════════════════════
 
-// The shape shown before Dean has published anything (or if the cloud is
-// unreachable). A clean, empty marathon — never the old bundled seed.
-const EMPTY_MARATHON: DeanDBData = {
-  listener: {
-    name: "Dean",
-    handle: "@deanlistens",
-    tagline: "250 hours. Every album. No skips. One man's quest through the canon.",
-  },
-  goalHours: 250,
-  season: "The 2026 Marathon",
-  artists: [],
-};
+interface AuthValue {
+  session: Session | null;
+  user: User | null;
+  profile: Profile | null;
+  loading: boolean;
+  signIn: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  updateProfile: (
+    patch: Partial<
+      Pick<
+        Profile,
+        "username" | "displayName" | "handle" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility"
+      >
+    >,
+  ) => Promise<{ ok: boolean; error?: string }>;
+}
 
-interface StoreValue {
+const AuthContext = createContext<AuthValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const user = session?.user ?? null;
+
+  const loadProfile = useCallback(async (uid: string | undefined) => {
+    if (!uid) {
+      setProfile(null);
+      return;
+    }
+    // The profiles row is created by a DB trigger on signup; retry briefly in
+    // case we win the race against it on a brand-new account.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const p = await api.fetchProfileById(uid);
+      if (p) {
+        setProfile(p);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    setProfile(null);
+  }, []);
+
+  useEffect(() => {
+    if (!supabaseEnabled || !supabase) {
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      setSession(data.session);
+      await loadProfile(data.session?.user.id);
+      setLoading(false);
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      loadProfile(next?.user.id);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [loadProfile]);
+
+  const signIn = useCallback((email: string) => api.signInWithEmail(email), []);
+  const signOut = useCallback(async () => {
+    await api.signOut();
+    setSession(null);
+    setProfile(null);
+  }, []);
+  const refreshProfile = useCallback(() => loadProfile(user?.id), [loadProfile, user?.id]);
+
+  const updateProfile = useCallback<AuthValue["updateProfile"]>(
+    async (patch) => {
+      if (!user) return { ok: false, error: "Not signed in." };
+      const res = await api.updateProfile(user.id, patch);
+      if (res.ok) setProfile((p) => (p ? { ...p, ...patch } : p));
+      return res;
+    },
+    [user],
+  );
+
+  const value = useMemo<AuthValue>(
+    () => ({ session, user, profile, loading, signIn, signOut, refreshProfile, updateProfile }),
+    [session, user, profile, loading, signIn, signOut, refreshProfile, updateProfile],
+  );
+
+  return (
+    <AuthContext.Provider value={value}>
+      <MyJourneyProvider>{children}</MyJourneyProvider>
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
+  return ctx;
+}
+
+// ════════════════════════════════════════════════════════════════
+// My journey (the logged-in user's own, editable)
+// ════════════════════════════════════════════════════════════════
+
+interface MyJourneyValue {
+  /** The logged-in user's journey in DeanDBData shape, or null when signed out. */
   data: DeanDBData | null;
   loading: boolean;
-  /** True when local edits diverge from what's published. */
-  dirty: boolean;
-  /** Whether a shared Supabase backend is wired up. */
-  supabaseEnabled: boolean;
-  publishing: boolean;
-  /** A saved-but-unpublished draft exists in this browser (offered, never auto-applied). */
-  hasLocalDraft: boolean;
-  /** True when this browser is unlocked as the editor (Dean). View-only otherwise. */
-  isEditor: boolean;
-  /** Validate the passcode and unlock editing. Returns whether it succeeded. */
-  login: (passcode: string) => Promise<boolean>;
-  /** Lock editing again on this browser. */
-  logout: () => void;
-  /** When true, edits auto-publish to the cloud (debounced). */
-  autoPublish: boolean;
-  setAutoPublish: (on: boolean) => void;
-  /** Hold/resume auto-publish around batch operations (bulk import etc.). */
-  pauseAutoPublish: (paused: boolean) => void;
-  /** Apply an immutable update to the data and persist it locally. */
-  update: (mutator: (draft: DeanDBData) => DeanDBData) => void;
-  /** Replace the whole dataset (used by import). */
-  replace: (next: DeanDBData) => void;
-  /** Push local edits to the shared backend (Supabase). */
-  publish: (passcode: string) => Promise<{ ok: boolean; error?: string }>;
-  /** Load the saved local draft into the editor. */
-  restoreLocalDraft: () => void;
-  /** Throw away local edits and reload the published (cloud) data. */
-  resetToPublished: () => Promise<void>;
+  userId: string | null;
+  reload: () => Promise<void>;
+  /** Optimistically mutate the local view (no DB write) — used after bulk ops. */
+  patchLocal: (mutator: (d: DeanDBData) => DeanDBData) => void;
+  /** Optimistic local edit + persist for one of my albums. */
+  setAlbum: (albumId: string, patch: api.UserAlbumPatch) => void;
+  /** Optimistic local edit + persist for one of my tracks. */
+  setTrack: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
 }
 
-const StoreContext = createContext<StoreValue | null>(null);
+const MyJourneyContext = createContext<MyJourneyValue | null>(null);
 
-/** Dev-only convenience: the JSON bundled with the build (used only when no backend). */
-async function fetchBundled(): Promise<DeanDBData> {
-  try {
-    const res = await fetch(`${import.meta.env.BASE_URL}data/deandb.json`, {
-      cache: "no-cache",
-    });
-    if (res.ok) return (await res.json()) as DeanDBData;
-  } catch {
-    /* ignore */
-  }
-  return EMPTY_MARATHON;
-}
-
-/**
- * The single source of truth is the Supabase row. If no row exists yet, the
- * marathon is empty. We never silently fall back to bundled seed data when a
- * backend is configured — the database is authoritative.
- */
-async function fetchFromDb(): Promise<DeanDBData> {
-  if (supabaseEnabled) {
-    try {
-      const remote = await loadState();
-      return remote ?? EMPTY_MARATHON;
-    } catch (err) {
-      console.error("Supabase read failed; showing an empty marathon.", err);
-      return EMPTY_MARATHON;
-    }
-  }
-  // No backend configured at all (e.g. local dev without keys): use bundled JSON.
-  return fetchBundled();
-}
-
-export function StoreProvider({ children }: { children: ReactNode }) {
+function MyJourneyProvider({ children }: { children: ReactNode }) {
+  const ctx = useContext(AuthContext);
+  const profile = ctx?.profile ?? null;
+  const userId = profile?.id ?? null;
   const [data, setData] = useState<DeanDBData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dirty, setDirty] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [hasLocalDraft, setHasLocalDraft] = useState(false);
-  // Editing is locked until the editor logs in. With no backend (local dev),
-  // there's nothing to authenticate against, so editing is open.
-  const [isEditor, setIsEditor] = useState(
-    () => !supabaseEnabled || localStorage.getItem(EDITOR_FLAG) === "1",
-  );
-  const [autoPublish, setAutoPublishState] = useState(
-    () => localStorage.getItem(AUTOPUBLISH_KEY) === "1",
-  );
-  // While a batch op (bulk import / load-all-tracks) runs, hold auto-publish
-  // so we push once at the end instead of after every single change.
-  const [autoPaused, setAutoPaused] = useState(false);
-  // Realtime callbacks need the latest `dirty` without re-subscribing.
-  const dirtyRef = useRef(dirty);
-  dirtyRef.current = dirty;
+  const [loading, setLoading] = useState(false);
+  // Keep the latest data for fire-and-forget writers without re-subscribing.
+  const dataRef = useRef<DeanDBData | null>(null);
+  dataRef.current = data;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Always start from the database — viewers see exactly what's published.
-      // Any local draft is offered for recovery in the Editor, never auto-loaded.
-      setHasLocalDraft(Boolean(localStorage.getItem(LS_KEY)));
-      try {
-        const fresh = await fetchFromDb();
-        if (!cancelled) setData(fresh);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Live sync: apply remote changes only when we have no unpublished edits,
-  // so we never clobber Dean mid-edit.
-  useEffect(() => {
-    if (!supabaseEnabled) return;
-    return subscribe((next) => {
-      if (!dirtyRef.current) setData(next);
-    });
-  }, []);
-
-  const update = useCallback((mutator: (draft: DeanDBData) => DeanDBData) => {
-    setData((prev) => {
-      if (!prev) return prev;
-      const next = mutator(structuredClone(prev));
-      localStorage.setItem(LS_KEY, JSON.stringify(next));
-      return next;
-    });
-    setDirty(true);
-    setHasLocalDraft(true);
-  }, []);
-
-  const replace = useCallback((next: DeanDBData) => {
-    setData(next);
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
-    setDirty(true);
-    setHasLocalDraft(true);
-  }, []);
-
-  const restoreLocalDraft = useCallback(() => {
-    const stored = localStorage.getItem(LS_KEY);
-    if (!stored) return;
-    try {
-      setData(JSON.parse(stored) as DeanDBData);
-      setDirty(true);
-    } catch {
-      localStorage.removeItem(LS_KEY);
-      setHasLocalDraft(false);
+  const reload = useCallback(async () => {
+    if (!profile) {
+      setData(null);
+      return;
     }
-  }, []);
-
-  const publish = useCallback(
-    async (passcode: string) => {
-      if (!data) return { ok: false, error: "Nothing to publish yet." };
-      setPublishing(true);
-      try {
-        const result = await saveState(data, passcode);
-        if (result.ok) {
-          // Published copy is now the source of truth; drop the local draft.
-          localStorage.removeItem(LS_KEY);
-          setDirty(false);
-          setHasLocalDraft(false);
-        }
-        return result;
-      } finally {
-        setPublishing(false);
-      }
-    },
-    [data],
-  );
-
-  const login = useCallback(async (passcode: string) => {
-    // No backend = nothing to check against; allow editing locally.
-    const ok = !supabaseEnabled ? true : await checkPasscode(passcode);
-    if (ok) {
-      localStorage.setItem(EDITOR_FLAG, "1");
-      localStorage.setItem(PASSCODE_KEY, passcode);
-      setIsEditor(true);
-    }
-    return ok;
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(EDITOR_FLAG);
-    localStorage.removeItem(PASSCODE_KEY);
-    setIsEditor(false);
-  }, []);
-
-  const setAutoPublish = useCallback((on: boolean) => {
-    localStorage.setItem(AUTOPUBLISH_KEY, on ? "1" : "0");
-    setAutoPublishState(on);
-  }, []);
-
-  const pauseAutoPublish = useCallback((paused: boolean) => setAutoPaused(paused), []);
-
-  // Auto-publish: when enabled (and not mid-batch), push to the cloud a few
-  // seconds after the last edit settles. Each change resets the timer.
-  useEffect(() => {
-    if (!autoPublish || !isEditor || !supabaseEnabled || !dirty || autoPaused) return;
-    const t = window.setTimeout(() => {
-      publish(localStorage.getItem(PASSCODE_KEY) ?? "");
-    }, 3000);
-    return () => clearTimeout(t);
-    // `data` is included so each edit restarts the debounce window.
-  }, [autoPublish, isEditor, dirty, autoPaused, data, publish]);
-
-  const resetToPublished = useCallback(async () => {
-    localStorage.removeItem(LS_KEY);
-    setHasLocalDraft(false);
     setLoading(true);
     try {
-      const fresh = await fetchFromDb();
-      setData(fresh);
-      setDirty(false);
+      setData(await api.fetchJourney(profile));
     } finally {
       setLoading(false);
     }
+  }, [profile]);
+
+  // (Re)load whenever the signed-in profile changes.
+  useEffect(() => {
+    if (profile) void reload();
+    else setData(null);
+  }, [profile, reload]);
+
+  const patchLocal = useCallback((mutator: (d: DeanDBData) => DeanDBData) => {
+    setData((prev) => (prev ? mutator(structuredClone(prev)) : prev));
   }, []);
 
-  const value = useMemo(
-    () => ({
-      data,
-      loading,
-      dirty,
-      supabaseEnabled,
-      publishing,
-      hasLocalDraft,
-      isEditor,
-      login,
-      logout,
-      autoPublish,
-      setAutoPublish,
-      pauseAutoPublish,
-      update,
-      replace,
-      publish,
-      restoreLocalDraft,
-      resetToPublished,
-    }),
-    [
-      data,
-      loading,
-      dirty,
-      publishing,
-      hasLocalDraft,
-      isEditor,
-      login,
-      logout,
-      autoPublish,
-      setAutoPublish,
-      pauseAutoPublish,
-      update,
-      replace,
-      publish,
-      restoreLocalDraft,
-      resetToPublished,
-    ],
+  const setAlbum = useCallback(
+    (albumId: string, patch: api.UserAlbumPatch) => {
+      if (!userId) return;
+      patchLocal((d) => {
+        for (const ar of d.artists) {
+          const al = ar.albums.find((x) => x.id === albumId);
+          if (al) {
+            if (patch.status !== undefined) al.status = patch.status;
+            if (patch.rating !== undefined) al.rating = patch.rating;
+            if (patch.review !== undefined) al.review = patch.review;
+            if (patch.minutes !== undefined) al.minutes = patch.minutes;
+            if (patch.dateListened !== undefined) al.dateListened = patch.dateListened;
+            if (patch.favorite !== undefined) al.favorite = patch.favorite;
+            if (patch.excluded !== undefined) al.excluded = patch.excluded;
+            break;
+          }
+        }
+        return d;
+      });
+      void api.upsertUserAlbum(userId, albumId, patch).catch((e) => console.error("save album failed", e));
+    },
+    [userId, patchLocal],
   );
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  const setTrack = useCallback(
+    (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => {
+      if (!userId) return;
+      patchLocal((d) => {
+        for (const ar of d.artists) {
+          const al = ar.albums.find((x) => x.id === albumId);
+          const tr = al?.tracks.find((t) => t.id === trackId);
+          if (tr) {
+            if (patch.rating !== undefined) tr.rating = patch.rating;
+            if (patch.favorite !== undefined) tr.favorite = patch.favorite;
+            break;
+          }
+        }
+        return d;
+      });
+      void api.upsertUserTrack(userId, trackId, patch).catch((e) => console.error("save track failed", e));
+    },
+    [userId, patchLocal],
+  );
+
+  const value = useMemo<MyJourneyValue>(
+    () => ({ data, loading, userId, reload, patchLocal, setAlbum, setTrack }),
+    [data, loading, userId, reload, patchLocal, setAlbum, setTrack],
+  );
+
+  return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;
 }
 
-export function useStore(): StoreValue {
-  const ctx = useContext(StoreContext);
-  if (!ctx) throw new Error("useStore must be used within <StoreProvider>");
+export function useMyJourney(): MyJourneyValue {
+  const ctx = useContext(MyJourneyContext);
+  if (!ctx) throw new Error("useMyJourney must be used within <AuthProvider>");
   return ctx;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Viewing any user's journey (read-only, RLS-gated)
+// ════════════════════════════════════════════════════════════════
+
+export interface JourneyView {
+  loading: boolean;
+  data: DeanDBData | null;
+  owner: Profile | null;
+  canEdit: boolean;
+  /** Journey exists but is private and you're not allowed in. */
+  denied: boolean;
+  notFound: boolean;
+  relationship: { followStatus: "pending" | "accepted" | null; followsMe: boolean } | null;
+  reloadRelationship: () => Promise<void>;
+}
+
+export function useJourney(username: string | undefined): JourneyView {
+  const { user, profile } = useAuth();
+  const mine = useMyJourney();
+  const isMe = Boolean(username && profile && profile.username === username);
+
+  const [state, setState] = useState<Omit<JourneyView, "reloadRelationship">>({
+    loading: true,
+    data: null,
+    owner: null,
+    canEdit: false,
+    denied: false,
+    notFound: false,
+    relationship: null,
+  });
+
+  const loadRelationship = useCallback(async () => {
+    if (!username || isMe || !user) return;
+    const header = await api.fetchProfileHeader(username);
+    if (!header) return;
+    const rel = await api.relationshipTo(user.id, header.id);
+    setState((s) => ({ ...s, relationship: rel }));
+  }, [username, isMe, user]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!username) {
+        setState((s) => ({ ...s, loading: false, notFound: true }));
+        return;
+      }
+      // My own journey: reuse the live editable copy.
+      if (isMe && profile) {
+        setState({
+          loading: mine.loading,
+          data: mine.data,
+          owner: profile,
+          canEdit: true,
+          denied: false,
+          notFound: false,
+          relationship: null,
+        });
+        return;
+      }
+      const header = await api.fetchProfileHeader(username);
+      if (!active) return;
+      if (!header) {
+        setState({ loading: false, data: null, owner: null, canEdit: false, denied: false, notFound: true, relationship: null });
+        return;
+      }
+      const rel = user ? await api.relationshipTo(user.id, header.id) : { followStatus: null, followsMe: false };
+      const canView = header.visibility === "public" || rel.followStatus === "accepted";
+      if (!canView) {
+        setState({
+          loading: false,
+          data: null,
+          owner: {
+            id: header.id,
+            username: header.username,
+            displayName: header.displayName,
+            handle: null,
+            tagline: "",
+            bio: "",
+            avatarUrl: header.avatarUrl,
+            season: "",
+            goalHours: 0,
+            visibility: header.visibility,
+          },
+          canEdit: false,
+          denied: true,
+          notFound: false,
+          relationship: rel,
+        });
+        return;
+      }
+      const full = await api.fetchProfileByUsername(username);
+      if (!active || !full) {
+        setState({ loading: false, data: null, owner: null, canEdit: false, denied: false, notFound: true, relationship: rel });
+        return;
+      }
+      const data = await api.fetchJourney(full);
+      if (!active) return;
+      setState({ loading: false, data, owner: full, canEdit: false, denied: false, notFound: false, relationship: rel });
+    })();
+    return () => {
+      active = false;
+    };
+    // Re-run when the target or my own live journey changes.
+  }, [username, isMe, profile, user, mine.data, mine.loading]);
+
+  return { ...state, reloadRelationship: loadRelationship };
+}
+
+// ════════════════════════════════════════════════════════════════
+// Feed / People / Recommendations hooks
+// ════════════════════════════════════════════════════════════════
+
+export function useFeed(): { items: FeedItem[]; loading: boolean; reload: () => void } {
+  const { user } = useAuth();
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const reload = useCallback(() => {
+    if (!user) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    api
+      .fetchFeed(user.id)
+      .then(setItems)
+      .finally(() => setLoading(false));
+  }, [user]);
+  useEffect(reload, [reload]);
+  return { items, loading, reload };
+}
+
+export function useRecommendations(): {
+  inbox: Recommendation[];
+  loading: boolean;
+  unread: number;
+  reload: () => void;
+  markRead: (id: string) => void;
+} {
+  const { user } = useAuth();
+  const [inbox, setInbox] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const reload = useCallback(() => {
+    if (!user) {
+      setInbox([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    api
+      .listInbox(user.id)
+      .then(setInbox)
+      .finally(() => setLoading(false));
+  }, [user]);
+  useEffect(reload, [reload]);
+  const markRead = useCallback((id: string) => {
+    setInbox((list) => list.map((r) => (r.id === id ? { ...r, readAt: new Date().toISOString() } : r)));
+    void api.markRecommendationRead(id);
+  }, []);
+  const unread = inbox.filter((r) => !r.readAt).length;
+  return { inbox, loading, unread, reload, markRead };
+}
+
+export function usePeopleSearch(query: string): { results: PersonResult[]; loading: boolean } {
+  const { user } = useAuth();
+  const [results, setResults] = useState<PersonResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const q = query.trim();
+    if (!user || q.length < 2) {
+      setResults([]);
+      return;
+    }
+    let active = true;
+    setLoading(true);
+    const t = setTimeout(() => {
+      api
+        .searchPeople(user.id, q)
+        .then((r) => active && setResults(r))
+        .finally(() => active && setLoading(false));
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [query, user]);
+  return { results, loading };
 }

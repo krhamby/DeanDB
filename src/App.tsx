@@ -1,6 +1,9 @@
+import type { ReactNode } from "react";
 import { Layout } from "./components/Layout";
-import { parseRoute, useHashRoute } from "./lib/router";
-import { useStore } from "./lib/store";
+import { Panel } from "./components/ui";
+import { parseRoute, parseUserRoute, useHashRoute, navigate } from "./lib/router";
+import { useAuth, useMyJourney } from "./lib/store";
+import { supabaseEnabled } from "./lib/supabase";
 import { Dashboard } from "./pages/Dashboard";
 import { Artists } from "./pages/Artists";
 import { ArtistDetail } from "./pages/ArtistDetail";
@@ -8,6 +11,11 @@ import { AlbumDetail } from "./pages/AlbumDetail";
 import { HallOfFame } from "./pages/HallOfFame";
 import { Editor } from "./pages/Editor";
 import { Login } from "./pages/Login";
+import { Settings } from "./pages/Settings";
+import { Feed } from "./pages/Feed";
+import { People } from "./pages/People";
+import { Recommendations } from "./pages/Recommendations";
+import { Profile } from "./pages/Profile";
 
 function Loading() {
   return (
@@ -17,37 +25,150 @@ function Loading() {
   );
 }
 
+/** Friendly landing for signed-out visitors. */
+function Landing() {
+  return (
+    <div className="mx-auto max-w-xl py-12 text-center">
+      <div className="text-6xl">🎧</div>
+      <h1 className="mt-4 font-display text-4xl font-black text-white">DeanDB</h1>
+      <p className="mt-3 text-zinc-400">
+        Track your own discography marathon — every artist, album and track, rated and reviewed — and share
+        the journey with friends.
+      </p>
+      <button
+        onClick={() => navigate("/login")}
+        className="mt-6 rounded-xl bg-gold px-6 py-3 font-bold text-black hover:brightness-110"
+      >
+        Get started
+      </button>
+    </div>
+  );
+}
+
+/** Gate a route behind sign-in. */
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { session, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (!session) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-zinc-400">Please sign in to continue.</p>
+        <button onClick={() => navigate("/login")} className="mt-4 text-gold hover:underline">
+          Sign in →
+        </button>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+/** Renders the signed-in user's own journey pages (editable). */
+function MyJourney({ rest }: { rest: string[] }) {
+  const { data, loading, setAlbum, setTrack } = useMyJourney();
+  if (loading) return <Loading />;
+  if (!data) return <Loading />;
+  const [head, a, b] = rest;
+  switch (head) {
+    case undefined:
+      return <Dashboard data={data} canEdit basePath="" />;
+    case "artists":
+      return <Artists data={data} basePath="" />;
+    case "artist":
+      return <ArtistDetail data={data} artistId={a} basePath="" />;
+    case "album":
+      return <AlbumDetail data={data} artistId={a} albumId={b} canEdit basePath="" setAlbum={setAlbum} setTrack={setTrack} />;
+    case "hall-of-fame":
+      return <HallOfFame data={data} basePath="" />;
+    default:
+      return <Dashboard data={data} canEdit basePath="" />;
+  }
+}
+
 function Router() {
   const hash = useHashRoute();
-  const { isEditor } = useStore();
-  const [head, a, b] = parseRoute(hash);
+  const { session, loading } = useAuth();
+  const segments = parseRoute(hash);
+  const head = segments[0];
+
+  // #/u/:username/... — another user's journey (read-only, RLS-gated).
+  const userRoute = parseUserRoute(segments);
+  if (userRoute) return <Profile username={userRoute.username} rest={userRoute.rest} />;
 
   switch (head) {
     case undefined:
-      return <Dashboard />;
-    case "artists":
-      return <Artists />;
-    case "artist":
-      return <ArtistDetail artistId={a} />;
-    case "album":
-      return <AlbumDetail artistId={a} albumId={b} />;
-    case "hall-of-fame":
-      return <HallOfFame />;
+      if (loading) return <Loading />;
+      return session ? <Feed /> : <Landing />;
     case "login":
       return <Login />;
+    case "me":
+      return (
+        <RequireAuth>
+          <MyJourney rest={segments.slice(1)} />
+        </RequireAuth>
+      );
+    // Bare journey shortcuts resolve to my own journey.
+    case "artist":
+    case "album":
+    case "artists":
+    case "hall-of-fame":
+      return (
+        <RequireAuth>
+          <MyJourney rest={segments} />
+        </RequireAuth>
+      );
     case "editor":
-      // The Editor is gated: non-editors get the login screen instead.
-      return isEditor ? <Editor /> : <Login />;
+      return (
+        <RequireAuth>
+          <Editor />
+        </RequireAuth>
+      );
+    case "settings":
+      return (
+        <RequireAuth>
+          <Settings />
+        </RequireAuth>
+      );
+    case "feed":
+      return (
+        <RequireAuth>
+          <Feed />
+        </RequireAuth>
+      );
+    case "people":
+      return (
+        <RequireAuth>
+          <People />
+        </RequireAuth>
+      );
+    case "recommendations":
+      return (
+        <RequireAuth>
+          <Recommendations />
+        </RequireAuth>
+      );
     default:
-      return <Dashboard />;
+      return session ? <Feed /> : <Landing />;
   }
 }
 
 export default function App() {
-  const { loading, data } = useStore();
+  if (!supabaseEnabled) {
+    return (
+      <Layout>
+        <Panel className="mx-auto max-w-md px-6 py-16 text-center text-zinc-400">
+          <div className="mb-3 text-5xl">🔌</div>
+          <p className="font-display text-lg font-black text-white">Backend not configured</p>
+          <p className="mt-1 text-sm">
+            Set <code className="text-gold">SUPABASE_URL</code> and{" "}
+            <code className="text-gold">SUPABASE_ANON_KEY</code> in <code>src/lib/config.ts</code> to run DeanDB.
+          </p>
+        </Panel>
+      </Layout>
+    );
+  }
   return (
     <Layout>
-      {loading || !data ? <Loading /> : <Router />}
+      <Router />
     </Layout>
   );
 }

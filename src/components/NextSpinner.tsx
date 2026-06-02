@@ -19,7 +19,7 @@ function isConquered(a: Artist): boolean {
   );
 }
 
-export function NextSpinner({ artists }: { artists: Artist[] }) {
+export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; basePath?: string }) {
   // Queue order = the order artists were added. Next = first un-started one.
   const queue = artists.filter((a) => !isConquered(a));
   const current = queue.find(isStarted) ?? null;
@@ -117,7 +117,7 @@ export function NextSpinner({ artists }: { artists: Artist[] }) {
             </button>
             {revealed && shown && (
               <button
-                onClick={() => navigate(`/artist/${shown.id}`)}
+                onClick={() => navigate(`${basePath}/artist/${shown.id}`)}
                 className="rounded-xl border border-gold/40 px-5 py-2.5 font-semibold text-gold transition hover:bg-gold/10"
               >
                 Open {shown.name} →

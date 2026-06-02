@@ -1,4 +1,3 @@
-import { useStore } from "../lib/store";
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { fmtHours } from "../lib/format";
 import { navigate } from "../lib/router";
@@ -6,6 +5,7 @@ import { Cover } from "../components/cards";
 import { DeanMeter, Panel, ProgressBar, SectionTitle } from "../components/ui";
 import { EmptyState } from "../components/EmptyState";
 import { NextSpinner } from "../components/NextSpinner";
+import type { DeanDBData } from "../types";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   // Long values (e.g. a genre name) get a smaller, wrapping treatment so they
@@ -26,9 +26,16 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-export function Dashboard() {
-  const { data } = useStore();
-  if (!data) return null;
+export function Dashboard({
+  data,
+  basePath = "",
+  canEdit = false,
+}: {
+  data: DeanDBData;
+  /** Route prefix for links, e.g. "/u/dean" when viewing another journey. */
+  basePath?: string;
+  canEdit?: boolean;
+}) {
   const stats = computeStats(data);
   const achievements = computeAchievements(data, stats);
   const unlocked = achievements.filter((a) => a.unlocked);
@@ -80,11 +87,17 @@ export function Dashboard() {
       </section>
 
       {data.artists.length === 0 ? (
-        <EmptyState />
+        canEdit ? (
+          <EmptyState />
+        ) : (
+          <Panel className="px-6 py-16 text-center text-zinc-400">
+            {data.listener.name} hasn&apos;t added any artists yet. 🎙️
+          </Panel>
+        )
       ) : (
         <>
           {/* ── What's next ── */}
-          <NextSpinner artists={data.artists} />
+          <NextSpinner artists={data.artists} basePath={basePath} />
 
       {/* ── Stat grid ── */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -104,7 +117,7 @@ export function Dashboard() {
             {nowSpinning.map((a) => (
               <button
                 key={a.id}
-                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
                 className="group flex items-center gap-4 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent p-3 pr-6 transition-transform hover:-translate-y-0.5"
               >
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
@@ -127,7 +140,7 @@ export function Dashboard() {
             {recent.map((a) => (
               <button
                 key={a.id}
-                onClick={() => navigate(`/album/${a.artistId}/${a.id}`)}
+                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
                 className="group flex flex-col items-center gap-2 transition-transform hover:-translate-y-1"
               >
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />

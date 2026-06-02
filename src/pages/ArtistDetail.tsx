@@ -1,19 +1,26 @@
-import { useStore } from "../lib/store";
 import { artistProgress } from "../lib/stats";
 import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { AlbumCard } from "../components/cards";
 import { Panel, ProgressBar } from "../components/ui";
+import type { DeanDBData } from "../types";
 
-export function ArtistDetail({ artistId }: { artistId: string }) {
-  const { data } = useStore();
-  const artist = data?.artists.find((a) => a.id === artistId);
+export function ArtistDetail({
+  data,
+  artistId,
+  basePath = "",
+}: {
+  data: DeanDBData;
+  artistId: string;
+  basePath?: string;
+}) {
+  const artist = data.artists.find((a) => a.id === artistId);
 
   if (!artist) {
     return (
       <div className="py-16 text-center">
         <p className="text-zinc-400">Artist not found.</p>
-        <button onClick={() => navigate("/artists")} className="mt-4 text-gold hover:underline">
+        <button onClick={() => navigate(`${basePath}/artists`)} className="mt-4 text-gold hover:underline">
           ← Back to artists
         </button>
       </div>
@@ -27,7 +34,7 @@ export function ArtistDetail({ artistId }: { artistId: string }) {
 
   return (
     <div>
-      <button onClick={() => navigate("/artists")} className="mb-4 text-sm text-zinc-500 hover:text-gold">
+      <button onClick={() => navigate(`${basePath}/artists`)} className="mb-4 text-sm text-zinc-500 hover:text-gold">
         ← All artists
       </button>
 
@@ -65,7 +72,7 @@ export function ArtistDetail({ artistId }: { artistId: string }) {
 
       <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4">
         {albums.map((al) => (
-          <AlbumCard key={al.id} album={al} artistId={artist.id} />
+          <AlbumCard key={al.id} album={al} artistId={artist.id} basePath={basePath} />
         ))}
       </div>
     </div>

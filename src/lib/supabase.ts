@@ -1,90 +1,41 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
-import type { DeanDBData } from "../types";
 
-// A single shared row holds the entire DeanDB document as JSONB.
-const STATE_TABLE = "deandb_state";
-const ROW_ID = 1;
+// ──────────────────────────────────────────────────────────────
+// Supabase client for the multi-user DeanDB platform.
+//
+// Auth is real Supabase Auth (email magic link). The session is persisted by
+// supabase-js itself (sb-<ref>-auth-token in localStorage), so users stay
+// logged in across visits. Every table is gated by RLS keyed on auth.uid(),
+// so the public anon key is safe by design (see supabase/schema.sql).
+// ──────────────────────────────────────────────────────────────
 
 export const supabaseEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-const client: SupabaseClient | null = supabaseEnabled
+/** The shared client. Null only if the backend is unconfigured (build error state). */
+export const supabase: SupabaseClient | null = supabaseEnabled
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        // Parse the magic-link token fragment on return, then strip it from the
+        // URL so our hash router never sees the #access_token=… payload.
+        detectSessionInUrl: true,
+      },
     })
   : null;
 
-/** Read the published marathon state. Returns null if no row exists yet. */
-export async function loadState(): Promise<DeanDBData | null> {
-  if (!client) return null;
-  const { data, error } = await client
-    .from(STATE_TABLE)
-    .select("data")
-    .eq("id", ROW_ID)
-    .maybeSingle();
-  if (error) {
-    console.error("Supabase load failed:", error.message);
-    throw error;
+/** Throws a clear error if code paths that need the backend run without it. */
+export function requireClient(): SupabaseClient {
+  if (!supabase) {
+    throw new Error(
+      "Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in src/lib/config.ts.",
+    );
   }
-  return (data?.data as DeanDBData | undefined) ?? null;
+  return supabase;
 }
 
-/**
- * Publish state. Writes go through a SECURITY DEFINER RPC that checks the
- * editor passcode server-side, so the anon key alone cannot modify data.
- */
-export async function saveState(
-  payload: DeanDBData,
-  passcode: string,
-): Promise<{ ok: boolean; error?: string }> {
-  if (!client) return { ok: false, error: "Supabase is not configured." };
-  const { error } = await client.rpc("save_deandb", {
-    new_data: payload,
-    passcode,
-  });
-  if (error) {
-    return {
-      ok: false,
-      error: /passcode/i.test(error.message)
-        ? "Wrong editor passcode."
-        : error.message,
-    };
-  }
-  return { ok: true };
-}
-
-/**
- * Verify the editor passcode via a SECURITY DEFINER RPC (the passcode itself
- * never leaves the database). Used to unlock the Editor / "log in" as Dean.
- */
-export async function checkPasscode(passcode: string): Promise<boolean> {
-  if (!client) return false;
-  const { data, error } = await client.rpc("check_passcode", { passcode });
-  if (error) {
-    console.error("check_passcode failed:", error.message);
-    return false;
-  }
-  return data === true;
-}
-
-/**
- * Live updates: invokes `onChange` whenever the published row changes.
- * Returns an unsubscribe function. No-op when Supabase is disabled.
- */
-export function subscribe(onChange: (next: DeanDBData) => void): () => void {
-  if (!client) return () => {};
-  const channel = client
-    .channel("deandb_state_changes")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: STATE_TABLE },
-      (payload) => {
-        const next = (payload.new as { data?: DeanDBData } | null)?.data;
-        if (next) onChange(next);
-      },
-    )
-    .subscribe();
-  return () => {
-    client.removeChannel(channel);
-  };
+/** Where magic links should return the user — under the Pages base path + hash. */
+export function authRedirectTo(): string {
+  return `${window.location.origin}${import.meta.env.BASE_URL}#/me`;
 }

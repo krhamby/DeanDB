@@ -9,7 +9,7 @@ export type AlbumStatus = "want" | "listening" | "completed";
 export interface Track {
   id: string;
   title: string;
-  /** Dean's star rating for the individual song, 1–5. null = unrated. */
+  /** Per-listener song score on the 0–10 scale (the Score10 control). null = unrated. */
   rating: number | null;
   favorite: boolean;
 }
@@ -54,7 +54,7 @@ export interface Artist {
 }
 
 export interface DeanDBData {
-  /** Branding + the human this shrine is built for. */
+  /** Branding + the human this journey belongs to. */
   listener: {
     name: string;
     handle: string;
@@ -65,4 +65,76 @@ export interface DeanDBData {
   /** Free-form "season" label, e.g. "The 2026 Marathon". */
   season: string;
   artists: Artist[];
+}
+
+// ──────────────────────────────────────────────────────────────
+// Accounts & social model (multi-user platform)
+// ──────────────────────────────────────────────────────────────
+
+export type Visibility = "private" | "public";
+export type FollowStatus = "pending" | "accepted";
+
+/** A user's public-facing identity + journey settings (the `profiles` row). */
+export interface Profile {
+  id: string;
+  username: string;
+  displayName: string;
+  handle: string | null;
+  tagline: string;
+  bio: string;
+  avatarUrl: string | null;
+  season: string;
+  goalHours: number;
+  visibility: Visibility;
+}
+
+/** A person surfaced by search, with my relationship to them. */
+export interface PersonResult {
+  profile: Profile;
+  /** My follow edge toward them, if any. */
+  followStatus: FollowStatus | null;
+  /** True if they have an accepted edge toward me (they follow me). */
+  followsMe: boolean;
+}
+
+/** One activity-feed entry (a recent rating / status change by someone I follow). */
+export interface FeedItem {
+  userAlbumId: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  albumId: string;
+  albumTitle: string;
+  cover: [string, string];
+  coverUrl: string | null;
+  artistId: string;
+  artistName: string;
+  status: AlbumStatus;
+  rating: number | null;
+  review: string;
+  favorite: boolean;
+  updatedAt: string;
+}
+
+/** A recommendation sent from one user to another (about an album or an artist). */
+export interface Recommendation {
+  id: string;
+  fromUser: string;
+  fromUsername: string;
+  fromDisplayName: string;
+  toUser: string;
+  albumId: string | null;
+  albumTitle: string | null;
+  artistId: string;
+  artistName: string;
+  note: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** Cross-user community rating for an album (shown on the album page). */
+export interface AlbumAggregate {
+  avgRating: number | null;
+  listenerCount: number;
 }
