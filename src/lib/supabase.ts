@@ -18,6 +18,13 @@ export const supabase: SupabaseClient | null = supabaseEnabled
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        // Magic links are emailed and frequently opened in a DIFFERENT browser
+        // than the one that requested them. PKCE (the supabase-js default)
+        // stashes a code_verifier in the requesting browser's localStorage, so a
+        // cross-browser click can't complete the code exchange and the user
+        // lands logged out. Implicit flow returns the session straight in the
+        // URL fragment, so the link works from any browser/device.
+        flowType: "implicit",
         // Parse the magic-link token fragment on return, then strip it from the
         // URL so our hash router never sees the #access_token=… payload.
         detectSessionInUrl: true,
@@ -35,7 +42,12 @@ export function requireClient(): SupabaseClient {
   return supabase;
 }
 
-/** Where magic links should return the user — under the Pages base path + hash. */
+/**
+ * Where magic links return the user. MUST be a plain URL with NO hash fragment:
+ * Supabase appends the session (`#access_token=…`) to this URL, and a second
+ * `#` mangles the token so the session is never parsed. We return the Pages base
+ * path; once the session is detected the app routes a signed-in user to the feed.
+ */
 export function authRedirectTo(): string {
-  return `${window.location.origin}${import.meta.env.BASE_URL}#/me`;
+  return `${window.location.origin}${import.meta.env.BASE_URL}`;
 }
