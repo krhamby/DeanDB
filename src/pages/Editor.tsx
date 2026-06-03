@@ -504,12 +504,17 @@ export function Editor() {
     if (albumSort === "default") return list;
     const sorted = [...list];
     if (albumSort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
-    else if (albumSort === "year") sorted.sort((a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity));
+    else if (albumSort === "year") sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
     else if (albumSort === "rating") sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
     else if (albumSort === "date") sorted.sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""));
     return sorted;
   };
-  const visibleAlbums = (a: Artist) => sortAlbums(a.albums.filter((al) => albumPasses(a, al)));
+  // Filter + sort each artist's albums once per render, keyed by artist id, so
+  // shownArtists / the count / the render all read the same precomputed list.
+  const visibleByArtist = new Map<string, Album[]>(
+    data.artists.map((a) => [a.id, sortAlbums(a.albums.filter((al) => albumPasses(a, al)))]),
+  );
+  const visibleAlbumsOf = (a: Artist) => visibleByArtist.get(a.id) ?? [];
   const anyAlbumFilterActive =
     q !== "" || statusFilter !== "all" || favOnly || ratedFilter !== "all";
   const anyFilterActive = anyAlbumFilterActive || genreFilter !== "" || albumSort !== "default";
@@ -527,9 +532,9 @@ export function Editor() {
   const shownArtists = data.artists.filter(
     (a) =>
       (!genreFilter || a.genre === genreFilter) &&
-      (!anyAlbumFilterActive || visibleAlbums(a).length > 0),
+      (!anyAlbumFilterActive || visibleAlbumsOf(a).length > 0),
   );
-  const shownAlbumCount = shownArtists.reduce((n, a) => n + visibleAlbums(a).length, 0);
+  const shownAlbumCount = shownArtists.reduce((n, a) => n + visibleAlbumsOf(a).length, 0);
   const allAlbumIds = data.artists.flatMap((a) => a.albums.map((al) => al.id));
   const allCollapsed = allAlbumIds.every((id) => !albumOpen[id]);
   const toggleAllAlbums = () => {
@@ -687,7 +692,11 @@ export function Editor() {
         </div>
         {shownArtists.length === 0 && (
           <p className="py-6 text-center text-sm text-zinc-500">
-            {data.artists.length === 0 ? "No artists yet — add your first above." : "No artists or albums match your filters."}
+            {data.artists.length === 0
+              ? "No artists yet — add your first above."
+              : q
+                ? `No artists or albums match “${rosterQuery.trim()}”.`
+                : "No artists or albums match your filters."}
           </p>
         )}
         {shownArtists.map((artist: Artist) => (
@@ -794,7 +803,7 @@ export function Editor() {
             )}
 
             <div className="mt-3 space-y-2">
-              {visibleAlbums(artist).map((al) => (
+              {visibleAlbumsOf(artist).map((al) => (
                 <div key={al.id} className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}>
                   <button onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))} className="flex w-full items-center gap-2 p-3 text-left hover:bg-white/5">
                     <span className="w-3 shrink-0 text-xs text-zinc-500">{albumOpen[al.id] ? "▾" : "▸"}</span>
