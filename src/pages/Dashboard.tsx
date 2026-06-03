@@ -70,47 +70,59 @@ export function Dashboard({
         <p className="mt-2 max-w-2xl text-fg-muted">{data.listener.tagline}</p>
 
         <Panel className="mt-6 overflow-hidden p-6 sm:p-7">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
-                Total time logged
+          {stats.goalPct >= 100 ? (
+            <div
+              className="animate-pop relative overflow-hidden rounded-xl border border-gold/50 bg-gradient-to-r from-gold/20 via-dean/10 to-transparent p-6 text-center"
+              style={{ boxShadow: "0 0 32px -6px color-mix(in srgb, var(--color-gold) 50%, transparent)" }}
+            >
+              <div className="font-display text-[11px] uppercase tracking-[0.3em] text-gold">
+                The Summit — conquered 👑
               </div>
-              <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
-                {fmtHours(animatedHours)}
+              <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
+                🏔️ {fmtHours(animatedHours)}
+              </div>
+              <div className="mt-2 text-sm text-fg-muted">
+                Every hour of the marathon, complete. The whole discography, conquered.
               </div>
             </div>
-            <div className="text-right">
-              <div className="font-display text-3xl font-black leading-none text-fg">
-                {animatedPct.toFixed(1)}%
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
+                    Total time logged
+                  </div>
+                  <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
+                    {fmtHours(animatedHours)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-display text-3xl font-black leading-none text-fg">
+                    {animatedPct.toFixed(1)}%
+                  </div>
+                  <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
+                </div>
               </div>
-              <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
-            </div>
-          </div>
-
-          {/* Climb meter */}
-          <div className="relative mt-5">
-            <div className="relative h-4 w-full overflow-hidden rounded-full bg-fg/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
-                style={{
-                  width: `${Math.max(2, Math.min(100, stats.goalPct))}%`,
-                  boxShadow: "0 0 16px color-mix(in srgb, var(--color-gold) 55%, transparent)",
-                }}
-              />
-              {/* milestone ticks */}
-              {[25, 50, 75].map((m) => (
-                <span
-                  key={m}
-                  className="absolute top-0 h-full w-px bg-fg/20"
-                  style={{ left: `${m}%` }}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex justify-between text-xs text-fg-faint">
-              <span>0h</span>
-              <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
-            </div>
-          </div>
+              <div className="relative mt-5">
+                <div className="relative h-4 w-full overflow-hidden rounded-full bg-fg/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
+                    style={{
+                      width: `${Math.max(2, Math.min(100, stats.goalPct))}%`,
+                      boxShadow: "0 0 16px color-mix(in srgb, var(--color-gold) 55%, transparent)",
+                    }}
+                  />
+                  {[25, 50, 75].map((m) => (
+                    <span key={m} className="absolute top-0 h-full w-px bg-fg/20" style={{ left: `${m}%` }} />
+                  ))}
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-fg-faint">
+                  <span>0h</span>
+                  <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
+                </div>
+              </div>
+            </>
+          )}
         </Panel>
       </section>
 
