@@ -164,7 +164,7 @@ export function AlbumDetail({
               className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-gold"
               title="Recommend this to a friend"
             >
-              ✉ Recommend
+              ✉️ Recommend
             </button>
           )}
           {canEdit && setAlbum && (
