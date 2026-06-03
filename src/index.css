@@ -12,7 +12,10 @@
   --color-on-accent: #000000;
   --color-fg: #241c14;        /* primary text (Paper default) */
   --color-fg-muted: #6f6353;  /* secondary text */
-  --color-fg-faint: #8a7c68;  /* tertiary text / hints */
+  --color-fg-faint: #736756;   /* darkened for AA on Paper (was #8a7c68) */
+  --color-edge-strong: #c2ab84;/* visible form-control border (Paper) */
+  --color-status-done: #065f46;
+  --color-status-lib: #6d28d9;
   --color-surface: #f1e8d8;   /* base page surface */
   --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
   --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
@@ -27,7 +30,10 @@
   --color-edge: #e2d5bf;
   --color-fg: #241c14;
   --color-fg-muted: #6f6353;
-  --color-fg-faint: #8a7c68;
+  --color-fg-faint: #736756;
+  --color-edge-strong: #c2ab84;
+  --color-status-done: #065f46;
+  --color-status-lib: #6d28d9;
   --color-surface: #f1e8d8;
   --color-on-accent: #ffffff;
   --app-bg:
@@ -44,7 +50,10 @@
   --color-edge: #2a2a33;
   --color-fg: #e9e9ee;
   --color-fg-muted: #a1a1aa;
-  --color-fg-faint: #71717a;
+  --color-fg-faint: #82828a;
+  --color-edge-strong: #3a3a45;
+  --color-status-done: #6ee7b7;
+  --color-status-lib: #c4b5fd;
   --color-surface: #15151a;
   --color-on-accent: #000000;
   --app-bg:
@@ -118,6 +127,7 @@ body {
   .animate-pop,
   .animate-marquee,
   .animate-shimmer { animation: none; }
+  .rm-no-transition { transition: none !important; }
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
