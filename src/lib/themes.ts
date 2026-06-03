@@ -74,9 +74,6 @@ export function darken(hex: string, amt: number): string {
 // is chosen (black/white) by whichever has more contrast against the clamped
 // accent, so any user-chosen color keeps fills legible on both skins.
 
-/** The darkest large surface accents sit on/in (the `panel` token). */
-export const SURFACE = "#15151a";
-
 /** The base surface each skin sits on (drives the contrast clamp direction). */
 export const SKIN_SURFACE = { midnight: "#15151a", paper: "#f1e8d8" } as const;
 export type SkinId = keyof typeof SKIN_SURFACE;

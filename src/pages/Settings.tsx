@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { firstWord } from "../lib/format";
-import { DEFAULT_THEME, PRESETS, SURFACE, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
+import { DEFAULT_THEME, PRESETS, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
 import * as api from "../lib/api";
 import type { Visibility } from "../types";
@@ -218,7 +218,7 @@ export function Settings() {
 
   // Live-preview the theme while editing; cleared on leave (saved colors then
   // apply globally via the updated profile).
-  const { setThemeOverride } = useThemeControl();
+  const { setThemeOverride, surface } = useThemeControl();
   const [theme, setTheme] = useState<Theme>(() => resolveTheme(profile));
   // Resync from the profile when it first resolves / its identity changes (the
   // useState initializer only runs once). Keyed on id so in-page edits and
@@ -272,9 +272,9 @@ export function Settings() {
 
   // What the colors actually render as: each is clamped to stay legible on the
   // dark surface, so we preview the *applied* color and flag any auto-lightening.
-  const appliedAccent = legible(theme.accent);
-  const appliedSecondary = legible(theme.secondary);
-  const accentRatio = contrastRatio(appliedAccent, SURFACE);
+  const appliedAccent = legible(theme.accent, surface);
+  const appliedSecondary = legible(theme.secondary, surface);
+  const accentRatio = contrastRatio(appliedAccent, surface);
   const adjusted =
     appliedAccent.toLowerCase() !== theme.accent.toLowerCase() ||
     appliedSecondary.toLowerCase() !== theme.secondary.toLowerCase();
