@@ -12,6 +12,7 @@ import { VerdictCard } from "../components/ShareCard";
 import { AlbumDetail } from "./AlbumDetail";
 import { ArtistDetail } from "./ArtistDetail";
 import { HallOfFame } from "./HallOfFame";
+import { Onboarding } from "./Onboarding";
 
 // The first artist with a completed + rated album is Frank Ocean / Blonde.
 const PREVIEW_ARTIST_ID = "artist-frank-ocean";
@@ -139,6 +140,11 @@ export function Preview() {
       {/* ── Hall of Fame ── */}
       <Section label="Hall of Fame">
         <HallOfFame data={sampleJourney} basePath="/__preview" />
+      </Section>
+
+      {/* ── Onboarding (empty journey) ── */}
+      <Section label="Onboarding (empty journey)">
+        <Onboarding />
       </Section>
     </div>
   );
