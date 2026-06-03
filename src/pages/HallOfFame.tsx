@@ -19,6 +19,16 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
 
   const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`);
 
+  // Gold / silver / bronze accents for the podium; subtle edge for the rest.
+  const rankClass = (i: number) =>
+    i === 0
+      ? "border-gold/60 bg-gradient-to-r from-gold/15 to-transparent"
+      : i === 1
+        ? "border-zinc-400/50 bg-gradient-to-r from-zinc-400/10 to-transparent"
+        : i === 2
+          ? "border-amber-700/50 bg-gradient-to-r from-amber-700/10 to-transparent"
+          : "border-edge/70 bg-panel/70";
+
   return (
     <div className="space-y-12">
       <div>
@@ -31,9 +41,7 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
               <button
                 key={a.id}
                 onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${
-                  i < 3 ? "border-gold/40 bg-gradient-to-r from-gold/10 to-transparent" : "border-edge/70 bg-panel/70"
-                }`}
+                className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${rankClass(i)}`}
               >
                 <span className="w-10 text-center font-display text-xl font-black text-gold">{medal(i)}</span>
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
