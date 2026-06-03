@@ -23,13 +23,24 @@ export const PRESETS: { id: string; name: string; theme: Theme }[] = [
   { id: "rose", name: "Rose", theme: { accent: "#fb7185", secondary: "#fbbf24" } },
 ];
 
-/** Resolve a profile's stored colors to a full theme, defaulting unset fields. */
+/** True for a 6-digit hex color (the only shape the picker/presets produce). */
+export function isHexColor(s: string | null | undefined): s is string {
+  return typeof s === "string" && /^#[0-9a-f]{6}$/i.test(s);
+}
+
+/**
+ * Resolve a profile's stored colors to a full theme. Unset *or malformed*
+ * values fall back to the defaults — so an arbitrary string that reached the
+ * column (e.g. via the raw API) can never flow into a CSS custom property.
+ */
 export function resolveTheme(
   p?: { themeAccent?: string | null; themeSecondary?: string | null } | null,
 ): Theme {
+  const accent = p?.themeAccent;
+  const secondary = p?.themeSecondary;
   return {
-    accent: p?.themeAccent || DEFAULT_THEME.accent,
-    secondary: p?.themeSecondary || DEFAULT_THEME.secondary,
+    accent: isHexColor(accent) ? accent : DEFAULT_THEME.accent,
+    secondary: isHexColor(secondary) ? secondary : DEFAULT_THEME.secondary,
   };
 }
 
@@ -48,11 +59,14 @@ export function lighten(hex: string, amt: number): string {
   return `#${to2(r)}${to2(g)}${to2(b)}`;
 }
 
-/** Write a theme onto the document root, overriding the @theme CSS variables. */
+/** Write a theme onto the document root, overriding the @theme CSS variables.
+ *  Non-hex inputs are dropped to the defaults before reaching the CSS sink. */
 export function applyTheme(t: Theme): void {
   if (typeof document === "undefined") return;
+  const accent = isHexColor(t.accent) ? t.accent : DEFAULT_THEME.accent;
+  const secondary = isHexColor(t.secondary) ? t.secondary : DEFAULT_THEME.secondary;
   const root = document.documentElement.style;
-  root.setProperty("--color-gold", t.accent);
-  root.setProperty("--color-gold-soft", lighten(t.accent, 0.55));
-  root.setProperty("--color-dean", t.secondary);
+  root.setProperty("--color-gold", accent);
+  root.setProperty("--color-gold-soft", lighten(accent, 0.55));
+  root.setProperty("--color-dean", secondary);
 }

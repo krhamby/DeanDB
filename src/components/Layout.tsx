@@ -117,16 +117,19 @@ function UserMenu() {
 export function Layout({ children }: { children: ReactNode }) {
   const { session, user } = useAuth();
   const { data } = useMyJourney();
+  const route = useHashRoute();
   const stats = data ? computeStats(data) : null;
   const [unread, setUnread] = useState(0);
 
+  // Refetch on navigation so the badge clears after the Recommendations page
+  // marks its inbox read (the page owns that state; this header doesn't).
   useEffect(() => {
     if (!user) {
       setUnread(0);
       return;
     }
     unreadRecommendationCount(user.id).then(setUnread).catch(() => setUnread(0));
-  }, [user]);
+  }, [user, route]);
 
   return (
     <div className="min-h-screen">

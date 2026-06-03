@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate } from "../lib/router";
 import { firstWord } from "../lib/format";
-import { DEFAULT_THEME, PRESETS, resolveTheme, type Theme } from "../lib/themes";
+import { DEFAULT_THEME, PRESETS, isHexColor, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
 import type { Visibility } from "../types";
 
@@ -40,6 +40,12 @@ export function Settings() {
   // apply globally via the updated profile).
   const { setThemeOverride } = useThemeControl();
   const [theme, setTheme] = useState<Theme>(() => resolveTheme(profile));
+  // Resync from the profile when it first resolves / its identity changes (the
+  // useState initializer only runs once). Keyed on id so in-page edits and
+  // post-save updates (same id) don't clobber what the user is editing.
+  useEffect(() => {
+    setTheme(resolveTheme(profile));
+  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setThemeOverride(theme);
     return () => setThemeOverride(null);
@@ -61,8 +67,8 @@ export function Settings() {
       season: form.season,
       goalHours: Number(form.goalHours) || 250,
       visibility,
-      themeAccent: theme.accent,
-      themeSecondary: theme.secondary,
+      themeAccent: isHexColor(theme.accent) ? theme.accent : null,
+      themeSecondary: isHexColor(theme.secondary) ? theme.secondary : null,
     });
     setSaving(false);
     setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.error ?? "Save failed." });
