@@ -18,6 +18,11 @@ import { People } from "./pages/People";
 import { Recommendations } from "./pages/Recommendations";
 import { Discover } from "./pages/Discover";
 import { Profile } from "./pages/Profile";
+// DEV-ONLY: preview harness for screenshotting logged-in surfaces without auth.
+// The conditional import keeps it out of production type-checking paths, but
+// the unconditional static import below is what actually satisfies TypeScript —
+// tree-shaking removes it from the prod bundle because the call site is guarded.
+import { Preview } from "./pages/Preview";
 
 function Loading() {
   return (
@@ -111,6 +116,12 @@ function Router() {
   const authed = Boolean(session) && !mfaPending && !passwordRecovery;
   const segments = parseRoute(hash);
   const head = segments[0];
+
+  // DEV-ONLY: #/__preview — preview harness for logged-in surfaces.
+  // Gated to import.meta.env.DEV so the route is unreachable in production;
+  // Vite's dead-code elimination removes this branch (and the Preview import)
+  // from the prod bundle entirely.
+  if (import.meta.env.DEV && head === "__preview") return <Preview />;
 
   // #/u/:username/... — another user's journey (read-only, RLS-gated). Keyed on
   // the username so switching profiles remounts cleanly (theme override resets
