@@ -89,7 +89,7 @@ export function PersonRow({
               ? "border border-edge text-fg-muted hover:text-dean"
               : status === "pending"
                 ? "border border-edge text-fg-faint"
-                : "bg-gold text-black hover:brightness-110"
+                : "bg-gold text-on-accent hover:brightness-110"
           }`}
         >
           {status === "accepted" ? "Following" : status === "pending" ? "Requested" : "Follow"}
@@ -140,7 +140,7 @@ export function FollowButton({
           ? "border border-edge text-fg-muted hover:text-dean"
           : status === "pending"
             ? "border border-edge text-fg-faint"
-            : "bg-gold text-black hover:brightness-110"
+            : "bg-gold text-on-accent hover:brightness-110"
       }`}
     >
       {status === "accepted" ? "✓ Following" : status === "pending" ? "Requested" : "+ Follow"}
@@ -233,7 +233,7 @@ export function RecommendModal({
               <button
                 onClick={send}
                 disabled={sending || !toUser}
-                className="rounded-lg bg-gold px-4 py-1.5 text-sm font-bold text-black hover:brightness-110 disabled:opacity-50"
+                className="rounded-lg bg-gold px-4 py-1.5 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-50"
               >
                 {sending ? "Sending…" : "Send"}
               </button>

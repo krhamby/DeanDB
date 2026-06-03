@@ -51,7 +51,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
               key={s}
               onClick={() => setSort(s)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
-                sort === s ? "bg-gold text-black" : "text-fg-muted hover:text-fg"
+                sort === s ? "bg-gold text-on-accent" : "text-fg-muted hover:text-fg"
               }`}
             >
               {s}

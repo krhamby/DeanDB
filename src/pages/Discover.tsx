@@ -160,7 +160,7 @@ export function Discover() {
           <button
             onClick={run}
             disabled={busy || !prompt.trim()}
-            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
           >
             {busy ? "✨ Consulting MusicBrainz…" : "✨ Suggest artists"}
           </button>
@@ -212,7 +212,7 @@ export function Discover() {
                     <button
                       onClick={() => add(s)}
                       disabled={add$.status === "adding"}
-                      className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+                      className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
                     >
                       {add$.status === "adding" ? (
                         <span>

@@ -17,7 +17,7 @@ export function EmptyState() {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => navigate("/discover")}
-          className="rounded-xl bg-gold px-5 py-2.5 font-bold text-black transition hover:brightness-110"
+          className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110"
         >
           ✨ Find artists to start with →
         </button>

@@ -68,11 +68,11 @@ export function darken(hex: string, amt: number): string {
 }
 
 // ── Contrast (WCAG 2.x relative luminance) ──────────────────────
-// The accent is used BOTH as a fill behind black text (`bg-gold text-black`)
-// and as text on the dark UI surface (`text-gold`). Guaranteeing the accent
-// clears 4.5:1 against the dark surface satisfies both at once: a colour that
-// light reads on the panel, and a colour that light keeps black text legible
-// on top of it. So one clamp legibly bounds every accent the user can pick.
+// The accent is used BOTH as a fill behind text (`bg-gold text-on-accent`)
+// and as text on the UI surface (`text-gold`). Guaranteeing the accent
+// clears 4.5:1 against the surface satisfies both at once. `--color-on-accent`
+// is chosen (black/white) by whichever has more contrast against the clamped
+// accent, so any user-chosen color keeps fills legible on both skins.
 
 /** The darkest large surface accents sit on/in (the `panel` token). */
 export const SURFACE = "#15151a";
@@ -124,4 +124,6 @@ export function applyTheme(t: Theme, surface: string = SKIN_SURFACE.midnight): v
   root.setProperty("--color-gold", accent);
   root.setProperty("--color-gold-soft", surface === SKIN_SURFACE.paper ? darken(accent, 0.12) : lighten(accent, 0.55));
   root.setProperty("--color-dean", secondary);
+  const onAccent = contrastRatio(accent, "#000000") >= contrastRatio(accent, "#ffffff") ? "#000000" : "#ffffff";
+  root.setProperty("--color-on-accent", onAccent);
 }

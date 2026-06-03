@@ -160,7 +160,7 @@ function SecuritySection() {
               className={`${inputCls} text-center tracking-[0.3em]`}
             />
             <div className="flex gap-2">
-              <button onClick={confirmEnroll} disabled={busy || code.length < 6} className="rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-black hover:brightness-110 disabled:opacity-40">
+              <button onClick={confirmEnroll} disabled={busy || code.length < 6} className="rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
                 Verify &amp; enable
               </button>
               <button onClick={cancelEnroll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg">
@@ -336,7 +336,7 @@ export function Settings() {
               key={v}
               onClick={() => setVisibility(v)}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold capitalize ${
-                visibility === v ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"
+                visibility === v ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
               {v === "private" ? "🔒 Private" : "🌍 Public"}
@@ -416,7 +416,7 @@ export function Settings() {
         {/* Live preview + contrast read-out so the chosen colors are WYSIWYG. */}
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-edge/60 bg-panel-2/60 p-3">
           <span
-            className="rounded-md px-3 py-1.5 text-sm font-bold text-black"
+            className="rounded-md px-3 py-1.5 text-sm font-bold text-on-accent"
             style={{ background: appliedAccent }}
           >
             Button
@@ -466,7 +466,7 @@ export function Settings() {
           <button
             onClick={save}
             disabled={saving || !form.username.trim()}
-            className="rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+            className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>

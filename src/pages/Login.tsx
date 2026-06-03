@@ -191,7 +191,7 @@ export function Login() {
             <button
               onClick={doVerifyMfa}
               disabled={busy || code.length < 6}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Verifying…" : "Verify"}
             </button>
@@ -219,7 +219,7 @@ export function Login() {
             <button
               onClick={doSetPw}
               disabled={busy}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Saving…" : "Set password"}
             </button>
@@ -241,7 +241,7 @@ export function Login() {
             <button
               onClick={doForgot}
               disabled={busy || !email.trim()}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Sending…" : "Send reset link"}
             </button>
@@ -289,7 +289,7 @@ export function Login() {
             <button
               onClick={mode === "signup" ? doSignUp : doSignIn}
               disabled={busy || !email.trim() || !password}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
             </button>

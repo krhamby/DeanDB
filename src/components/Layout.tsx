@@ -71,7 +71,7 @@ function useOverflowNav(itemCount: number, active: boolean) {
 function Logo() {
   return (
     <button onClick={() => navigate("/")} className="flex shrink-0 items-center gap-1">
-      <span className="grid h-9 place-items-center rounded-md bg-gold px-1.5 font-display text-xl font-black leading-none text-black shadow-[0_2px_0_rgba(0,0,0,0.4)]">
+      <span className="grid h-9 place-items-center rounded-md bg-gold px-1.5 font-display text-xl font-black leading-none text-on-accent shadow-[0_2px_0_rgba(0,0,0,0.4)]">
         Dean
       </span>
       <span className="font-display text-xl font-black tracking-tight text-fg">DB</span>
@@ -123,7 +123,7 @@ function NavButton({
       onClick={() => navigate(path)}
       aria-current={isActive ? "page" : undefined}
       className={`relative shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50 sm:px-3 ${
-        isActive ? "bg-gold text-black" : "text-fg-muted hover:bg-fg/5 hover:text-fg"
+        isActive ? "bg-gold text-on-accent" : "text-fg-muted hover:bg-fg/5 hover:text-fg"
       }`}
     >
       {label}
@@ -336,7 +336,7 @@ export function Layout({ children }: { children: ReactNode }) {
             ) : (
               <button
                 onClick={() => navigate("/login")}
-                className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-black hover:brightness-110"
+                className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-on-accent hover:brightness-110"
               >
                 Sign in
               </button>

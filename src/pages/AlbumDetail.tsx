@@ -171,7 +171,7 @@ export function AlbumDetail({
             <button
               onClick={() => setEditing((e) => !e)}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-                editing ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"
+                editing ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
               {editing ? "Done" : "✎ Edit"}
@@ -198,7 +198,7 @@ export function AlbumDetail({
                     })
                   }
                   className={`rounded-lg px-3 py-1.5 text-sm font-semibold capitalize ${
-                    album.status === s ? "bg-gold text-black" : "border border-edge text-fg-muted"
+                    album.status === s ? "bg-gold text-on-accent" : "border border-edge text-fg-muted"
                   }`}
                 >
                   {s}
@@ -207,7 +207,7 @@ export function AlbumDetail({
               <button
                 onClick={() => patchAlbum({ favorite: !album.favorite })}
                 className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                  album.favorite ? "bg-gold text-black" : "border border-edge text-fg-muted"
+                  album.favorite ? "bg-gold text-on-accent" : "border border-edge text-fg-muted"
                 }`}
               >
                 ⭐ Favorite

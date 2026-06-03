@@ -39,7 +39,7 @@ function Landing() {
       </p>
       <button
         onClick={() => navigate("/login")}
-        className="mt-6 rounded-xl bg-gold px-6 py-3 font-bold text-black hover:brightness-110"
+        className="mt-6 rounded-xl bg-gold px-6 py-3 font-bold text-on-accent hover:brightness-110"
       >
         Get started
       </button>

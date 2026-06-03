@@ -9,6 +9,7 @@
   --color-gold: #f5c518;
   --color-gold-soft: #ffe082;
   --color-dean: #ff5a3c;
+  --color-on-accent: #000000;
   --color-fg: #241c14;        /* primary text (Paper default) */
   --color-fg-muted: #6f6353;  /* secondary text */
   --color-fg-faint: #8a7c68;  /* tertiary text / hints */
@@ -28,6 +29,7 @@
   --color-fg-muted: #6f6353;
   --color-fg-faint: #8a7c68;
   --color-surface: #f1e8d8;
+  --color-on-accent: #ffffff;
   --app-bg:
     radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-gold) 14%, transparent), transparent 60%),
     radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 10%, transparent), transparent 55%),
@@ -44,6 +46,7 @@
   --color-fg-muted: #a1a1aa;
   --color-fg-faint: #71717a;
   --color-surface: #15151a;
+  --color-on-accent: #000000;
   --app-bg:
     radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-gold) 8%, transparent), transparent 60%),
     radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 7%, transparent), transparent 55%),

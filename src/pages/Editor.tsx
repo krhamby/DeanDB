@@ -618,7 +618,7 @@ export function Editor() {
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={importArtist} disabled={lookupBusy || !newArtist.name.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40">
+          <button onClick={importArtist} disabled={lookupBusy || !newArtist.name.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
             {lookupBusy ? "🔎 Searching…" : "🔎 Import from MusicBrainz"}
           </button>
           <button onClick={addArtist} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-fg-muted hover:text-fg">
@@ -647,7 +647,7 @@ export function Editor() {
           placeholder={"50 Cent\nAlice in Chains\nBig Thief\nTool\n…"}
           className={`${inputCls} w-full font-mono`}
         />
-        <button onClick={bulkImport} disabled={bulkImporting || !bulkText.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40">
+        <button onClick={bulkImport} disabled={bulkImporting || !bulkText.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
           {bulkImporting ? "⏳ Importing… (don't close this tab)" : "⇊ Import all from MusicBrainz"}
         </button>
         {bulkLog.length > 0 && (
@@ -673,7 +673,7 @@ export function Editor() {
           />
           <button
             onClick={() => setFavOnly((v) => !v)}
-            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"}`}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"}`}
             title="Show favorite albums only"
           >
             ⭐ Favorites
@@ -891,7 +891,7 @@ export function Editor() {
                           <button
                             key={s}
                             onClick={() => setAlbumStatus(al, s)}
-                            className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${al.status === s ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"}`}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${al.status === s ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"}`}
                           >
                             {s === "want" ? "Want" : s === "listening" ? "Listening" : "Done"}
                           </button>

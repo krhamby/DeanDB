@@ -58,7 +58,7 @@ export function People() {
                 </span>
                 <button
                   onClick={() => accept(p.profile.id)}
-                  className="rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-black hover:brightness-110"
+                  className="rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-on-accent hover:brightness-110"
                 >
                   Accept
                 </button>

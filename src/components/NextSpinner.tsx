@@ -170,7 +170,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => navigate(`${basePath}/artist/${picked.id}`)}
-                className="rounded-xl bg-gold px-5 py-2.5 font-bold text-black transition hover:brightness-110"
+                className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110"
               >
                 Start {picked.name} →
               </button>
@@ -192,7 +192,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
             <button
               onClick={spin}
               disabled={spinning}
-              className="rounded-xl bg-gold px-6 py-2.5 font-bold text-black transition hover:brightness-110 disabled:opacity-50"
+              className="rounded-xl bg-gold px-6 py-2.5 font-bold text-on-accent transition hover:brightness-110 disabled:opacity-50"
             >
               {spinning ? "🎡 Spinning…" : "🎲 Spin for my next artist"}
             </button>
