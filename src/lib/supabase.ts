@@ -4,7 +4,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
 // ──────────────────────────────────────────────────────────────
 // Supabase client for the multi-user DeanDB platform.
 //
-// Auth is real Supabase Auth (email magic link). The session is persisted by
+// Auth is real Supabase Auth (email + password, with optional TOTP MFA). The session is persisted by
 // supabase-js itself (sb-<ref>-auth-token in localStorage), so users stay
 // logged in across visits. Every table is gated by RLS keyed on auth.uid(),
 // so the public anon key is safe by design (see supabase/schema.sql).
@@ -18,15 +18,14 @@ export const supabase: SupabaseClient | null = supabaseEnabled
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // Magic links are emailed and frequently opened in a DIFFERENT browser
-        // than the one that requested them. PKCE (the supabase-js default)
-        // stashes a code_verifier in the requesting browser's localStorage, so a
-        // cross-browser click can't complete the code exchange and the user
-        // lands logged out. Implicit flow returns the session straight in the
-        // URL fragment, so the link works from any browser/device.
-        flowType: "implicit",
-        // Parse the magic-link token fragment on return, then strip it from the
-        // URL so our hash router never sees the #access_token=… payload.
+        // PKCE (the supabase-js default) secures the only remaining email-link
+        // flow — password recovery / email confirmation. Password sign-in and
+        // TOTP don't use the URL flow at all. A recovery link must be opened in
+        // the same browser that requested it to complete the exchange — standard
+        // and acceptable for the occasional reset.
+        flowType: "pkce",
+        // Parse the recovery/confirmation token on return (drives the
+        // PASSWORD_RECOVERY event), then strip it so the hash router never sees it.
         detectSessionInUrl: true,
       },
     })

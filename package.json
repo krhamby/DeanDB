@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "description": "DeanDB — an IMDb-style tracker for Dean's epic discography marathon.",
+  "author": "Kevin Hamby",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

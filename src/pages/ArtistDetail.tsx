@@ -28,7 +28,8 @@ export function ArtistDetail({
     );
   }
 
-  const completed = artist.albums.filter((a) => a.status === "completed").length;
+  const tracked = artist.albums.filter((a) => !a.excluded);
+  const completed = tracked.filter((a) => a.status === "completed").length;
   const pct = artistProgress(artist) * 100;
   const order = { listening: 0, want: 1, completed: 2 } as const;
   const albums = [...artist.albums].sort((a, b) => order[a.status] - order[b.status]);
@@ -87,9 +88,9 @@ export function ArtistDetail({
         <div className="flex-1">
           <div className="mb-1.5 flex justify-between text-sm">
             <span className="text-zinc-400">
-              {completed} of {artist.catalogSize} albums completed
+              {completed} of {tracked.length} albums completed
             </span>
-            <span className="text-zinc-500">{artist.albums.length} tracked</span>
+            <span className="text-zinc-500">{tracked.length} tracked</span>
           </div>
           <ProgressBar pct={pct} className="h-2.5" />
         </div>

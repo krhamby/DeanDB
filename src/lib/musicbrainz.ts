@@ -176,8 +176,13 @@ async function artistMeta(mbid: string): Promise<{ genre: string | null; country
 }
 
 async function studioCount(mbid: string): Promise<number> {
-  const browse = await mbGet<RGBrowse>(`/release-group?artist=${mbid}&type=album&limit=100`);
-  return (browse["release-groups"] ?? []).filter(
+  // Search (not browse) so the studio-only filter lives in the query: this drops
+  // live/compilation/mixtape/etc. at the source and — crucially — avoids the
+  // 100-row browse truncation that can hide real studio albums for artists whose
+  // comp/live catalog fills the page. -secondarytype:* = "no secondary type".
+  const q = `arid:${mbid} AND primarytype:album AND -secondarytype:*`;
+  const search = await mbGet<RGBrowse>(`/release-group?query=${encodeURIComponent(q)}&limit=100`);
+  return (search["release-groups"] ?? []).filter(
     (g) => !g["secondary-types"] || g["secondary-types"].length === 0,
   ).length;
 }
@@ -230,9 +235,17 @@ export async function lookupArtist(name: string): Promise<ArtistMatch | null> {
     /* keep the search-result country */
   }
 
-  // Studio albums only: primary type Album, no secondary types (live, comp…).
+  // Studio albums only. Use the search endpoint with the filter IN the query
+  // (arid + primarytype:album + -secondarytype:*) instead of browsing every
+  // album-type group and culling client-side: this excludes live/compilation/
+  // mixtape/etc. at the source and avoids the 100-row browse truncation that can
+  // drop real studio albums for artists with large comp/live catalogs. The
+  // client-side secondary-type filter stays as a guard against search-index lag.
+  // NOTE: this does NOT exclude trackless "phantom" album-type groups (bootlegs
+  // with no release/tracks) — those are pruned later when tracklists are loaded.
+  const q = `arid:${hit.id} AND primarytype:album AND -secondarytype:*`;
   const browse = await mbGet<RGBrowse>(
-    `/release-group?artist=${hit.id}&type=album&limit=100`,
+    `/release-group?query=${encodeURIComponent(q)}&limit=100`,
   );
   const studio = (browse["release-groups"] ?? [])
     .filter((g) => !g["secondary-types"] || g["secondary-types"].length === 0)

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
-import { fmtHours } from "../lib/format";
+import { fmtHours, pickGradient } from "../lib/format";
 import { computeStats } from "../lib/stats";
 import * as api from "../lib/api";
 import {
@@ -10,22 +10,12 @@ import {
   lookupArtist,
   refreshArtistMeta,
 } from "../lib/musicbrainz";
-import { DeanMeter, LoggedBadge, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
+import { DeanMeter, LoggedBadge, Panel, Select, SectionTitle, Score10, scoreColor } from "../components/ui";
+import { Menu } from "../components/Menu";
 import { Cover } from "../components/cards";
 import { Avatar } from "../components/social";
 import type { Album, AlbumStatus, Artist, Profile } from "../types";
 
-const PALETTE: [string, string][] = [
-  ["#ef4444", "#7c2d12"],
-  ["#f59e0b", "#92400e"],
-  ["#10b981", "#064e3b"],
-  ["#3b82f6", "#1e3a8a"],
-  ["#a855f7", "#4c1d95"],
-  ["#ec4899", "#831843"],
-  ["#14b8a6", "#134e4a"],
-  ["#f97316", "#7c2d12"],
-];
-const pick = (): [string, string] => PALETTE[Math.floor(Math.random() * PALETTE.length)];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** An album the listener hasn't engaged with yet — safe to auto-prune on import. */
@@ -34,9 +24,6 @@ const isPristine = (al: Album) =>
 
 const inputCls =
   "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
-
-const selectCls =
-  "rounded-lg border border-edge bg-panel-2 px-2 py-2 text-xs font-semibold text-zinc-200 outline-none focus:border-gold/50";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -189,7 +176,7 @@ export function Editor() {
         setLookupMsg(`No MusicBrainz match for “${name}”. Add it manually below.`);
         return;
       }
-      const artistId = await api.importArtistFromMatch(uid, match, pick(), pick);
+      const artistId = await api.importArtistFromMatch(uid, match, pickGradient(), pickGradient);
       const fresh = await reload();
       setLookupMsg(`✓ Imported ${match.name} — ${match.albums.length} studio albums with covers. Fetching tracklists…`);
       setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
@@ -231,7 +218,7 @@ export function Editor() {
           log(`${tag} ${name} — no match ✗`);
           missed++;
         } else {
-          await api.importArtistFromMatch(uid, match, pick(), pick);
+          await api.importArtistFromMatch(uid, match, pickGradient(), pickGradient);
           seen.add(name.toLowerCase());
           seen.add(match.name.toLowerCase());
           log(`${tag} ${match.name} — ${match.albums.length} albums ✓`);
@@ -411,7 +398,7 @@ export function Editor() {
         country: newArtist.country.trim() || null,
         catalogSize: Math.max(1, newArtist.catalogSize),
       },
-      pick(),
+      pickGradient(),
     );
     await reload();
     setNewArtist({ name: "", genre: "", country: "", catalogSize: 1 });
@@ -423,7 +410,7 @@ export function Editor() {
     const albumId = await api.createUserAlbum(uid, artistId, {
       title: d.title.trim(),
       year: d.year ? Number(d.year) : null,
-      cover: pick(),
+      cover: pickGradient(),
     });
     const fresh = await reload();
     setAlbumDraft((s) => ({ ...s, [artistId]: { title: "", year: "" } }));
@@ -647,24 +634,24 @@ export function Editor() {
         {/* Filters + sort — narrow the roster and order albums within each artist. */}
         <div className="flex flex-wrap items-center gap-2">
           {genreOptions.length > 0 && (
-            <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)} className={selectCls} title="Filter by genre">
+            <Select value={genreFilter} onChange={setGenreFilter} title="Filter by genre" ariaLabel="Filter by genre">
               <option value="">All genres</option>
               {genreOptions.map((g) => (
                 <option key={g} value={g}>{g}</option>
               ))}
-            </select>
+            </Select>
           )}
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | AlbumStatus)} className={selectCls} title="Filter by status">
+          <Select value={statusFilter} onChange={(v) => setStatusFilter(v as "all" | AlbumStatus)} title="Filter by status" ariaLabel="Filter by status">
             <option value="all">Any status</option>
             <option value="want">Want</option>
             <option value="listening">Listening</option>
             <option value="completed">Done</option>
-          </select>
-          <select value={ratedFilter} onChange={(e) => setRatedFilter(e.target.value as "all" | "rated" | "unrated")} className={selectCls} title="Filter by rating">
+          </Select>
+          <Select value={ratedFilter} onChange={(v) => setRatedFilter(v as "all" | "rated" | "unrated")} title="Filter by rating" ariaLabel="Filter by rating">
             <option value="all">Rated &amp; unrated</option>
             <option value="rated">Rated only</option>
             <option value="unrated">Unrated only</option>
-          </select>
+          </Select>
           <button
             onClick={() => setFavOnly((v) => !v)}
             className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
@@ -672,13 +659,13 @@ export function Editor() {
           >
             ⭐ Favorites
           </button>
-          <select value={albumSort} onChange={(e) => setAlbumSort(e.target.value as typeof albumSort)} className={selectCls} title="Sort albums within each artist">
+          <Select value={albumSort} onChange={(v) => setAlbumSort(v as typeof albumSort)} title="Sort albums within each artist" ariaLabel="Sort albums">
             <option value="default">Sort: default</option>
             <option value="title">Title A–Z</option>
             <option value="year">Year (new→old)</option>
             <option value="rating">Rating (high→low)</option>
             <option value="date">Recently listened</option>
-          </select>
+          </Select>
           {anyFilterActive && (
             <>
               <span className="text-xs text-zinc-500">
@@ -725,37 +712,50 @@ export function Editor() {
                 >
                   {artist.logged ? "📚 Library" : "🏃 Marathon"}
                 </button>
-                <button
-                  onClick={() => setArtistPanelOpen((s) => ({ ...s, [artist.id]: !s[artist.id] }))}
-                  className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110"
-                  title="Set an overall verdict and who recommended this artist"
-                >
-                  {artistPanelOpen[artist.id] ? "▾ Verdict & credit" : "★ Verdict & credit"}
-                </button>
-                <button onClick={() => refreshMeta(artist)} disabled={metaBusy[artist.id]} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Update genre, country & catalog size from MusicBrainz">
-                  {metaBusy[artist.id] ? "↻ …" : "↻ Genre & country"}
-                </button>
-                <button onClick={() => loadAllTracks(artist)} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110" title="Fetch tracklists for every album from MusicBrainz">
-                  🎵 Load all tracklists
-                </button>
-                {artist.albums.length > 0 && (
-                  <button
-                    onClick={() => {
-                      const open = artist.albums.every((a) => albumOpen[a.id]);
-                      setAlbumOpen((s) => {
-                        const next = { ...s };
-                        for (const a of artist.albums) next[a.id] = !open;
-                        return next;
-                      });
-                    }}
-                    className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white"
-                  >
-                    {artist.albums.every((a) => albumOpen[a.id]) ? "⤡ Collapse all" : "⤢ Expand all"}
-                  </button>
-                )}
-                <button onClick={() => removeArtist(artist.id)} className="text-xs text-zinc-600 hover:text-dean">
-                  Remove
-                </button>
+                <Menu
+                  label="Actions"
+                  actions={[
+                    {
+                      label: artistPanelOpen[artist.id] ? "▾ Verdict & credit" : "★ Verdict & credit",
+                      title: "Set an overall verdict and who recommended this artist",
+                      onSelect: () => setArtistPanelOpen((s) => ({ ...s, [artist.id]: !s[artist.id] })),
+                    },
+                    {
+                      label: metaBusy[artist.id] ? "↻ Refreshing…" : "↻ Genre & country",
+                      title: "Update genre, country & catalog size from MusicBrainz",
+                      disabled: metaBusy[artist.id],
+                      onSelect: () => refreshMeta(artist),
+                    },
+                    {
+                      label: "🎵 Load all tracklists",
+                      title: "Fetch tracklists for every album from MusicBrainz",
+                      onSelect: () => loadAllTracks(artist),
+                    },
+                    ...(artist.albums.length > 0
+                      ? [
+                          {
+                            label: artist.albums.every((a) => albumOpen[a.id])
+                              ? "⤡ Collapse all albums"
+                              : "⤢ Expand all albums",
+                            onSelect: () => {
+                              const open = artist.albums.every((a) => albumOpen[a.id]);
+                              setAlbumOpen((s) => {
+                                const next = { ...s };
+                                for (const a of artist.albums) next[a.id] = !open;
+                                return next;
+                              });
+                            },
+                          },
+                        ]
+                      : []),
+                    {
+                      label: "🗑 Remove artist",
+                      danger: true,
+                      title: "Remove this artist and all their albums from your journey",
+                      onSelect: () => removeArtist(artist.id),
+                    },
+                  ]}
+                />
               </div>
             </div>
             {bulkTracks[artist.id] && <p className="mt-2 text-xs text-zinc-400">{bulkTracks[artist.id]}</p>}

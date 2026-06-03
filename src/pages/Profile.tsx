@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { profilePath } from "../lib/router";
-import { MeterNameProvider, useJourney, useThemeControl } from "../lib/store";
+import { MeterNameProvider, useAuth, useJourney, useThemeControl } from "../lib/store";
 import { resolveTheme } from "../lib/themes";
 import { Avatar, FollowButton } from "../components/social";
 import { JourneyNav } from "../components/JourneyNav";
@@ -19,11 +19,13 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
   const view = useJourney(username);
   const basePath = profilePath(username);
   const { setThemeOverride } = useThemeControl();
+  const { profile: myProfile } = useAuth();
 
   // While viewing someone else's visible journey, paint the app in their accent.
   // Own journey (canEdit) already uses the global theme, so it's left alone.
+  // Accessibility: if the viewer locked their own theme, never apply a profile's.
   const owner = view.owner;
-  const themed = Boolean(view.data) && !view.canEdit;
+  const themed = Boolean(view.data) && !view.canEdit && !myProfile?.lockOwnTheme;
   const accent = owner?.themeAccent;
   const secondary = owner?.themeSecondary;
   useEffect(() => {

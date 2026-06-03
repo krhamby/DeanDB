@@ -15,8 +15,8 @@ const NAV: { path: string; label: string; match?: string[] }[] = [
 
 function Logo() {
   return (
-    <button onClick={() => navigate("/")} className="flex items-center gap-2.5">
-      <span className="grid h-9 place-items-center rounded-md bg-gold px-2.5 font-display text-xl font-black leading-none text-black shadow-[0_2px_0_rgba(0,0,0,0.4)]">
+    <button onClick={() => navigate("/")} className="flex shrink-0 items-center gap-1">
+      <span className="grid h-9 place-items-center rounded-md bg-gold px-1.5 font-display text-xl font-black leading-none text-black shadow-[0_2px_0_rgba(0,0,0,0.4)]">
         Dean
       </span>
       <span className="font-display text-xl font-black tracking-tight text-white">DB</span>
@@ -67,7 +67,7 @@ function NavButton({
     <button
       onClick={() => navigate(path)}
       aria-current={isActive ? "page" : undefined}
-      className={`relative rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+      className={`relative shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:px-3 ${
         isActive ? "bg-gold text-black" : "text-zinc-400 hover:bg-white/5 hover:text-white"
       }`}
     >
@@ -208,13 +208,13 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-edge/60 bg-ink/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-4">
           <Logo />
-          <nav className="flex items-center gap-1">
+          <nav className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {session && NAV.map((n) => <NavButton key={n.path} {...n} />)}
             {session && <NavButton path="/recommendations" label="Recs" badge={unread} />}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {stats && (
               <button
                 onClick={() => navigate("/me")}
@@ -247,6 +247,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <span className="font-display font-black text-zinc-400">DeanDB</span> · track your discography
           marathon, share it with friends. Keep spinning. 🎧
         </p>
+        <p className="mt-1 text-zinc-700">© 2026 Kevin Hamby · All rights reserved.</p>
       </footer>
     </div>
   );

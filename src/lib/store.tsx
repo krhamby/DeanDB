@@ -14,6 +14,7 @@ import { supabase, supabaseEnabled } from "./supabase";
 import { firstWord } from "./format";
 import { applyTheme, resolveTheme, type Theme } from "./themes";
 import * as api from "./api";
+import { computeAchievements, computeStats } from "./stats";
 
 // ──────────────────────────────────────────────────────────────
 // State for the multi-user platform, split into two concerns:
@@ -31,8 +32,22 @@ interface AuthValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string) => Promise<{ ok: boolean; error?: string }>;
-  signOut: () => Promise<void>;
+  /** Session exists but is aal1 while a verified TOTP factor could raise it to
+   *  aal2 — i.e. the user still owes a code. Treated as NOT fully authenticated. */
+  mfaPending: boolean;
+  /** A password-recovery link was opened; the user must set a new password. */
+  passwordRecovery: boolean;
+  /** AAL has been resolved at least once (avoids a flash of gated UI on load). */
+  aalChecked: boolean;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ ok: boolean; error?: string; mfaRequired?: boolean; factorId?: string; challengeId?: string }>;
+  signUp: (email: string, password: string) => Promise<{ ok: boolean; error?: string; needsConfirmation?: boolean }>;
+  verifyMfa: (factorId: string, challengeId: string, code: string) => Promise<{ ok: boolean; error?: string }>;
+  requestPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  updatePassword: (password: string) => Promise<{ ok: boolean; error?: string }>;
+  signOut: (scope?: "local" | "global") => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (
     patch: Partial<
@@ -40,7 +55,6 @@ interface AuthValue {
         Profile,
         | "username"
         | "displayName"
-        | "handle"
         | "tagline"
         | "bio"
         | "avatarUrl"
@@ -50,6 +64,7 @@ interface AuthValue {
         | "meterName"
         | "themeAccent"
         | "themeSecondary"
+        | "lockOwnTheme"
       >
     >,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -61,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mfaPending, setMfaPending] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [aalChecked, setAalChecked] = useState(false);
   const user = session?.user ?? null;
 
   const loadProfile = useCallback(async (uid: string | undefined) => {
@@ -81,6 +99,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
+  // Resolve the session's assurance level so the app can gate aal1 sessions that
+  // still owe a TOTP code. A user with no verified factor legitimately stays aal1.
+  const resolveAal = useCallback(async (sess: Session | null) => {
+    if (!sess) {
+      setMfaPending(false);
+      setAalChecked(true);
+      return;
+    }
+    try {
+      const aal = await api.getAAL();
+      setMfaPending(aal.current === "aal1" && aal.next === "aal2");
+    } catch {
+      setMfaPending(false);
+    } finally {
+      setAalChecked(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!supabaseEnabled || !supabase) {
       setLoading(false);
@@ -92,23 +128,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(data.session);
       await loadProfile(data.session?.user.id);
+      await resolveAal(data.session);
       setLoading(false);
     })();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
+      if (event === "SIGNED_OUT") setPasswordRecovery(false);
       loadProfile(next?.user.id);
+      void resolveAal(next);
     });
     return () => {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadProfile]);
+  }, [loadProfile, resolveAal]);
 
-  const signIn = useCallback((email: string) => api.signInWithEmail(email), []);
-  const signOut = useCallback(async () => {
-    await api.signOut();
+  const signIn = useCallback(
+    (email: string, password: string) => api.signInResolvingMfa(email, password),
+    [],
+  );
+  const signUp = useCallback((email: string, password: string) => api.signUp(email, password), []);
+  const verifyMfa = useCallback(
+    async (factorId: string, challengeId: string, code: string) => {
+      const res = await api.verifyTotp(factorId, challengeId, code);
+      if (res.ok && supabase) {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        await resolveAal(data.session);
+      }
+      return res;
+    },
+    [resolveAal],
+  );
+  const requestPasswordReset = useCallback((email: string) => api.requestPasswordReset(email), []);
+  const updatePassword = useCallback(async (password: string) => {
+    const res = await api.updatePassword(password);
+    if (res.ok) setPasswordRecovery(false);
+    return res;
+  }, []);
+  const signOut = useCallback(async (scope: "local" | "global" = "local") => {
+    await api.signOut(scope);
     setSession(null);
     setProfile(null);
+    setMfaPending(false);
+    setPasswordRecovery(false);
   }, []);
   const refreshProfile = useCallback(() => loadProfile(user?.id), [loadProfile, user?.id]);
 
@@ -123,8 +187,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthValue>(
-    () => ({ session, user, profile, loading, signIn, signOut, refreshProfile, updateProfile }),
-    [session, user, profile, loading, signIn, signOut, refreshProfile, updateProfile],
+    () => ({
+      session,
+      user,
+      profile,
+      loading,
+      mfaPending,
+      passwordRecovery,
+      aalChecked,
+      signIn,
+      signUp,
+      verifyMfa,
+      requestPasswordReset,
+      updatePassword,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    }),
+    [
+      session,
+      user,
+      profile,
+      loading,
+      mfaPending,
+      passwordRecovery,
+      aalChecked,
+      signIn,
+      signUp,
+      verifyMfa,
+      requestPasswordReset,
+      updatePassword,
+      signOut,
+      refreshProfile,
+      updateProfile,
+    ],
   );
 
   return (
@@ -254,6 +350,45 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
     if (profile) void reload();
     else setData(null);
   }, [profile, reload]);
+
+  // ── Achievement unlock detection ────────────────────────────────
+  // Achievements derive from whole-journey state, so recompute from the live
+  // data (cheap — already done every Dashboard render) and record any NEW
+  // unlocks. recordedRef holds ids already in the DB this session (avoids
+  // re-inserting on every keystroke); the (user_id, achievement_id) unique
+  // constraint is the real idempotency guarantee across sessions/devices.
+  const recordedRef = useRef<Set<string> | null>(null);
+  const detectAndRecord = useCallback(() => {
+    const d = dataRef.current;
+    if (!userId || !d || !recordedRef.current) return;
+    const stats = computeStats(d);
+    const fresh = computeAchievements(d, stats)
+      .filter((a) => a.unlocked)
+      .map((a) => a.id)
+      .filter((id) => !recordedRef.current!.has(id));
+    if (fresh.length === 0) return;
+    fresh.forEach((id) => recordedRef.current!.add(id)); // optimistic — prevents re-fire
+    void api.recordAchievementUnlocks(userId, fresh).catch((e) => {
+      console.error("record achievements failed", e);
+      fresh.forEach((id) => recordedRef.current!.delete(id)); // allow retry next change
+    });
+  }, [userId]);
+  useEffect(() => {
+    if (!userId) {
+      recordedRef.current = null;
+      return;
+    }
+    let active = true;
+    void api.fetchUnlockedAchievementIds(userId).then((ids) => {
+      if (!active) return;
+      recordedRef.current = new Set(ids);
+      detectAndRecord(); // backfill already-earned achievements once recorded ids load
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId, detectAndRecord]);
+  useEffect(detectAndRecord, [data, detectAndRecord]);
 
   const patchLocal = useCallback((mutator: (d: DeanDBData) => DeanDBData) => {
     setData((prev) => (prev ? mutator(structuredClone(prev)) : prev));
@@ -410,7 +545,6 @@ export function useJourney(username: string | undefined): JourneyView {
             id: header.id,
             username: header.username,
             displayName: header.displayName,
-            handle: null,
             tagline: "",
             bio: "",
             avatarUrl: header.avatarUrl,

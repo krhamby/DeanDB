@@ -83,7 +83,6 @@ export interface DeanDBData {
     /** Short persona name for journey labels — "Kevin Meter", "Kevin's Review".
      *  The profile header shows the full display name separately (Profile.tsx). */
     meterName: string;
-    handle: string;
     tagline: string;
   };
   /** The legendary goal, in hours. */
@@ -105,7 +104,6 @@ export interface Profile {
   id: string;
   username: string;
   displayName: string;
-  handle: string | null;
   tagline: string;
   bio: string;
   avatarUrl: string | null;
@@ -118,6 +116,9 @@ export interface Profile {
   themeAccent: string | null;
   /** Secondary accent color (hex). null = the default "dean" red. */
   themeSecondary: string | null;
+  /** Accessibility: when true, only ever apply this user's OWN theme — other
+   *  users' profile accent themes are not painted while they browse. */
+  lockOwnTheme?: boolean;
 }
 
 /** A person surfaced by search, with my relationship to them. */
@@ -129,8 +130,9 @@ export interface PersonResult {
   followsMe: boolean;
 }
 
-/** One activity-feed entry (a recent rating / status change by someone I follow). */
-export interface FeedItem {
+/** Album activity: a recent rating / status change by someone I follow. */
+export interface AlbumFeedItem {
+  kind: "album";
   userAlbumId: string;
   userId: string;
   username: string;
@@ -150,6 +152,23 @@ export interface FeedItem {
   logged: boolean;
   updatedAt: string;
 }
+
+/** An achievement unlock by someone I follow. Rendered with secret-masking:
+ *  the presentation (emoji/title/desc/hidden) is resolved from the client
+ *  ACHIEVEMENT_CATALOG by `achievementId`. */
+export interface AchievementFeedItem {
+  kind: "achievement";
+  achievementRowId: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  achievementId: string;
+  unlockedAt: string;
+}
+
+/** One activity-feed entry — album activity or an achievement unlock. */
+export type FeedItem = AlbumFeedItem | AchievementFeedItem;
 
 /** A recommendation sent from one user to another (about an album or an artist). */
 export interface Recommendation {
@@ -171,4 +190,24 @@ export interface Recommendation {
 export interface AlbumAggregate {
   avgRating: number | null;
   listenerCount: number;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Discovery (AI artist suggestions)
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * One AI-generated, MusicBrainz-validated artist suggestion for the Discover
+ * page. A free-tier LLM proposes candidates from the user's prompt; each is then
+ * confirmed against MusicBrainz so only real artists reach the UI.
+ */
+export interface ArtistSuggestion {
+  /** Canonical artist name from MusicBrainz. */
+  name: string;
+  /** MusicBrainz artist id when matched (null if validation couldn't confirm one). */
+  mbid: string | null;
+  /** Top MusicBrainz genre, if any. */
+  genre: string | null;
+  /** One-sentence reason this artist fits the prompt. */
+  reason: string;
 }

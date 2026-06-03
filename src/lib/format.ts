@@ -26,6 +26,25 @@ export function gradient([a, b]: [string, string], angle = 135): string {
   return `linear-gradient(${angle}deg, ${a}, ${b})`;
 }
 
+/**
+ * Signature gradient palette for new artists/albums. Shared by the Editor's
+ * MusicBrainz import and the Discover page so both pick from the same set.
+ */
+export const GRADIENT_PALETTE: [string, string][] = [
+  ["#ef4444", "#7c2d12"],
+  ["#f59e0b", "#92400e"],
+  ["#10b981", "#064e3b"],
+  ["#3b82f6", "#1e3a8a"],
+  ["#a855f7", "#4c1d95"],
+  ["#ec4899", "#831843"],
+  ["#14b8a6", "#134e4a"],
+  ["#f97316", "#7c2d12"],
+];
+
+/** A random gradient tuple from GRADIENT_PALETTE. */
+export const pickGradient = (): [string, string] =>
+  GRADIENT_PALETTE[Math.floor(Math.random() * GRADIENT_PALETTE.length)];
+
 /** Stable slug used when Dean adds new entries in the editor. */
 export function slugify(s: string): string {
   return (

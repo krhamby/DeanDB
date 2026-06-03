@@ -4,6 +4,7 @@ import { navigate, profilePath } from "../lib/router";
 import { firstWord } from "../lib/format";
 import { DEFAULT_THEME, PRESETS, SURFACE, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
+import * as api from "../lib/api";
 import type { Visibility } from "../types";
 
 const inputCls =
@@ -31,13 +32,178 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/** Account security: TOTP two-factor, change password, sign out everywhere.
+ *  These act on Supabase Auth directly (not the profile), so they have their own
+ *  buttons and don't go through the profile Save flow. */
+function SecuritySection() {
+  const { updatePassword, signOut } = useAuth();
+  const [factors, setFactors] = useState<api.MfaFactor[]>([]);
+  const [enroll, setEnroll] = useState<{ factorId: string; qrCode?: string; secret?: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const refresh = () => api.listMfaFactors().then(setFactors).catch(() => setFactors([]));
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const verified = factors.find((f) => f.status === "verified");
+
+  const startEnroll = async () => {
+    setMsg(null);
+    setBusy(true);
+    const res = await api.enrollTotp("Authenticator");
+    setBusy(false);
+    if (!res.ok || !res.factorId) {
+      setMsg({ ok: false, text: res.error ?? "Couldn't start enrollment." });
+      return;
+    }
+    setEnroll({ factorId: res.factorId, qrCode: res.qrCode, secret: res.secret });
+    setCode("");
+  };
+
+  const cancelEnroll = async () => {
+    // Remove the lingering unverified factor so a retry can re-enroll cleanly.
+    if (enroll) await api.unenrollTotp(enroll.factorId).catch(() => {});
+    setEnroll(null);
+    setCode("");
+  };
+
+  const confirmEnroll = async () => {
+    if (!enroll || code.length < 6) return;
+    setBusy(true);
+    const res = await api.verifyTotpEnrollment(enroll.factorId, code.trim());
+    setBusy(false);
+    if (!res.ok) {
+      setMsg({ ok: false, text: res.error ?? "That code didn't match." });
+      return;
+    }
+    setEnroll(null);
+    setCode("");
+    setMsg({ ok: true, text: "Two-factor authentication is on." });
+    void refresh();
+  };
+
+  const disable = async () => {
+    if (!verified || !window.confirm("Turn off two-factor authentication?")) return;
+    setBusy(true);
+    const res = await api.unenrollTotp(verified.id);
+    setBusy(false);
+    setMsg(res.ok ? { ok: true, text: "Two-factor turned off." } : { ok: false, text: res.error ?? "Couldn't disable." });
+    void refresh();
+  };
+
+  const changePw = async () => {
+    setMsg(null);
+    if (newPw.length < 8) {
+      setMsg({ ok: false, text: "Use a password of at least 8 characters." });
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setMsg({ ok: false, text: "Passwords don't match." });
+      return;
+    }
+    setBusy(true);
+    const res = await updatePassword(newPw);
+    setBusy(false);
+    if (res.ok) {
+      setNewPw("");
+      setConfirmPw("");
+    }
+    setMsg(res.ok ? { ok: true, text: "Password updated." } : { ok: false, text: res.error ?? "Couldn't update." });
+  };
+
+  const signOutAll = async () => {
+    if (!window.confirm("Sign out of DeanDB on all devices?")) return;
+    await signOut("global");
+    navigate("/login");
+  };
+
+  return (
+    <Panel className="space-y-4 p-5">
+      <h3 className="font-display text-lg font-black text-white">Security</h3>
+
+      <div className="space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Two-factor authentication</div>
+        {verified ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-emerald-400">✓ On (authenticator app)</span>
+            <button onClick={disable} disabled={busy} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-dean hover:brightness-110 disabled:opacity-40">
+              Turn off
+            </button>
+          </div>
+        ) : enroll ? (
+          <div className="space-y-2 rounded-xl border border-edge/60 bg-panel-2/60 p-3">
+            <p className="text-sm text-zinc-300">Scan this in your authenticator app, then enter the 6-digit code.</p>
+            {enroll.qrCode && (
+              <img
+                src={`data:image/svg+xml;utf-8,${encodeURIComponent(enroll.qrCode)}`}
+                alt="TOTP QR code"
+                className="h-40 w-40 rounded bg-white p-2"
+              />
+            )}
+            {enroll.secret && (
+              <p className="break-all text-xs text-zinc-500">
+                Or enter this key manually: <code className="text-gold">{enroll.secret}</code>
+              </p>
+            )}
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="123456"
+              className={`${inputCls} text-center tracking-[0.3em]`}
+            />
+            <div className="flex gap-2">
+              <button onClick={confirmEnroll} disabled={busy || code.length < 6} className="rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-black hover:brightness-110 disabled:opacity-40">
+                Verify &amp; enable
+              </button>
+              <button onClick={cancelEnroll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-400 hover:text-white">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-zinc-400">Require a code from an authenticator app at sign-in.</span>
+            <button onClick={startEnroll} disabled={busy} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-40">
+              Enable
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2 border-t border-edge/60 pt-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Change password</div>
+        <input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New password" className={inputCls} />
+        <input type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="Confirm new password" className={inputCls} />
+        <button onClick={changePw} disabled={busy || !newPw} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-40">
+          Update password
+        </button>
+      </div>
+
+      <div className="border-t border-edge/60 pt-3">
+        <button onClick={signOutAll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white">
+          Sign out everywhere
+        </button>
+      </div>
+
+      {msg && <p className={`text-sm font-semibold ${msg.ok ? "text-emerald-400" : "text-dean"}`}>{msg.text}</p>}
+    </Panel>
+  );
+}
+
 export function Settings() {
   const { profile, updateProfile } = useAuth();
   const [form, setForm] = useState(() => ({
     username: profile?.username ?? "",
     displayName: profile?.displayName ?? "",
     meterName: profile?.meterName ?? "",
-    handle: profile?.handle ?? "",
     tagline: profile?.tagline ?? "",
     bio: profile?.bio ?? "",
     avatarUrl: profile?.avatarUrl ?? "",
@@ -45,6 +211,7 @@ export function Settings() {
     goalHours: profile?.goalHours ?? 250,
   }));
   const [visibility, setVisibility] = useState<Visibility>(profile?.visibility ?? "private");
+  const [lockOwnTheme, setLockOwnTheme] = useState(profile?.lockOwnTheme ?? false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -78,7 +245,6 @@ export function Settings() {
       username: form.username.trim(),
       displayName: form.displayName.trim() || form.username.trim(),
       meterName: form.meterName.trim() || null,
-      handle: form.handle.trim() || null,
       tagline: form.tagline,
       bio: form.bio,
       avatarUrl: form.avatarUrl.trim() || null,
@@ -87,6 +253,7 @@ export function Settings() {
       visibility,
       themeAccent: isHexColor(theme.accent) ? theme.accent : null,
       themeSecondary: isHexColor(theme.secondary) ? theme.secondary : null,
+      lockOwnTheme,
     });
     setSaving(false);
     setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.error ?? "Save failed." });
@@ -141,9 +308,6 @@ export function Settings() {
               placeholder={firstWord(form.displayName) || "e.g. Kevin"}
               maxLength={40}
             />
-          </Field>
-          <Field label="Handle">
-            <input className={inputCls} value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value })} placeholder="@you" />
           </Field>
           <Field label="Avatar URL">
             <input className={inputCls} value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} placeholder="https://…" />
@@ -274,7 +438,24 @@ export function Settings() {
             Dark colors are lightened automatically so accent text and buttons stay readable.
           </p>
         )}
+        <label className="flex cursor-pointer items-start gap-2 border-t border-edge/60 pt-3 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            checked={lockOwnTheme}
+            onChange={(e) => setLockOwnTheme(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-gold"
+          />
+          <span>
+            <span className="font-semibold text-white">Always use my own theme</span>
+            <span className="block text-xs text-zinc-500">
+              Accessibility: keep these colors everywhere and never apply other people&apos;s profile
+              themes when viewing their journeys.
+            </span>
+          </span>
+        </label>
       </Panel>
+
+      <SecuritySection />
 
       <div className="flex items-center gap-3">
         <button

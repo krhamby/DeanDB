@@ -37,7 +37,6 @@ interface ProfileRow {
   id: string;
   username: string;
   display_name: string;
-  handle: string | null;
   tagline: string;
   bio: string;
   avatar_url: string | null;
@@ -47,6 +46,7 @@ interface ProfileRow {
   meter_name: string | null;
   theme_accent: string | null;
   theme_secondary: string | null;
+  lock_own_theme: boolean;
 }
 
 function mapProfile(r: ProfileRow): Profile {
@@ -54,7 +54,6 @@ function mapProfile(r: ProfileRow): Profile {
     id: r.id,
     username: r.username,
     displayName: r.display_name,
-    handle: r.handle,
     tagline: r.tagline,
     bio: r.bio,
     avatarUrl: r.avatar_url,
@@ -64,26 +63,150 @@ function mapProfile(r: ProfileRow): Profile {
     meterName: r.meter_name,
     themeAccent: r.theme_accent,
     themeSecondary: r.theme_secondary,
+    lockOwnTheme: r.lock_own_theme,
   };
 }
 
 const PROFILE_COLS =
-  "id, username, display_name, handle, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary";
+  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme";
 
 // ════════════════════════════════════════════════════════════════
 // Auth
 // ════════════════════════════════════════════════════════════════
 
-export async function signInWithEmail(email: string): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await requireClient().auth.signInWithOtp({
+/** Friendlier copy for the handful of auth errors users actually hit. */
+function mapAuthError(msg: string): string {
+  if (/invalid login credentials/i.test(msg)) return "Wrong email or password.";
+  if (/email not confirmed/i.test(msg)) return "Confirm your email first — check your inbox.";
+  if (/(invalid|incorrect).*(code|totp)|mfa/i.test(msg)) return "That code didn't match. Try the current 6 digits.";
+  return msg;
+}
+
+// ── Email + password ──────────────────────────────────────────
+export async function signUp(
+  email: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string; needsConfirmation?: boolean }> {
+  const { data, error } = await requireClient().auth.signUp({
     email,
+    password,
     options: { emailRedirectTo: authRedirectTo() },
+  });
+  if (error) return { ok: false, error: error.message };
+  // With "Confirm email" ON there's no session until the user confirms.
+  return { ok: true, needsConfirmation: !data.session };
+}
+
+export async function signInWithPassword(
+  email: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await requireClient().auth.signInWithPassword({ email, password });
+  return error ? { ok: false, error: mapAuthError(error.message) } : { ok: true };
+}
+
+export async function requestPasswordReset(email: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await requireClient().auth.resetPasswordForEmail(email, {
+    redirectTo: authRedirectTo(),
   });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-export async function signOut(): Promise<void> {
-  await requireClient().auth.signOut();
+/** Set a new password for the current session (reset flow + "change password"). */
+export async function updatePassword(password: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await requireClient().auth.updateUser({ password });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/** scope "global" = sign out everywhere (revokes all sessions, incl. this one). */
+export async function signOut(scope: "local" | "global" = "local"): Promise<void> {
+  await requireClient().auth.signOut({ scope });
+}
+
+// ── TOTP multi-factor auth (authenticator app; no SMS) ─────────
+export type AAL = "aal1" | "aal2" | null;
+
+/** Current vs. attainable assurance level. A challenge is required at sign-in
+ *  IFF current === "aal1" && next === "aal2" (i.e. a verified factor exists). */
+export async function getAAL(): Promise<{ current: AAL; next: AAL }> {
+  const { data } = await requireClient().auth.mfa.getAuthenticatorAssuranceLevel();
+  return { current: (data?.currentLevel ?? null) as AAL, next: (data?.nextLevel ?? null) as AAL };
+}
+
+export interface MfaFactor {
+  id: string;
+  friendlyName?: string;
+  status: "verified" | "unverified";
+}
+
+export async function listMfaFactors(): Promise<MfaFactor[]> {
+  const { data } = await requireClient().auth.mfa.listFactors();
+  return (data?.all ?? [])
+    .filter((f) => f.factor_type === "totp")
+    .map((f) => ({
+      id: f.id,
+      friendlyName: f.friendly_name ?? undefined,
+      status: f.status as "verified" | "unverified",
+    }));
+}
+
+export async function enrollTotp(
+  friendlyName?: string,
+): Promise<{ ok: boolean; error?: string; factorId?: string; qrCode?: string; secret?: string; uri?: string }> {
+  const { data, error } = await requireClient().auth.mfa.enroll({ factorType: "totp", friendlyName });
+  if (error || !data) return { ok: false, error: error?.message ?? "Enrollment failed." };
+  return { ok: true, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri };
+}
+
+export async function verifyTotpEnrollment(
+  factorId: string,
+  code: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await requireClient().auth.mfa.challengeAndVerify({ factorId, code });
+  return error ? { ok: false, error: mapAuthError(error.message) } : { ok: true };
+}
+
+export async function unenrollTotp(factorId: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await requireClient().auth.mfa.unenroll({ factorId });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/** Sign in with a password, then resolve whether a TOTP challenge is still
+ *  required (the session is aal1 but a verified factor can raise it to aal2). */
+export async function signInResolvingMfa(
+  email: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string; mfaRequired?: boolean; factorId?: string; challengeId?: string }> {
+  const res = await signInWithPassword(email, password);
+  if (!res.ok) return res;
+  const aal = await getAAL();
+  if (aal.current === "aal1" && aal.next === "aal2") {
+    const factor = (await listMfaFactors()).find((f) => f.status === "verified");
+    if (!factor) return { ok: true, mfaRequired: false };
+    const { data, error } = await requireClient().auth.mfa.challenge({ factorId: factor.id });
+    if (error || !data) return { ok: false, error: error?.message ?? "MFA challenge failed." };
+    return { ok: true, mfaRequired: true, factorId: factor.id, challengeId: data.id };
+  }
+  return { ok: true, mfaRequired: false };
+}
+
+export async function verifyTotp(
+  factorId: string,
+  challengeId: string,
+  code: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await requireClient().auth.mfa.verify({ factorId, challengeId, code });
+  return error ? { ok: false, error: mapAuthError(error.message) } : { ok: true };
+}
+
+/** Create a fresh TOTP challenge (challenges are single-use — used for retries
+ *  and when a session reloaded while still at aal1). */
+export async function challengeTotp(
+  factorId: string,
+): Promise<{ ok: boolean; error?: string; challengeId?: string }> {
+  const { data, error } = await requireClient().auth.mfa.challenge({ factorId });
+  if (error || !data) return { ok: false, error: error?.message };
+  return { ok: true, challengeId: data.id };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -106,12 +229,11 @@ export async function fetchProfileByUsername(username: string): Promise<Profile 
 
 export async function updateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "username" | "displayName" | "handle" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary">>,
+  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.username !== undefined) row.username = patch.username;
   if (patch.displayName !== undefined) row.display_name = patch.displayName;
-  if (patch.handle !== undefined) row.handle = patch.handle;
   if (patch.tagline !== undefined) row.tagline = patch.tagline;
   if (patch.bio !== undefined) row.bio = patch.bio;
   if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl;
@@ -121,6 +243,7 @@ export async function updateProfile(
   if (patch.meterName !== undefined) row.meter_name = patch.meterName;
   if (patch.themeAccent !== undefined) row.theme_accent = patch.themeAccent;
   if (patch.themeSecondary !== undefined) row.theme_secondary = patch.themeSecondary;
+  if (patch.lockOwnTheme !== undefined) row.lock_own_theme = patch.lockOwnTheme;
   const { error } = await requireClient().from("profiles").update(row).eq("id", id);
   if (error) {
     return {
@@ -292,7 +415,10 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       status: ur.status,
       rating: ur.rating,
       review: ur.review,
-      minutes: ur.minutes || cat.runtime_min,
+      // Per-user 0 means "runtime unknown" — defer to the shared catalog runtime
+      // (which is itself 0 until a tracklist fetch fills it). A real value, once
+      // loaded, is written to both layers. Never seed a fake number here.
+      minutes: ur.minutes || cat.runtime_min || 0,
       dateListened: ur.date_listened,
       favorite: ur.favorite,
       tracks,
@@ -303,7 +429,6 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
   return {
     listener: {
       meterName: profile.meterName?.trim() || firstWord(profile.displayName) || "Listener",
-      handle: profile.handle ?? "",
       tagline: profile.tagline,
     },
     goalHours: profile.goalHours,
@@ -514,9 +639,11 @@ export async function createUserAlbum(
     year: album.year,
     cover: album.cover,
     coverUrl: album.coverUrl,
-    runtimeMin: album.runtimeMin ?? 40,
+    runtimeMin: album.runtimeMin ?? 0,
   });
-  await upsertUserAlbum(userId, albumId, { status: "want", minutes: album.runtimeMin ?? 40 });
+  // Seed 0 ("unknown") when no real runtime is known — never a fake 40, which
+  // would shadow the catalog runtime and corrupt marathon/Endurance math.
+  await upsertUserAlbum(userId, albumId, { status: "want", minutes: album.runtimeMin ?? 0 });
   return albumId;
 }
 
@@ -554,11 +681,12 @@ export async function importArtistFromMatch(
       year: al.year,
       cover: albumCover(),
       coverUrl: al.coverUrl,
-      runtimeMin: 40,
+      runtimeMin: 0,
     });
     // Insert-only so a re-import leaves albums the listener already tracks
     // (and their ratings/status/minutes) untouched — it only adds new ones.
-    await addUserAlbumIfMissing(userId, albumId, { status: "want", minutes: 40 });
+    // Seed minutes 0 ("unknown") until a tracklist fetch supplies the real runtime.
+    await addUserAlbumIfMissing(userId, albumId, { status: "want", minutes: 0 });
   }
   return artistId;
 }
@@ -671,7 +799,6 @@ function followEdgeToPerson(
       id: r.id,
       username: r.username,
       displayName: r.display_name,
-      handle: null,
       tagline: "",
       bio: "",
       avatarUrl: r.avatar_url,
@@ -728,7 +855,6 @@ export async function searchPeople(me: string, q: string): Promise<PersonResult[
       id: r.id,
       username: r.username,
       displayName: r.display_name,
-      handle: null,
       tagline: "",
       bio: "",
       avatarUrl: r.avatar_url,
@@ -768,7 +894,18 @@ interface FeedRow {
   updated_at: string;
 }
 
-/** Recent activity from people I follow (accepted edges only). */
+interface AchFeedRow {
+  achievement_row_id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  achievement_id: string;
+  unlocked_at: string;
+}
+
+/** Recent activity from people I follow (accepted edges only): album activity
+ *  plus achievement unlocks, merged newest-first. */
 export async function fetchFeed(userId: string): Promise<FeedItem[]> {
   const c = requireClient();
   const { data: edges } = await c
@@ -778,13 +915,24 @@ export async function fetchFeed(userId: string): Promise<FeedItem[]> {
     .eq("status", "accepted");
   const followeeIds = (edges ?? []).map((e) => e.followee_id as string);
   if (followeeIds.length === 0) return [];
-  const { data } = await c
-    .from("feed_items")
-    .select("*")
-    .in("user_id", followeeIds)
-    .order("updated_at", { ascending: false })
-    .limit(50);
-  return ((data ?? []) as FeedRow[]).map((r) => ({
+
+  // Cap achievement events to a recent window so a first-load backfill burst
+  // (already-earned achievements inserted at deploy time) ages out quickly.
+  const sinceIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [albumsRes, achRes] = await Promise.all([
+    c.from("feed_items").select("*").in("user_id", followeeIds).order("updated_at", { ascending: false }).limit(50),
+    c
+      .from("achievement_feed")
+      .select("*")
+      .in("user_id", followeeIds)
+      .gte("unlocked_at", sinceIso)
+      .order("unlocked_at", { ascending: false })
+      .limit(50),
+  ]);
+
+  const albums: FeedItem[] = ((albumsRes.data ?? []) as FeedRow[]).map((r) => ({
+    kind: "album" as const,
     userAlbumId: r.user_album_id,
     userId: r.user_id,
     username: r.username,
@@ -803,6 +951,40 @@ export async function fetchFeed(userId: string): Promise<FeedItem[]> {
     logged: r.logged ?? false,
     updatedAt: r.updated_at,
   }));
+  const achievements: FeedItem[] = ((achRes.data ?? []) as AchFeedRow[]).map((r) => ({
+    kind: "achievement" as const,
+    achievementRowId: r.achievement_row_id,
+    userId: r.user_id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    achievementId: r.achievement_id,
+    unlockedAt: r.unlocked_at,
+  }));
+
+  // Newest first. ISO-8601 (UTC) strings compare lexicographically; use raw
+  // </> rather than localeCompare so ordering is locale-independent.
+  const ts = (it: FeedItem) => (it.kind === "album" ? it.updatedAt : it.unlockedAt);
+  return [...albums, ...achievements].sort((a, b) => (ts(a) < ts(b) ? 1 : ts(a) > ts(b) ? -1 : 0)).slice(0, 50);
+}
+
+/** The achievement ids this user has already recorded (for unlock detection). */
+export async function fetchUnlockedAchievementIds(userId: string): Promise<string[]> {
+  const { data } = await requireClient()
+    .from("user_achievements")
+    .select("achievement_id")
+    .eq("user_id", userId);
+  return (data ?? []).map((r) => (r as { achievement_id: string }).achievement_id);
+}
+
+/** Record newly-unlocked achievements via the SECURITY DEFINER RPC, which stamps
+ *  auth.uid() + now() server-side (the client can't forge owner/time). Idempotent
+ *  (ON CONFLICT DO NOTHING). `_userId` is unused — the RPC derives it from the
+ *  session — but kept for call-site symmetry with fetchUnlockedAchievementIds. */
+export async function recordAchievementUnlocks(_userId: string, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await requireClient().rpc("record_achievement_unlocks", { p_ids: ids });
+  if (error) throw error;
 }
 
 // ════════════════════════════════════════════════════════════════

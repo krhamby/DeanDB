@@ -1,5 +1,8 @@
 # 🎧 DeanDB
 
+> **© 2026 Kevin Hamby — All rights reserved.** Proprietary software; not open for
+> reuse, copying, or distribution. See [LICENSE](LICENSE).
+
 > **Track your discography marathon. Share the journey.**
 > An IMDb-style platform for listening through entire catalogs — every artist,
 > album, and track, rated and reviewed — and sharing it with friends.

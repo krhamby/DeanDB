@@ -48,14 +48,20 @@ function Landing() {
 
 /** Gate a route behind sign-in. */
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth();
-  if (loading) return <Loading />;
-  if (!session) {
+  const { session, loading, mfaPending, passwordRecovery, aalChecked } = useAuth();
+  if (loading || !aalChecked) return <Loading />;
+  if (!session || mfaPending || passwordRecovery) {
+    const label = mfaPending
+      ? "Enter your authentication code to continue."
+      : passwordRecovery
+        ? "Set a new password to continue."
+        : "Please sign in to continue.";
+    const cta = mfaPending ? "Enter code →" : passwordRecovery ? "Set password →" : "Sign in →";
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-400">Please sign in to continue.</p>
+        <p className="text-zinc-400">{label}</p>
         <button onClick={() => navigate("/login")} className="mt-4 text-gold hover:underline">
-          Sign in →
+          {cta}
         </button>
       </div>
     );
@@ -100,7 +106,8 @@ function MyJourney({ rest }: { rest: string[] }) {
 
 function Router() {
   const hash = useHashRoute();
-  const { session, loading } = useAuth();
+  const { session, loading, mfaPending, passwordRecovery } = useAuth();
+  const authed = Boolean(session) && !mfaPending && !passwordRecovery;
   const segments = parseRoute(hash);
   const head = segments[0];
 
@@ -113,7 +120,7 @@ function Router() {
   switch (head) {
     case undefined:
       if (loading) return <Loading />;
-      return session ? <Feed /> : <Landing />;
+      return authed ? <Feed /> : <Landing />;
     case "login":
       return <Login />;
     case "me":
@@ -163,7 +170,7 @@ function Router() {
         </RequireAuth>
       );
     default:
-      return session ? <Feed /> : <Landing />;
+      return authed ? <Feed /> : <Landing />;
   }
 }
 

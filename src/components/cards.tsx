@@ -143,7 +143,8 @@ export function AlbumCard({
 
 export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath?: string }) {
   const pct = artistProgress(artist) * 100;
-  const completed = artist.albums.filter((a) => a.status === "completed").length;
+  const tracked = artist.albums.filter((a) => !a.excluded);
+  const completed = tracked.filter((a) => a.status === "completed").length;
   return (
     <button
       onClick={() => navigate(`${basePath}/artist/${artist.id}`)}
@@ -171,7 +172,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
           </span>
         </div>
         <div className="mb-2 text-xs text-zinc-500">
-          {artist.genre} · {completed}/{artist.catalogSize} albums
+          {artist.genre} · {completed}/{tracked.length} albums
         </div>
         <ProgressBar pct={pct} />
       </div>

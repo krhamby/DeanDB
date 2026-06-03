@@ -1,4 +1,5 @@
 import type { Album, Artist, DeanDBData } from "../types";
+import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_ORDER } from "./achievements";
 
 export interface AlbumWithArtist extends Album {
   artistId: string;
@@ -26,7 +27,7 @@ export interface Stats {
   goalPct: number;
   albumsListening: number;
   albumsWant: number;
-  artistsConquered: number; // every owned album completed AND catalog fully covered
+  artistsConquered: number; // every owned, non-excluded album completed
   marathonArtistsTotal: number;
   // ── Collection-scoped (logged included) ──
   albumsCompleted: number;
@@ -56,12 +57,17 @@ export const marathonArtists = (artists: Artist[]): Artist[] => artists.filter((
 /** Already-heard "Library" artists (logged), excluded from the marathon. */
 export const libraryArtists = (artists: Artist[]): Artist[] => artists.filter((a) => a.logged);
 
-/** Discography completion for one artist (0–1). Excluded albums don't count. */
+/**
+ * Discography completion for one artist (0–1), measured against the listener's
+ * CURATED list — the non-excluded albums they actually track — not the full
+ * MusicBrainz catalog. Users add/remove albums, so their list is the source of
+ * truth: removing trackless/empty albums shrinks the denominator. (catalogSize
+ * stays as informational "MB knows of N" metadata only.)
+ */
 export function artistProgress(artist: Artist): number {
   const tracked = artist.albums.filter((a) => !a.excluded);
-  const excludedCount = artist.albums.length - tracked.length;
   const completed = tracked.filter((a) => a.status === "completed").length;
-  const denom = Math.max(artist.catalogSize - excludedCount, tracked.length, 1);
+  const denom = Math.max(tracked.length, 1);
   return Math.min(completed / denom, 1);
 }
 
@@ -78,13 +84,13 @@ export function computeStats(data: DeanDBData): Stats {
   // The goal is the actual total runtime of everything in the marathon.
   const runtimeMinutes = marathon.reduce((sum, a) => sum + (a.minutes || 0), 0);
 
-  const artistsConquered = data.artists.filter(
-    (a) =>
-      !a.logged &&
-      a.albums.length > 0 &&
-      a.albums.every((al) => al.status === "completed") &&
-      a.albums.length >= a.catalogSize,
-  ).length;
+  // Conquered = a marathon artist whose every curated (non-excluded) album is
+  // completed. Keyed on the user's list, not catalogSize, so it agrees with
+  // artistProgress hitting 100% (removing trackless albums can't block conquest).
+  const artistsConquered = data.artists.filter((a) => {
+    const tracked = a.albums.filter((al) => !al.excluded);
+    return !a.logged && tracked.length > 0 && tracked.every((al) => al.status === "completed");
+  }).length;
 
   // ── Collection scope: ratings, songs, taste (logged included) ──
   const collectionCompleted = collection.filter((a) => a.status === "completed");
@@ -178,122 +184,46 @@ export function computeAchievements(data: DeanDBData, stats: Stats): Achievement
   const harshCritic = albumsF.some((a) => a.rating != null && a.rating < 2);
   const wordsmith = albumsF.some((a) => a.review.trim().length >= 280);
 
-  return [
-    {
-      id: "first-spin",
-      emoji: "🎧",
-      title: "First Spin",
-      desc: "Complete your very first album.",
-      unlocked: stats.albumsCompleted >= 1,
-    },
-    {
-      id: "ten-down",
-      emoji: "💿",
-      title: "Crate Digger",
-      desc: "Complete 10 albums.",
-      unlocked: stats.albumsCompleted >= 10,
-      progress: `${stats.albumsCompleted} / 10`,
-    },
-    {
-      id: "discography-slayer",
-      emoji: "🗡️",
-      title: "Discography Slayer",
-      desc: "Conquer an artist's entire catalog.",
-      unlocked: stats.artistsConquered >= 1,
-    },
-    {
-      id: "genre-hopper",
-      emoji: "🌍",
-      title: "Genre Hopper",
-      desc: "Finish albums across 4+ different genres.",
-      unlocked: distinctGenres >= 4,
-      progress: `${distinctGenres} / 4 genres`,
-    },
-    {
-      id: "perfect-ten",
-      emoji: "🏆",
-      title: "The Perfect Ten",
-      desc: `Award a 10.0 on the ${data.listener.meterName} Meter.`,
-      unlocked: hasPerfectScore,
-    },
-    {
-      id: "marathoner-25",
-      emoji: "🔥",
-      title: "Warmed Up",
-      desc: "Log 25 hours of listening.",
-      unlocked: stats.hoursListened >= 25,
-      progress: `${stats.hoursListened.toFixed(1)} / 25 hrs`,
-    },
-    {
-      id: "marathoner-100",
-      emoji: "⚡",
-      title: "Triple Digits",
-      desc: "Log 100 hours of listening.",
-      unlocked: stats.hoursListened >= 100,
-      progress: `${stats.hoursListened.toFixed(1)} / 100 hrs`,
-    },
-    {
-      id: "the-summit",
-      emoji: "👑",
-      title: "The Summit",
-      desc: "Listen through the entire tracked runtime. The marathon is complete.",
+  // Dynamic unlock signals per id. Presentation (emoji/title/desc/hidden) comes
+  // from the shared ACHIEVEMENT_CATALOG so the Dashboard and the social Feed
+  // (which only has an achievement_id) can never desync.
+  const signals: Record<string, { unlocked: boolean; progress?: string }> = {
+    "first-spin": { unlocked: stats.albumsCompleted >= 1 },
+    "ten-down": { unlocked: stats.albumsCompleted >= 10, progress: `${stats.albumsCompleted} / 10` },
+    "discography-slayer": { unlocked: stats.artistsConquered >= 1 },
+    "genre-hopper": { unlocked: distinctGenres >= 4, progress: `${distinctGenres} / 4 genres` },
+    "perfect-ten": { unlocked: hasPerfectScore },
+    "marathoner-25": { unlocked: stats.hoursListened >= 25, progress: `${stats.hoursListened.toFixed(1)} / 25 hrs` },
+    "marathoner-100": { unlocked: stats.hoursListened >= 100, progress: `${stats.hoursListened.toFixed(1)} / 100 hrs` },
+    "the-summit": {
       unlocked: stats.totalRuntimeMinutes > 0 && stats.hoursListened >= stats.goalHours,
       progress: `${stats.hoursListened.toFixed(1)} / ${stats.goalHours.toFixed(1)} hrs`,
     },
-    {
-      id: "endurance",
-      emoji: "⏱️",
-      title: "Endurance Test",
-      desc: "Complete a single album longer than 90 minutes.",
-      unlocked: longestAlbum > 90,
-    },
-    {
-      id: "completionist",
-      emoji: "✅",
-      title: "The Completionist",
-      desc: "Rate every single track on a completed album.",
-      unlocked: fullyRatedAlbum,
-    },
-    // ── Secret achievements (masked until earned) ──
-    {
-      id: "time-traveler",
-      emoji: "🕰️",
-      title: "Time Traveler",
-      desc: "Complete albums spanning five different decades.",
-      unlocked: decades >= 5,
-      hidden: true,
-    },
-    {
-      id: "globetrotter",
-      emoji: "🌐",
-      title: "Passport Stamped",
-      desc: "Finish albums from artists of five different countries.",
-      unlocked: countries >= 5,
-      hidden: true,
-    },
-    {
-      id: "flawless",
-      emoji: "💎",
-      title: "Flawless",
-      desc: "Award a single song a perfect 10.0.",
-      unlocked: perfectSong,
-      hidden: true,
-    },
-    {
-      id: "tough-crowd",
-      emoji: "🍅",
-      title: "Tough Crowd",
-      desc: "Rate an album below 2.0. Somebody had to say it.",
-      unlocked: harshCritic,
-      hidden: true,
-    },
-    {
-      id: "the-essayist",
-      emoji: "✍️",
-      title: "The Essayist",
-      desc: "Write a review of 280+ characters. A true head.",
-      unlocked: wordsmith,
-      hidden: true,
-    },
-  ];
+    endurance: { unlocked: longestAlbum > 90 },
+    completionist: { unlocked: fullyRatedAlbum },
+    "time-traveler": { unlocked: decades >= 5 },
+    globetrotter: { unlocked: countries >= 5 },
+    flawless: { unlocked: perfectSong },
+    "tough-crowd": { unlocked: harshCritic },
+    "the-essayist": { unlocked: wordsmith },
+  };
+
+  return ACHIEVEMENT_ORDER.map((id) => {
+    const meta = ACHIEVEMENT_CATALOG[id];
+    // Fallback guards against catalog/signals drift (a new catalog id with no
+    // signal entry renders as locked rather than throwing).
+    const sig = signals[id] ?? { unlocked: false };
+    // perfect-ten personalizes its description with the listener's meter name.
+    const desc =
+      id === "perfect-ten" ? `Award a 10.0 on the ${data.listener.meterName} Meter.` : meta.desc;
+    return {
+      id,
+      emoji: meta.emoji,
+      title: meta.title,
+      desc,
+      hidden: meta.hidden,
+      unlocked: sig.unlocked,
+      progress: sig.progress,
+    };
+  });
 }

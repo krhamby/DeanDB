@@ -170,3 +170,44 @@ export function SectionTitle({ kicker, title }: { kicker?: string; title: string
     </div>
   );
 }
+
+// ── Themed native <select> ──────────────────────────────────────
+// Wraps a native <select> — so it keeps full keyboard + screen-reader behavior —
+// but strips the OS chrome (`appearance-none`) and paints it with our tokens plus
+// a custom chevron. Without this, the closed control renders as a raw macOS/Safari
+// dropdown that clashes with the rest of the dark UI (Bug 3).
+export function Select({
+  value,
+  onChange,
+  children,
+  className = "",
+  title,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+  className?: string;
+  title?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <div className={`relative inline-flex ${className}`}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        title={title}
+        aria-label={ariaLabel ?? title}
+        className="w-full cursor-pointer appearance-none rounded-lg border border-edge bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-zinc-200 outline-none transition-colors hover:border-gold/40 focus:border-gold/50"
+      >
+        {children}
+      </select>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500"
+      >
+        ▾
+      </span>
+    </div>
+  );
+}

@@ -14,11 +14,10 @@ function isStarted(a: Artist): boolean {
   return a.albums.some((al) => al.status === "completed" || al.status === "listening");
 }
 function isConquered(a: Artist): boolean {
-  return (
-    a.albums.length > 0 &&
-    a.albums.every((al) => al.status === "completed") &&
-    a.albums.length >= a.catalogSize
-  );
+  // Conquered = every curated (non-excluded) album completed — consistent with
+  // artistProgress/artistsConquered (keyed on the user's list, not catalogSize).
+  const tracked = a.albums.filter((al) => !al.excluded);
+  return tracked.length > 0 && tracked.every((al) => al.status === "completed");
 }
 
 function shuffled<T>(arr: T[]): T[] {
