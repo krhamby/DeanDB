@@ -18,6 +18,7 @@ import { People } from "./pages/People";
 import { Recommendations } from "./pages/Recommendations";
 import { Discover } from "./pages/Discover";
 import { Profile } from "./pages/Profile";
+import { Landing } from "./pages/Landing";
 // DEV-ONLY: preview harness for screenshotting logged-in surfaces without auth.
 // The conditional import keeps it out of production type-checking paths, but
 // the unconditional static import below is what actually satisfies TypeScript —
@@ -28,26 +29,6 @@ function Loading() {
   return (
     <div className="grid min-h-[60vh] place-items-center">
       <div className="animate-pulse font-display text-2xl font-black text-gold">DeanDB</div>
-    </div>
-  );
-}
-
-/** Friendly landing for signed-out visitors. */
-function Landing() {
-  return (
-    <div className="mx-auto max-w-xl py-12 text-center">
-      <div className="text-6xl">🎧</div>
-      <h1 className="mt-4 font-display text-4xl font-black text-fg">DeanDB</h1>
-      <p className="mt-3 text-fg-muted">
-        Track your own discography marathon — every artist, album and track, rated and reviewed — and share
-        the journey with friends.
-      </p>
-      <button
-        onClick={() => navigate("/login")}
-        className="mt-6 rounded-xl bg-gold px-6 py-3 font-bold text-on-accent hover:brightness-110"
-      >
-        Get started
-      </button>
     </div>
   );
 }
