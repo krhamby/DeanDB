@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 //   #/login                  -> magic-link sign in
 //   #/me                     -> my journey (editable)
 //   #/editor                 -> my editor
+//   #/discover               -> AI artist suggestions from a prompt
 //   #/settings               -> profile + visibility
 //   #/feed                   -> activity feed
 //   #/people                 -> discover + follow

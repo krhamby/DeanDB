@@ -15,6 +15,7 @@ import type {
   AlbumAggregate,
   AlbumStatus,
   Artist,
+  ArtistSuggestion,
   DeanDBData,
   FeedItem,
   PersonResult,
@@ -1087,4 +1088,44 @@ export async function albumAggregate(albumId: string): Promise<AlbumAggregate> {
     avgRating: row?.avg_rating != null ? Number(row.avg_rating) : null,
     listenerCount: row?.listener_count != null ? Number(row.listener_count) : 0,
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// Discovery — AI artist suggestions (suggest-artists Edge Function)
+// ════════════════════════════════════════════════════════════════
+
+/** Tuning knobs for {@link suggestArtists}. */
+export interface SuggestArtistsOptions {
+  /** Artist names the listener already enjoys, used to personalize results. */
+  seedArtists?: string[];
+  /** Artist names already in the journey, so they aren't suggested again. */
+  excludeArtists?: string[];
+  /** Max suggestions to return (the Edge Function caps this server-side too). */
+  limit?: number;
+}
+
+/**
+ * Turn a free-text prompt into MusicBrainz-validated artist suggestions.
+ *
+ * Delegates to the `suggest-artists` Supabase Edge Function: a free-tier LLM
+ * interprets the prompt (personalized by `seedArtists`, avoiding
+ * `excludeArtists`) and every candidate is confirmed against MusicBrainz inside
+ * the function, so only real artists come back. The function is JWT-gated — the
+ * caller must be signed in (supabase-js attaches the session token automatically).
+ */
+export async function suggestArtists(
+  prompt: string,
+  opts: SuggestArtistsOptions = {},
+): Promise<ArtistSuggestion[]> {
+  const { data, error } = await requireClient().functions.invoke("suggest-artists", {
+    body: {
+      prompt,
+      seedArtists: opts.seedArtists ?? [],
+      excludeArtists: opts.excludeArtists ?? [],
+      limit: opts.limit ?? 8,
+    },
+  });
+  if (error) throw error;
+  const suggestions = (data as { suggestions?: ArtistSuggestion[] } | null)?.suggestions;
+  return Array.isArray(suggestions) ? suggestions : [];
 }

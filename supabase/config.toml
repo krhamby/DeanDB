@@ -8,3 +8,9 @@
 # Kept minimal on purpose; run `supabase init` if you want the full template
 # (local API/db/studio ports, auth, etc.) for `supabase start`.
 project_id = "deandb"
+
+# Discover's AI artist-suggestion function. verify_jwt = true (the default) is
+# stated explicitly here: only signed-in users may call it, so the Gemini key it
+# holds can't be used as an open relay. Secret: `supabase secrets set GEMINI_API_KEY=…`.
+[functions.suggest-artists]
+verify_jwt = true

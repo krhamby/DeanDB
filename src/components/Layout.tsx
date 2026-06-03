@@ -10,6 +10,7 @@ import { Avatar } from "./social";
 // shortcuts included), so the tab stays lit while browsing artists/albums.
 const NAV: { path: string; label: string; match?: string[] }[] = [
   { path: "/me", label: "Journey", match: ["me", "artists", "artist", "album", "hall-of-fame"] },
+  { path: "/discover", label: "Discover" },
   { path: "/feed", label: "Feed" },
 ];
 

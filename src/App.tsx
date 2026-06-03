@@ -16,6 +16,7 @@ import { Settings } from "./pages/Settings";
 import { Feed } from "./pages/Feed";
 import { People } from "./pages/People";
 import { Recommendations } from "./pages/Recommendations";
+import { Discover } from "./pages/Discover";
 import { Profile } from "./pages/Profile";
 
 function Loading() {
@@ -161,6 +162,12 @@ function Router() {
       return (
         <RequireAuth>
           <People />
+        </RequireAuth>
+      );
+    case "discover":
+      return (
+        <RequireAuth>
+          <Discover />
         </RequireAuth>
       );
     case "recommendations":
