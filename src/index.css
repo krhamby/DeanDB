@@ -9,7 +9,8 @@
   --color-gold: #f5c518;
   --color-gold-soft: #ffe082;
   --color-dean: #ff5a3c;
-  --font-display: "Arial Black", "Helvetica Neue", system-ui, sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
+  --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
 }
 
 html {
@@ -32,7 +33,7 @@ body {
     radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 7%, transparent), transparent 55%),
     var(--color-ink);
   color: #e9e9ee;
-  font-family: "Helvetica Neue", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
