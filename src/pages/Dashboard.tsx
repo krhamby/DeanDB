@@ -6,7 +6,7 @@ import { useCountUp } from "../lib/useCountUp";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
 import { DeanMeter, Panel, SectionTitle } from "../components/ui";
-import { EmptyState } from "../components/EmptyState";
+import { Onboarding } from "./Onboarding";
 import { NextSpinner } from "../components/NextSpinner";
 import type { DeanDBData } from "../types";
 
@@ -128,7 +128,7 @@ export function Dashboard({
 
       {data.artists.length === 0 ? (
         canEdit ? (
-          <EmptyState />
+          <Onboarding />
         ) : (
           <Panel className="px-6 py-16 text-center text-fg-muted">
             {data.listener.meterName} hasn&apos;t added any artists yet. 🎙️
