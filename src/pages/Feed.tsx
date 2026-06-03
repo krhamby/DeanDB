@@ -1,5 +1,5 @@
 import { useFeed } from "../lib/store";
-import { navigate } from "../lib/router";
+import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
 import { Cover } from "../components/cards";
 import { DeanMeter, LoggedBadge, Panel, SectionTitle, StatusBadge } from "../components/ui";
@@ -36,7 +36,7 @@ export function Feed() {
             <div className="min-w-0 flex-1">
               <div className="text-xs text-zinc-500">
                 <button
-                  onClick={() => navigate(`/u/${it.username}`)}
+                  onClick={() => navigate(profilePath(it.username))}
                   className="font-semibold text-gold hover:underline"
                 >
                   {it.displayName}
@@ -46,7 +46,7 @@ export function Feed() {
               <div className="flex items-center gap-2">
                 {it.logged ? <LoggedBadge /> : <StatusBadge status={it.status} />}
                 <button
-                  onClick={() => navigate(`/u/${it.username}/album/${it.artistId}/${it.albumId}`)}
+                  onClick={() => navigate(`${profilePath(it.username)}/album/${it.artistId}/${it.albumId}`)}
                   className="truncate font-display text-lg font-black text-white hover:text-gold"
                 >
                   {it.albumTitle}

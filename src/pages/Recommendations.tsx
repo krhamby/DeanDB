@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useRecommendations } from "../lib/store";
-import { navigate } from "../lib/router";
+import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
 import { Panel, SectionTitle } from "../components/ui";
 
@@ -27,7 +27,7 @@ export function Recommendations() {
           <Panel key={r.id} className={`p-4 ${r.readAt ? "" : "border-gold/40"}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-zinc-400">
-                <button onClick={() => navigate(`/u/${r.fromUsername}`)} className="font-semibold text-gold hover:underline">
+                <button onClick={() => navigate(profilePath(r.fromUsername))} className="font-semibold text-gold hover:underline">
                   {r.fromDisplayName}
                 </button>{" "}
                 recommends
@@ -37,13 +37,13 @@ export function Recommendations() {
             <div className="mt-1 font-display text-lg font-black text-white">
               {r.albumTitle ? (
                 <button
-                  onClick={() => navigate(`/u/${r.fromUsername}/album/${r.artistId}/${r.albumId}`)}
+                  onClick={() => navigate(`${profilePath(r.fromUsername)}/album/${r.artistId}/${r.albumId}`)}
                   className="hover:text-gold"
                 >
                   {r.albumTitle}
                 </button>
               ) : (
-                <button onClick={() => navigate(`/u/${r.fromUsername}/artist/${r.artistId}`)} className="hover:text-gold">
+                <button onClick={() => navigate(`${profilePath(r.fromUsername)}/artist/${r.artistId}`)} className="hover:text-gold">
                   {r.artistName}
                 </button>
               )}

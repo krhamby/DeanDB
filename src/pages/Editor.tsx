@@ -11,6 +11,7 @@ import {
   refreshArtistMeta,
 } from "../lib/musicbrainz";
 import { DeanMeter, LoggedBadge, Panel, SectionTitle, Score10, scoreColor } from "../components/ui";
+import { Cover } from "../components/cards";
 import { Avatar } from "../components/social";
 import type { Album, AlbumStatus, Artist, Profile } from "../types";
 
@@ -29,6 +30,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const inputCls =
   "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+
+const selectCls =
+  "rounded-lg border border-edge bg-panel-2 px-2 py-2 text-xs font-semibold text-zinc-200 outline-none focus:border-gold/50";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -159,6 +163,12 @@ export function Editor() {
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkLog, setBulkLog] = useState<string[]>([]);
   const [rosterQuery, setRosterQuery] = useState("");
+  // Roster filters + sort (albums are filtered/sorted within their artist groups).
+  const [genreFilter, setGenreFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AlbumStatus>("all");
+  const [favOnly, setFavOnly] = useState(false);
+  const [ratedFilter, setRatedFilter] = useState<"all" | "rated" | "unrated">("all");
+  const [albumSort, setAlbumSort] = useState<"default" | "title" | "year" | "rating" | "date">("default");
 
   if (!data || !userId) return null;
   const uid = userId;
@@ -451,16 +461,50 @@ export function Editor() {
     URL.revokeObjectURL(url);
   };
 
-  // ── Roster search + collapse ──
+  // ── Roster search + filters + sort + collapse ──
   const q = rosterQuery.trim().toLowerCase();
-  const artistNameMatches = (a: Artist) => a.name.toLowerCase().includes(q);
-  const visibleAlbums = (a: Artist) =>
-    !q || artistNameMatches(a) ? a.albums : a.albums.filter((al) => al.title.toLowerCase().includes(q));
-  const shownArtists = !q
-    ? data.artists
-    : data.artists.filter(
-        (a) => artistNameMatches(a) || a.albums.some((al) => al.title.toLowerCase().includes(q)),
-      );
+  const genreOptions = [...new Set(data.artists.map((a) => a.genre).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  // Album-level predicate: name search (album title OR artist name) + filters.
+  const albumPasses = (a: Artist, al: Album) => {
+    if (q && !a.name.toLowerCase().includes(q) && !al.title.toLowerCase().includes(q)) return false;
+    if (statusFilter !== "all" && al.status !== statusFilter) return false;
+    if (favOnly && !al.favorite) return false;
+    if (ratedFilter === "rated" && al.rating == null) return false;
+    if (ratedFilter === "unrated" && al.rating != null) return false;
+    return true;
+  };
+  const sortAlbums = (list: Album[]) => {
+    if (albumSort === "default") return list;
+    const sorted = [...list];
+    if (albumSort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else if (albumSort === "year") sorted.sort((a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity));
+    else if (albumSort === "rating") sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+    else if (albumSort === "date") sorted.sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""));
+    return sorted;
+  };
+  const visibleAlbums = (a: Artist) => sortAlbums(a.albums.filter((al) => albumPasses(a, al)));
+  const anyAlbumFilterActive =
+    q !== "" || statusFilter !== "all" || favOnly || ratedFilter !== "all";
+  const anyFilterActive = anyAlbumFilterActive || genreFilter !== "" || albumSort !== "default";
+  const clearFilters = () => {
+    setRosterQuery("");
+    setGenreFilter("");
+    setStatusFilter("all");
+    setFavOnly(false);
+    setRatedFilter("all");
+    setAlbumSort("default");
+  };
+  // Genre lives on the artist, so it narrows which artists show. Album-level
+  // filters then require at least one surviving album (but with no album filters
+  // active we keep album-less artists so you can still add to them).
+  const shownArtists = data.artists.filter(
+    (a) =>
+      (!genreFilter || a.genre === genreFilter) &&
+      (!anyAlbumFilterActive || visibleAlbums(a).length > 0),
+  );
+  const shownAlbumCount = shownArtists.reduce((n, a) => n + visibleAlbums(a).length, 0);
   const allAlbumIds = data.artists.flatMap((a) => a.albums.map((al) => al.id));
   const allCollapsed = allAlbumIds.every((id) => !albumOpen[id]);
   const toggleAllAlbums = () => {
@@ -569,15 +613,56 @@ export function Editor() {
               {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
             </button>
           )}
-          {q && (
-            <span className="text-xs text-zinc-500">
-              {shownArtists.length} match{shownArtists.length === 1 ? "" : "es"}
-            </span>
+        </div>
+        {/* Filters + sort — narrow the roster and order albums within each artist. */}
+        <div className="flex flex-wrap items-center gap-2">
+          {genreOptions.length > 0 && (
+            <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)} className={selectCls} title="Filter by genre">
+              <option value="">All genres</option>
+              {genreOptions.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          )}
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | AlbumStatus)} className={selectCls} title="Filter by status">
+            <option value="all">Any status</option>
+            <option value="want">Want</option>
+            <option value="listening">Listening</option>
+            <option value="completed">Done</option>
+          </select>
+          <select value={ratedFilter} onChange={(e) => setRatedFilter(e.target.value as "all" | "rated" | "unrated")} className={selectCls} title="Filter by rating">
+            <option value="all">Rated &amp; unrated</option>
+            <option value="rated">Rated only</option>
+            <option value="unrated">Unrated only</option>
+          </select>
+          <button
+            onClick={() => setFavOnly((v) => !v)}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
+            title="Show favorites only"
+          >
+            ⭐ Favorites
+          </button>
+          <select value={albumSort} onChange={(e) => setAlbumSort(e.target.value as typeof albumSort)} className={selectCls} title="Sort albums within each artist">
+            <option value="default">Sort: default</option>
+            <option value="title">Title A–Z</option>
+            <option value="year">Year (new→old)</option>
+            <option value="rating">Rating (high→low)</option>
+            <option value="date">Recently listened</option>
+          </select>
+          {anyFilterActive && (
+            <>
+              <span className="text-xs text-zinc-500">
+                {shownArtists.length} artist{shownArtists.length === 1 ? "" : "s"} · {shownAlbumCount} album{shownAlbumCount === 1 ? "" : "s"}
+              </span>
+              <button onClick={clearFilters} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-400 hover:text-white">
+                Clear filters
+              </button>
+            </>
           )}
         </div>
         {shownArtists.length === 0 && (
           <p className="py-6 text-center text-sm text-zinc-500">
-            {data.artists.length === 0 ? "No artists yet — add your first above." : `No artists or albums match “${rosterQuery}”.`}
+            {data.artists.length === 0 ? "No artists yet — add your first above." : "No artists or albums match your filters."}
           </p>
         )}
         {shownArtists.map((artist: Artist) => (
@@ -688,6 +773,7 @@ export function Editor() {
                 <div key={al.id} className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}>
                   <button onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))} className="flex w-full items-center gap-2 p-3 text-left hover:bg-white/5">
                     <span className="w-3 shrink-0 text-xs text-zinc-500">{albumOpen[al.id] ? "▾" : "▸"}</span>
+                    <Cover size="xs" colors={al.cover} title={al.title} coverUrl={al.coverUrl} />
                     <span className="flex-1 truncate text-sm font-semibold text-white">
                       {al.title} <span className="font-normal text-zinc-600">{al.year ?? ""}</span>
                     </span>

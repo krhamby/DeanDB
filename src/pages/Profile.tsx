@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { profilePath } from "../lib/router";
 import { MeterNameProvider, useJourney, useThemeControl } from "../lib/store";
 import { resolveTheme } from "../lib/themes";
 import { Avatar, FollowButton } from "../components/social";
@@ -16,7 +17,7 @@ import { HallOfFame } from "./HallOfFame";
  */
 export function Profile({ username, rest }: { username: string; rest: string[] }) {
   const view = useJourney(username);
-  const basePath = `/u/${username}`;
+  const basePath = profilePath(username);
   const { setThemeOverride } = useThemeControl();
 
   // While viewing someone else's visible journey, paint the app in their accent.
