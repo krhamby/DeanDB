@@ -23,11 +23,11 @@ const isPristine = (al: Album) =>
   al.status === "want" && al.rating == null && !al.review && !al.favorite && !al.excluded && !al.dateListened;
 
 const inputCls =
-  "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+  "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+    <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-fg-faint">
       {label}
       {children}
     </label>
@@ -94,12 +94,12 @@ function RecommenderPicker({ artist, setArtist }: { artist: Artist; setArtist: S
 
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Recommended by</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">Recommended by</div>
       {rec?.username && (
         <div className="flex items-center gap-2">
           <Avatar profile={{ username: rec.username, displayName: rec.displayName ?? rec.username, avatarUrl: rec.avatarUrl }} size={24} />
-          <span className="text-sm text-white">@{rec.username}</span>
-          <button onClick={clearUser} className="text-xs text-zinc-600 hover:text-dean" title="Unlink person">
+          <span className="text-sm text-fg">@{rec.username}</span>
+          <button onClick={clearUser} className="text-xs text-fg-faint hover:text-dean" title="Unlink person">
             ×
           </button>
         </div>
@@ -122,11 +122,11 @@ function RecommenderPicker({ artist, setArtist }: { artist: Artist; setArtist: S
             <button
               key={r.profile.id}
               onClick={() => pickUser(r.profile)}
-              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/5"
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left hover:bg-fg/5"
             >
               <Avatar profile={r.profile} size={24} />
-              <span className="truncate text-sm text-white">{r.profile.displayName}</span>
-              <span className="truncate text-xs text-zinc-500">@{r.profile.username}</span>
+              <span className="truncate text-sm text-fg">{r.profile.displayName}</span>
+              <span className="truncate text-xs text-fg-faint">@{r.profile.username}</span>
             </button>
           ))}
         </div>
@@ -584,16 +584,16 @@ export function Editor() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SectionTitle kicker="Mission control" title="The Editor" />
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate("/settings")} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-white">
+          <button onClick={() => navigate("/settings")} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
             ⚙ Profile & sharing
           </button>
-          <button onClick={exportJson} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-white">
+          <button onClick={exportJson} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
             ⬇ Export backup
           </button>
         </div>
       </div>
 
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-fg-faint">
         Every change saves to your account instantly. Your goal — {" "}
         <span className="text-gold">{fmtHours(computeStats(data).totalRuntimeHours)}</span> of total runtime — grows
         as you add albums. Set your season, goal and visibility in{" "}
@@ -602,7 +602,7 @@ export function Editor() {
 
       {/* Add artist */}
       <Panel className="space-y-3 p-5">
-        <h3 className="font-display text-lg font-black text-white">Add an Artist</h3>
+        <h3 className="font-display text-lg font-black text-fg">Add an Artist</h3>
         <div className="grid gap-3 sm:grid-cols-4">
           <Field label="Name">
             <input className={inputCls} value={newArtist.name} onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })} placeholder="e.g. Björk" />
@@ -621,21 +621,21 @@ export function Editor() {
           <button onClick={importArtist} disabled={lookupBusy || !newArtist.name.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40">
             {lookupBusy ? "🔎 Searching…" : "🔎 Import from MusicBrainz"}
           </button>
-          <button onClick={addArtist} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white">
+          <button onClick={addArtist} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-fg-muted hover:text-fg">
             + Add blank artist
           </button>
-          {lookupMsg && <span className="text-xs text-zinc-400">{lookupMsg}</span>}
+          {lookupMsg && <span className="text-xs text-fg-muted">{lookupMsg}</span>}
         </div>
-        <p className="text-xs leading-relaxed text-zinc-500">
-          <span className="text-zinc-300">Import from MusicBrainz</span> auto-fills the full studio discography
+        <p className="text-xs leading-relaxed text-fg-faint">
+          <span className="text-fg-muted">Import from MusicBrainz</span> auto-fills the full studio discography
           with real album covers (free, open-data — no API key). Or add a blank artist and fill it in by hand.
         </p>
       </Panel>
 
       {/* Bulk import */}
       <Panel className="space-y-3 p-5">
-        <h3 className="font-display text-lg font-black text-white">Bulk Import from MusicBrainz</h3>
-        <p className="text-xs leading-relaxed text-zinc-500">
+        <h3 className="font-display text-lg font-black text-fg">Bulk Import from MusicBrainz</h3>
+        <p className="text-xs leading-relaxed text-fg-faint">
           Paste one artist per line. Each is looked up on MusicBrainz (~1.5s apiece to stay polite), names already
           in your roster are skipped, and full studio discographies arrive with covers.
         </p>
@@ -651,7 +651,7 @@ export function Editor() {
           {bulkImporting ? "⏳ Importing… (don't close this tab)" : "⇊ Import all from MusicBrainz"}
         </button>
         {bulkLog.length > 0 && (
-          <div className="max-h-56 space-y-0.5 overflow-auto rounded-lg border border-edge bg-panel-2/60 p-3 font-mono text-xs text-zinc-400">
+          <div className="max-h-56 space-y-0.5 overflow-auto rounded-lg border border-edge bg-panel-2/60 p-3 font-mono text-xs text-fg-muted">
             {bulkLog.map((l, i) => (
               <div key={i} className={l.includes("✓") ? "text-emerald-400" : l.includes("✗") ? "text-dean" : ""}>
                 {l}
@@ -664,7 +664,7 @@ export function Editor() {
       {/* Manage artists */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="font-display text-lg font-black text-white">Roster ({data.artists.length})</h3>
+          <h3 className="font-display text-lg font-black text-fg">Roster ({data.artists.length})</h3>
           <input
             value={rosterQuery}
             onChange={(e) => setRosterQuery(e.target.value)}
@@ -673,13 +673,13 @@ export function Editor() {
           />
           <button
             onClick={() => setFavOnly((v) => !v)}
-            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"}`}
             title="Show favorite albums only"
           >
             ⭐ Favorites
           </button>
           {allAlbumIds.length > 0 && (
-            <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
+            <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
               {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
             </button>
           )}
@@ -714,17 +714,17 @@ export function Editor() {
           </Select>
           {anyFilterActive && (
             <>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-fg-faint">
                 {shownArtists.length} artist{shownArtists.length === 1 ? "" : "s"} · {shownAlbumCount} album{shownAlbumCount === 1 ? "" : "s"}
               </span>
-              <button onClick={clearFilters} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-400 hover:text-white">
+              <button onClick={clearFilters} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
                 Clear filters
               </button>
             </>
           )}
         </div>
         {shownArtists.length === 0 && (
-          <p className="py-6 text-center text-sm text-zinc-500">
+          <p className="py-6 text-center text-sm text-fg-faint">
             {data.artists.length === 0
               ? "No artists yet — add your first above."
               : q
@@ -736,9 +736,9 @@ export function Editor() {
           <Panel key={artist.id} className="p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-display text-lg font-black text-white">{artist.name}</span>
+                <span className="font-display text-lg font-black text-fg">{artist.name}</span>
                 {artist.logged && <LoggedBadge />}
-                <span className="text-xs text-zinc-500">
+                <span className="text-xs text-fg-faint">
                   {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
                 </span>
               </div>
@@ -748,7 +748,7 @@ export function Editor() {
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
                     artist.logged
                       ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/40"
-                      : "border border-edge text-zinc-300 hover:text-white"
+                      : "border border-edge text-fg-muted hover:text-fg"
                   }`}
                   title={
                     artist.logged
@@ -804,12 +804,12 @@ export function Editor() {
                 />
               </div>
             </div>
-            {bulkTracks[artist.id] && <p className="mt-2 text-xs text-zinc-400">{bulkTracks[artist.id]}</p>}
+            {bulkTracks[artist.id] && <p className="mt-2 text-xs text-fg-muted">{bulkTracks[artist.id]}</p>}
 
             {artistPanelOpen[artist.id] && (
               <div className="mt-3 grid gap-4 rounded-xl border border-edge/60 bg-panel-2/40 p-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
                     Overall verdict
                   </div>
                   <div className="flex items-center gap-2">
@@ -830,7 +830,7 @@ export function Editor() {
                     {artist.verdict != null && (
                       <button
                         onClick={() => setArtist(artist.id, { verdict: null })}
-                        className="text-xs text-zinc-600 hover:text-dean"
+                        className="text-xs text-fg-faint hover:text-dean"
                         title="Clear verdict"
                       >
                         ×
@@ -851,15 +851,15 @@ export function Editor() {
             <div className="mt-3 space-y-2">
               {visibleAlbumsOf(artist).map((al) => (
                 <div key={al.id} className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}>
-                  <button onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))} className="flex w-full items-center gap-2 p-3 text-left hover:bg-white/5">
-                    <span className="w-3 shrink-0 text-xs text-zinc-500">{albumOpen[al.id] ? "▾" : "▸"}</span>
+                  <button onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))} className="flex w-full items-center gap-2 p-3 text-left hover:bg-fg/5">
+                    <span className="w-3 shrink-0 text-xs text-fg-faint">{albumOpen[al.id] ? "▾" : "▸"}</span>
                     <Cover size="xs" colors={al.cover} title={al.title} coverUrl={al.coverUrl} />
-                    <span className="flex-1 truncate text-sm font-semibold text-white">
-                      {al.title} <span className="font-normal text-zinc-600">{al.year ?? ""}</span>
+                    <span className="flex-1 truncate text-sm font-semibold text-fg">
+                      {al.title} <span className="font-normal text-fg-faint">{al.year ?? ""}</span>
                     </span>
                     {al.excluded && <span className="shrink-0 text-xs text-dean" title="Excluded">🚫</span>}
                     {al.favorite && <span className="shrink-0 text-xs" title="Favorite">⭐</span>}
-                    <span className="hidden shrink-0 text-xs text-zinc-600 sm:inline">{al.tracks.length} trk</span>
+                    <span className="hidden shrink-0 text-xs text-fg-faint sm:inline">{al.tracks.length} trk</span>
                     <span
                       className="h-2 w-2 shrink-0 rounded-full"
                       title={al.status}
@@ -880,7 +880,7 @@ export function Editor() {
                           <button onClick={() => fetchTracks(artist, al)} disabled={trackBusy[al.id]} className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch this album's tracklist from MusicBrainz">
                             {trackBusy[al.id] ? "🎵 …" : al.tracks.length ? "🎵 Reload tracks" : "🎵 Get tracks"}
                           </button>
-                          <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-zinc-600 hover:text-dean">
+                          <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-fg-faint hover:text-dean">
                             Delete
                           </button>
                         </div>
@@ -891,7 +891,7 @@ export function Editor() {
                           <button
                             key={s}
                             onClick={() => setAlbumStatus(al, s)}
-                            className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${al.status === s ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
+                            className={`rounded-md px-2.5 py-1 text-xs font-semibold capitalize ${al.status === s ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"}`}
                           >
                             {s === "want" ? "Want" : s === "listening" ? "Listening" : "Done"}
                           </button>
@@ -901,7 +901,7 @@ export function Editor() {
                         </button>
                         <button
                           onClick={() => setAlbum(al.id, { excluded: !al.excluded })}
-                          className={`rounded-md px-2 py-1 text-xs font-semibold ${al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-zinc-500 hover:text-white"}`}
+                          className={`rounded-md px-2 py-1 text-xs font-semibold ${al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-fg-faint hover:text-fg"}`}
                           title="Exclude from the marathon (won't count toward runtime or progress)"
                         >
                           {al.excluded ? "🚫 Excluded" : "Exclude"}
@@ -924,20 +924,20 @@ export function Editor() {
 
                       {al.tracks.length > 0 && (
                         <div className="mt-2">
-                          <button onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))} className="text-xs font-semibold text-zinc-400 hover:text-white">
+                          <button onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))} className="text-xs font-semibold text-fg-muted hover:text-fg">
                             {expanded[al.id] ? "▾" : "▸"} {al.tracks.length} tracks — rate songs
                           </button>
                           {expanded[al.id] && (
                             <div className="mt-2 divide-y divide-edge/40 rounded-lg border border-edge/40 bg-panel/40">
                               {al.tracks.map((t, i) => (
                                 <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                                  <span className="w-5 text-right text-xs text-zinc-600">{i + 1}</span>
-                                  <span className="flex-1 truncate text-sm text-white">{t.title}</span>
+                                  <span className="w-5 text-right text-xs text-fg-faint">{i + 1}</span>
+                                  <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
                                   <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="px-1 text-lg leading-none transition-transform hover:scale-110 sm:text-sm" title="Favorite track">
                                     {t.favorite ? "⭐" : "☆"}
                                   </button>
                                   <Score10 value={t.rating} onChange={(v) => setTrack(al.id, t.id, { rating: v })} />
-                                  <button onClick={() => removeTrack(artist.id, al.id, t.id)} className="text-zinc-600 hover:text-dean" title="Remove track">
+                                  <button onClick={() => removeTrack(artist.id, al.id, t.id)} className="text-fg-faint hover:text-dean" title="Remove track">
                                     ×
                                   </button>
                                 </div>
@@ -955,7 +955,7 @@ export function Editor() {
                           onChange={(e) => setTrackDraft((s) => ({ ...s, [`${artist.id}:${al.id}`]: e.target.value }))}
                           onKeyDown={(e) => e.key === "Enter" && addTrack(artist.id, al.id)}
                         />
-                        <button onClick={() => addTrack(artist.id, al.id)} className="rounded-lg border border-edge px-3 text-sm text-zinc-300 hover:text-white">
+                        <button onClick={() => addTrack(artist.id, al.id)} className="rounded-lg border border-edge px-3 text-sm text-fg-muted hover:text-fg">
                           +
                         </button>
                       </div>
@@ -980,7 +980,7 @@ export function Editor() {
                 value={albumDraft[artist.id]?.year ?? ""}
                 onChange={(e) => setAlbumDraft((s) => ({ ...s, [artist.id]: { title: s[artist.id]?.title ?? "", year: e.target.value } }))}
               />
-              <button onClick={() => addAlbum(artist.id)} className="rounded-lg bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20">
+              <button onClick={() => addAlbum(artist.id)} className="rounded-lg bg-fg/10 px-4 text-sm font-semibold text-fg hover:bg-fg/20">
                 + Album
               </button>
             </div>

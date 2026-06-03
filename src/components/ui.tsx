@@ -4,7 +4,7 @@ import { useMeterName } from "../lib/store";
 
 /** Shared 0–10 color ramp used by the Dean Meter and per-song scores. */
 export function scoreColor(value: number | null): string {
-  if (value == null) return "#3a3a45";
+  if (value == null) return "var(--color-fg-faint)";
   if (value >= 9) return "#f5c518";
   if (value >= 7) return "#7ee081";
   if (value >= 5) return "#ffb84d";
@@ -37,7 +37,7 @@ export function DeanMeter({
       title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#26262e" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--color-edge)" strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -99,7 +99,7 @@ export function Score10({
         style={{ color }}
         aria-label="Song score out of 10"
       />
-      <span className="text-xs text-zinc-600">/10</span>
+      <span className="text-xs text-fg-faint">/10</span>
     </span>
   );
 }
@@ -107,7 +107,7 @@ export function Score10({
 const STATUS_META: Record<AlbumStatus, { label: string; cls: string }> = {
   completed: { label: "✓ Completed", cls: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
   listening: { label: "▶ Now Spinning", cls: "bg-gold/15 text-gold-soft ring-gold/30" },
-  want: { label: "☆ On the List", cls: "bg-white/5 text-zinc-400 ring-white/10" },
+  want: { label: "☆ On the List", cls: "bg-fg/5 text-fg-muted ring-fg/10" },
 };
 
 export function StatusBadge({ status }: { status: AlbumStatus }) {
@@ -133,7 +133,7 @@ export function LoggedBadge({ className = "" }: { className?: string }) {
 
 export function ProgressBar({ pct, className = "" }: { pct: number; className?: string }) {
   return (
-    <div className={`h-2 w-full overflow-hidden rounded-full bg-white/8 ${className}`}>
+    <div className={`h-2 w-full overflow-hidden rounded-full bg-fg/10 ${className}`}>
       <div
         className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
         style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
@@ -166,7 +166,7 @@ export function SectionTitle({ kicker, title }: { kicker?: string; title: string
           {kicker}
         </div>
       )}
-      <h2 className="font-display text-2xl font-black tracking-tight text-white">{title}</h2>
+      <h2 className="font-display text-2xl font-black tracking-tight text-fg">{title}</h2>
     </div>
   );
 }
@@ -198,13 +198,13 @@ export function Select({
         onChange={(e) => onChange(e.target.value)}
         title={title}
         aria-label={ariaLabel ?? title}
-        className="w-full cursor-pointer appearance-none rounded-lg border border-edge bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-zinc-200 outline-none transition-colors hover:border-gold/40 focus:border-gold/50"
+        className="w-full cursor-pointer appearance-none rounded-lg border border-edge bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-fg outline-none transition-colors hover:border-gold/40 focus:border-gold/50"
       >
         {children}
       </select>
       <span
         aria-hidden
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500"
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-fg-faint"
       >
         ▾
       </span>

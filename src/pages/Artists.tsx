@@ -43,7 +43,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search artists or genres…"
-          className="flex-1 rounded-xl border border-edge bg-panel px-4 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
+          className="flex-1 rounded-xl border border-edge bg-panel px-4 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
         />
         <div className="flex gap-1 rounded-xl border border-edge bg-panel p-1">
           {(["progress", "name", "albums"] as Sort[]).map((s) => (
@@ -51,7 +51,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
               key={s}
               onClick={() => setSort(s)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
-                sort === s ? "bg-gold text-black" : "text-zinc-400 hover:text-white"
+                sort === s ? "bg-gold text-black" : "text-fg-muted hover:text-fg"
               }`}
             >
               {s}
@@ -63,7 +63,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
       {section("In the marathon", "The Marathon", marathon)}
       {section("Already heard", "The Library", library)}
       {artists.length === 0 && (
-        <p className="py-12 text-center text-zinc-500">No artists match “{q}”.</p>
+        <p className="py-12 text-center text-fg-faint">No artists match “{q}”.</p>
       )}
     </div>
   );

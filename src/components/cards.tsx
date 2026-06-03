@@ -130,8 +130,8 @@ export function AlbumCard({
       </div>
       <div className="px-0.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-semibold text-white">{album.title}</span>
-          <span className="shrink-0 text-xs text-zinc-500">{album.year ?? ""}</span>
+          <span className="truncate text-sm font-semibold text-fg">{album.title}</span>
+          <span className="shrink-0 text-xs text-fg-faint">{album.year ?? ""}</span>
         </div>
         <div className="mt-1">
           <StatusBadge status={album.status} />
@@ -159,7 +159,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate font-display text-lg font-black text-white">{artist.name}</span>
+            <span className="truncate font-display text-lg font-black text-fg">{artist.name}</span>
             {artist.logged && <LoggedBadge />}
           </span>
           <span className="flex shrink-0 items-center gap-2">
@@ -171,7 +171,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
             <span className="text-xs font-semibold text-gold">{Math.round(pct)}%</span>
           </span>
         </div>
-        <div className="mb-2 text-xs text-zinc-500">
+        <div className="mb-2 text-xs text-fg-faint">
           {artist.genre} · {completed}/{tracked.length} albums
         </div>
         <ProgressBar pct={pct} />

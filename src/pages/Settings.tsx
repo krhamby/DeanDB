@@ -8,7 +8,7 @@ import * as api from "../lib/api";
 import type { Visibility } from "../types";
 
 const inputCls =
-  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-white/40";
+  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-white/40";
 
 // Usernames are the shareable handle (in the URL), so keep them link-safe:
 // letters, numbers and underscores only — matching the signup trigger's set.
@@ -25,7 +25,7 @@ function validateUsername(name: string): string | null {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+    <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-fg-faint">
       {label}
       {children}
     </label>
@@ -124,10 +124,10 @@ function SecuritySection() {
 
   return (
     <Panel className="space-y-4 p-5">
-      <h3 className="font-display text-lg font-black text-white">Security</h3>
+      <h3 className="font-display text-lg font-black text-fg">Security</h3>
 
       <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Two-factor authentication</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">Two-factor authentication</div>
         {verified ? (
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm text-emerald-400">✓ On (authenticator app)</span>
@@ -137,7 +137,7 @@ function SecuritySection() {
           </div>
         ) : enroll ? (
           <div className="space-y-2 rounded-xl border border-edge/60 bg-panel-2/60 p-3">
-            <p className="text-sm text-zinc-300">Scan this in your authenticator app, then enter the 6-digit code.</p>
+            <p className="text-sm text-fg-muted">Scan this in your authenticator app, then enter the 6-digit code.</p>
             {enroll.qrCode && (
               <img
                 src={`data:image/svg+xml;utf-8,${encodeURIComponent(enroll.qrCode)}`}
@@ -146,7 +146,7 @@ function SecuritySection() {
               />
             )}
             {enroll.secret && (
-              <p className="break-all text-xs text-zinc-500">
+              <p className="break-all text-xs text-fg-faint">
                 Or enter this key manually: <code className="text-gold">{enroll.secret}</code>
               </p>
             )}
@@ -163,14 +163,14 @@ function SecuritySection() {
               <button onClick={confirmEnroll} disabled={busy || code.length < 6} className="rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-black hover:brightness-110 disabled:opacity-40">
                 Verify &amp; enable
               </button>
-              <button onClick={cancelEnroll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-400 hover:text-white">
+              <button onClick={cancelEnroll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg">
                 Cancel
               </button>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-zinc-400">Require a code from an authenticator app at sign-in.</span>
+            <span className="text-sm text-fg-muted">Require a code from an authenticator app at sign-in.</span>
             <button onClick={startEnroll} disabled={busy} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-40">
               Enable
             </button>
@@ -179,7 +179,7 @@ function SecuritySection() {
       </div>
 
       <div className="space-y-2 border-t border-edge/60 pt-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Change password</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">Change password</div>
         <input type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New password" className={inputCls} />
         <input type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="Confirm new password" className={inputCls} />
         <button onClick={changePw} disabled={busy || !newPw} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-40">
@@ -188,7 +188,7 @@ function SecuritySection() {
       </div>
 
       <div className="border-t border-edge/60 pt-3">
-        <button onClick={signOutAll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white">
+        <button onClick={signOutAll} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg">
           Sign out everywhere
         </button>
       </div>
@@ -293,7 +293,7 @@ export function Settings() {
               maxLength={USERNAME_MAX}
               placeholder="e.g. thedean"
             />
-            <span className="text-[11px] font-normal normal-case tracking-normal text-zinc-500">
+            <span className="text-[11px] font-normal normal-case tracking-normal text-fg-faint">
               Letters, numbers and underscores — no spaces.
             </span>
           </Field>
@@ -329,28 +329,28 @@ export function Settings() {
 
       {/* Visibility + Share */}
       <Panel className="space-y-3 p-5">
-        <h3 className="font-display text-lg font-black text-white">Sharing</h3>
+        <h3 className="font-display text-lg font-black text-fg">Sharing</h3>
         <div className="flex flex-wrap items-center gap-2">
           {(["private", "public"] as Visibility[]).map((v) => (
             <button
               key={v}
               onClick={() => setVisibility(v)}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold capitalize ${
-                visibility === v ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"
+                visibility === v ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
               {v === "private" ? "🔒 Private" : "🌍 Public"}
             </button>
           ))}
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-fg-faint">
             {visibility === "public"
               ? "Anyone with your link can view your journey."
               : "Only you and accepted followers can view your journey."}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <code className="flex-1 truncate rounded bg-black/40 px-2 py-1.5 text-xs text-gold">{shareUrl}</code>
-          <button onClick={share} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-white">
+          <code className="flex-1 truncate rounded bg-fg/5 px-2 py-1.5 text-xs text-gold">{shareUrl}</code>
+          <button onClick={share} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
             {copied ? "Copied!" : "📋 Copy link"}
           </button>
         </div>
@@ -358,8 +358,8 @@ export function Settings() {
 
       {/* Theme */}
       <Panel className="space-y-3 p-5">
-        <h3 className="font-display text-lg font-black text-white">Theme</h3>
-        <p className="text-xs text-zinc-500">
+        <h3 className="font-display text-lg font-black text-fg">Theme</h3>
+        <p className="text-xs text-fg-faint">
           Recolor the accents — changes preview live, Save to keep them. Friends see your colors on your profile.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -373,7 +373,7 @@ export function Settings() {
                 onClick={() => setTheme(p.theme)}
                 aria-pressed={active}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-                  active ? "border-gold text-white" : "border-edge text-zinc-400 hover:text-white"
+                  active ? "border-gold text-fg" : "border-edge text-fg-muted hover:text-fg"
                 }`}
               >
                 <span className="flex overflow-hidden rounded-full ring-1 ring-black/30">
@@ -387,7 +387,7 @@ export function Settings() {
           })}
         </div>
         <div className="flex flex-wrap items-center gap-5">
-          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-fg-faint">
             Accent
             <input
               type="color"
@@ -396,7 +396,7 @@ export function Settings() {
               className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             />
           </label>
-          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-fg-faint">
             Secondary
             <input
               type="color"
@@ -407,7 +407,7 @@ export function Settings() {
           </label>
           <button
             onClick={() => setTheme(DEFAULT_THEME)}
-            className="rounded text-xs text-zinc-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            className="rounded text-xs text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
             Reset to default
           </button>
@@ -429,16 +429,16 @@ export function Settings() {
             style={{ background: appliedSecondary }}
             title="Secondary"
           />
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-fg-faint">
             contrast {accentRatio.toFixed(1)}:1 {accentRatio >= 4.5 ? "· AA ✓" : ""}
           </span>
         </div>
         {adjusted && (
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-fg-faint">
             Dark colors are lightened automatically so accent text and buttons stay readable.
           </p>
         )}
-        <label className="flex cursor-pointer items-start gap-2 border-t border-edge/60 pt-3 text-sm text-zinc-300">
+        <label className="flex cursor-pointer items-start gap-2 border-t border-edge/60 pt-3 text-sm text-fg-muted">
           <input
             type="checkbox"
             checked={lockOwnTheme}
@@ -446,8 +446,8 @@ export function Settings() {
             className="mt-0.5 h-4 w-4 accent-gold"
           />
           <span>
-            <span className="font-semibold text-white">Always use my own theme</span>
-            <span className="block text-xs text-zinc-500">
+            <span className="font-semibold text-fg">Always use my own theme</span>
+            <span className="block text-xs text-fg-faint">
               Accessibility: keep these colors everywhere and never apply other people&apos;s profile
               themes when viewing their journeys.
             </span>
@@ -458,7 +458,7 @@ export function Settings() {
       <SecuritySection />
 
       <div className="flex items-center justify-between gap-3">
-        <button onClick={() => navigate("/me")} className="text-sm text-zinc-400 hover:text-white">
+        <button onClick={() => navigate("/me")} className="text-sm text-fg-muted hover:text-fg">
           ← Back to my journey
         </button>
         <div className="flex items-center gap-3">

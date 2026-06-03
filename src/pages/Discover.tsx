@@ -131,7 +131,7 @@ export function Discover() {
       <SectionTitle kicker="Discover" title="Find your next artist" />
 
       <Panel className="space-y-3 p-5">
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-fg-muted">
           Describe a vibe, a mood, or an artist you love — get real artists to explore, each
           checked against MusicBrainz and one click from your journey.
         </p>
@@ -143,14 +143,14 @@ export function Discover() {
           }}
           rows={3}
           placeholder="e.g. moody 70s prog rock with long instrumental passages"
-          className="w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
+          className="w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
         />
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
             <button
               key={ex}
               onClick={() => setPrompt(ex)}
-              className="rounded-full border border-edge px-3 py-1 text-xs text-zinc-400 hover:border-gold/50 hover:text-white"
+              className="rounded-full border border-edge px-3 py-1 text-xs text-fg-muted hover:border-gold/50 hover:text-fg"
             >
               {ex}
             </button>
@@ -164,13 +164,13 @@ export function Discover() {
           >
             {busy ? "✨ Consulting MusicBrainz…" : "✨ Suggest artists"}
           </button>
-          {busy && <span className="text-xs text-zinc-500">This takes a few seconds — checking each artist.</span>}
+          {busy && <span className="text-xs text-fg-faint">This takes a few seconds — checking each artist.</span>}
           {error && <span className="text-xs text-dean">{error}</span>}
         </div>
       </Panel>
 
       {suggestions && suggestions.length === 0 && !busy && (
-        <p className="py-6 text-center text-sm text-zinc-500">
+        <p className="py-6 text-center text-sm text-fg-faint">
           No matches this time — try describing the vibe a little differently.
         </p>
       )}
@@ -191,15 +191,15 @@ export function Discover() {
                     {s.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-base font-black leading-tight text-white">{s.name}</div>
+                    <div className="font-display text-base font-black leading-tight text-fg">{s.name}</div>
                     {s.genre && (
-                      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-fg-faint">
                         {s.genre}
                       </div>
                     )}
                   </div>
                 </div>
-                <p className="text-sm leading-relaxed text-zinc-400">{s.reason}</p>
+                <p className="text-sm leading-relaxed text-fg-muted">{s.reason}</p>
                 <div className="mt-auto flex items-center gap-3 pt-1">
                   {add$.status === "added" ? (
                     <button
@@ -225,7 +225,7 @@ export function Discover() {
                     </button>
                   )}
                   {add$.msg && (
-                    <span className={`text-xs ${add$.status === "error" ? "text-dean" : "text-zinc-500"}`}>
+                    <span className={`text-xs ${add$.status === "error" ? "text-dean" : "text-fg-faint"}`}>
                       {add$.msg}
                     </span>
                   )}

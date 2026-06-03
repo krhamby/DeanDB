@@ -74,7 +74,7 @@ function Logo() {
       <span className="grid h-9 place-items-center rounded-md bg-gold px-1.5 font-display text-xl font-black leading-none text-black shadow-[0_2px_0_rgba(0,0,0,0.4)]">
         Dean
       </span>
-      <span className="font-display text-xl font-black tracking-tight text-white">DB</span>
+      <span className="font-display text-xl font-black tracking-tight text-fg">DB</span>
     </button>
   );
 }
@@ -90,8 +90,8 @@ function Ticker() {
   const items = completed.map((a) => `${a.artistName} — ${a.title}  ★ ${a.rating?.toFixed(1)}`);
   const doubled = [...items, ...items];
   return (
-    <div className="overflow-hidden border-y border-edge/60 bg-black/40 py-1.5">
-      <div className="flex w-max animate-marquee gap-8 whitespace-nowrap text-xs font-semibold text-zinc-400">
+    <div className="overflow-hidden border-y border-edge/60 bg-fg/5 py-1.5">
+      <div className="flex w-max animate-marquee gap-8 whitespace-nowrap text-xs font-semibold text-fg-muted">
         {doubled.map((t, i) => (
           <span key={i} className="flex items-center gap-8">
             <span className="text-gold">●</span> {t}
@@ -123,7 +123,7 @@ function NavButton({
       onClick={() => navigate(path)}
       aria-current={isActive ? "page" : undefined}
       className={`relative shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:px-3 ${
-        isActive ? "bg-gold text-black" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+        isActive ? "bg-gold text-black" : "text-fg-muted hover:bg-fg/5 hover:text-fg"
       }`}
     >
       {label}
@@ -161,7 +161,7 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
   // empty, the width-measured nav fits one extra item, paints, then collapses
   // when the avatar arrives — the load-time flash. A same-size placeholder keeps
   // the measured width constant from first paint.
-  if (!profile) return <div aria-hidden className="h-[34px] w-[34px] rounded-full bg-white/5" />;
+  if (!profile) return <div aria-hidden className="h-[34px] w-[34px] rounded-full bg-fg/5" />;
 
   const close = (returnFocus = false) => {
     setOpen(false);
@@ -232,7 +232,7 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
           }}
           className="absolute right-0 top-11 z-40 w-44 overflow-hidden rounded-xl border border-edge bg-panel-2 py-1 shadow-xl"
         >
-          <div className="border-b border-edge/60 px-3 py-2 text-xs text-zinc-500">@{profile.username}</div>
+          <div className="border-b border-edge/60 px-3 py-2 text-xs text-fg-faint">@{profile.username}</div>
           {items.map((it, i) => (
             <Fragment key={it.label}>
               {i === dividerAt && <div role="separator" className="my-1 border-t border-edge/60" />}
@@ -243,8 +243,8 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
                 role="menuitem"
                 tabIndex={-1}
                 onClick={it.onSelect}
-                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 focus:bg-white/10 focus:outline-none ${
-                  it.danger ? "text-zinc-400 hover:text-dean" : "text-zinc-300"
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-fg/5 focus:bg-fg/10 focus:outline-none ${
+                  it.danger ? "text-fg-muted hover:text-dean" : "text-fg-muted"
                 }`}
               >
                 <span>{it.label}</span>
@@ -326,9 +326,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 onClick={() => navigate("/me")}
                 className="hidden items-center gap-2 rounded-full border border-edge bg-panel px-3 py-1.5 sm:flex"
               >
-                <span className="text-xs text-zinc-500">Marathon</span>
+                <span className="text-xs text-fg-faint">Marathon</span>
                 <span className="font-display text-sm font-black text-gold">{fmtHours(stats.hoursListened)}</span>
-                <span className="text-xs text-zinc-600">/ {fmtHours(stats.totalRuntimeHours)}</span>
+                <span className="text-xs text-fg-faint">/ {fmtHours(stats.totalRuntimeHours)}</span>
               </button>
             )}
             {session ? (
@@ -348,12 +348,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
 
-      <footer className="mt-16 border-t border-edge/60 py-8 text-center text-xs text-zinc-600">
+      <footer className="mt-16 border-t border-edge/60 py-8 text-center text-xs text-fg-faint">
         <p>
-          <span className="font-display font-black text-zinc-400">DeanDB</span> · track your discography
+          <span className="font-display font-black text-fg-muted">DeanDB</span> · track your discography
           marathon, share it with friends. Keep spinning. 🎧
         </p>
-        <p className="mt-1 text-zinc-700">© 2026 Kevin Hamby · All rights reserved.</p>
+        <p className="mt-1 text-fg-faint">© 2026 Kevin Hamby · All rights reserved.</p>
       </footer>
     </div>
   );

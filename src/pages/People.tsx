@@ -33,12 +33,12 @@ export function People() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name or @username…"
-          className="w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
+          className="w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
         />
         <div className="mt-3 space-y-2">
-          {loading && <p className="text-sm text-zinc-500">Searching…</p>}
+          {loading && <p className="text-sm text-fg-faint">Searching…</p>}
           {!loading && q.trim().length >= 2 && results.length === 0 && (
-            <p className="text-sm text-zinc-500">No one matches “{q}”.</p>
+            <p className="text-sm text-fg-faint">No one matches “{q}”.</p>
           )}
           {results.map((p) => (
             <PersonRow key={p.profile.id} person={p} onChanged={loadGraph} />
@@ -52,9 +52,9 @@ export function People() {
           <div className="space-y-2">
             {requests.map((p) => (
               <Panel key={p.profile.id} className="flex items-center justify-between gap-3 p-3">
-                <span className="font-display font-black text-white">
+                <span className="font-display font-black text-fg">
                   {p.profile.displayName}{" "}
-                  <span className="text-xs font-normal text-zinc-500">@{p.profile.username}</span>
+                  <span className="text-xs font-normal text-fg-faint">@{p.profile.username}</span>
                 </span>
                 <button
                   onClick={() => accept(p.profile.id)}

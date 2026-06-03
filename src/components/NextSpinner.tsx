@@ -165,7 +165,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
           <div className="flex animate-pop flex-col items-center gap-3">
             <div className="text-center">
               <div className="text-xs font-semibold uppercase tracking-wide text-gold">🎉 Up next</div>
-              <div className="font-display text-2xl font-black text-white">{picked.name}</div>
+              <div className="font-display text-2xl font-black text-fg">{picked.name}</div>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
@@ -184,7 +184,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-fg-muted">
               {spinning
                 ? "Finding your next artist…"
                 : `${eligible.length} artist${eligible.length === 1 ? "" : "s"} waiting — let the wheel choose one at random.`}
@@ -200,14 +200,14 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
         )}
 
         {inProgress.length > 0 && (
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-fg-faint">
             In progress:{" "}
             {inProgress.slice(0, 3).map((a, i) => (
               <span key={a.id}>
                 {i > 0 && ", "}
                 <button
                   onClick={() => navigate(`${basePath}/artist/${a.id}`)}
-                  className="font-semibold text-zinc-300 hover:text-gold"
+                  className="font-semibold text-fg-muted hover:text-gold"
                 >
                   {a.name}
                 </button>

@@ -54,10 +54,10 @@ export function Menu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white"
+        className="inline-flex items-center gap-1 rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg"
       >
         {label}
-        <span aria-hidden className="text-[10px] text-zinc-500">▾</span>
+        <span aria-hidden className="text-[10px] text-fg-faint">▾</span>
       </button>
       {open && (
         <div
@@ -81,7 +81,7 @@ export function Menu({
               className={`block w-full px-3 py-2 text-left text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-40 ${
                 a.danger
                   ? "text-red-400 hover:bg-red-500/10"
-                  : "text-zinc-200 hover:bg-white/5 hover:text-white"
+                  : "text-fg-muted hover:bg-fg/5 hover:text-fg"
               }`}
             >
               {a.label}

@@ -72,7 +72,7 @@ export function AlbumDetail({
   if (!artist || !album) {
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-400">Album not found.</p>
+        <p className="text-fg-muted">Album not found.</p>
         <button onClick={() => navigate(basePath || "/")} className="mt-4 text-gold hover:underline">
           ← Back
         </button>
@@ -94,7 +94,7 @@ export function AlbumDetail({
         />
       )}
 
-      <button onClick={() => navigate(`${basePath}/artist/${artistId}`)} className="mb-4 text-sm text-zinc-500 hover:text-gold">
+      <button onClick={() => navigate(`${basePath}/artist/${artistId}`)} className="mb-4 text-sm text-fg-faint hover:text-gold">
         ← {artist.name}
       </button>
 
@@ -154,14 +154,14 @@ export function AlbumDetail({
 
       {/* Actions */}
       <div className="mt-5 flex items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-black text-white">
+        <h2 className="font-display text-xl font-black text-fg">
           {album.review ? `${data.listener.meterName}'s Review` : "The Verdict"}
         </h2>
         <div className="flex items-center gap-2">
           {user && (
             <button
               onClick={() => setRecommending(true)}
-              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-gold"
+              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-gold"
               title="Recommend this to a friend"
             >
               ✉️ Recommend
@@ -171,7 +171,7 @@ export function AlbumDetail({
             <button
               onClick={() => setEditing((e) => !e)}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
-                editing ? "bg-gold text-black" : "border border-edge text-zinc-300 hover:text-white"
+                editing ? "bg-gold text-black" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
               {editing ? "Done" : "✎ Edit"}
@@ -198,7 +198,7 @@ export function AlbumDetail({
                     })
                   }
                   className={`rounded-lg px-3 py-1.5 text-sm font-semibold capitalize ${
-                    album.status === s ? "bg-gold text-black" : "border border-edge text-zinc-300"
+                    album.status === s ? "bg-gold text-black" : "border border-edge text-fg-muted"
                   }`}
                 >
                   {s}
@@ -207,7 +207,7 @@ export function AlbumDetail({
               <button
                 onClick={() => patchAlbum({ favorite: !album.favorite })}
                 className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
-                  album.favorite ? "bg-gold text-black" : "border border-edge text-zinc-300"
+                  album.favorite ? "bg-gold text-black" : "border border-edge text-fg-muted"
                 }`}
               >
                 ⭐ Favorite
@@ -215,7 +215,7 @@ export function AlbumDetail({
             </div>
 
             <div>
-              <label className="text-sm font-semibold uppercase tracking-wide text-zinc-500 sm:text-xs">
+              <label className="text-sm font-semibold uppercase tracking-wide text-fg-faint sm:text-xs">
                 {data.listener.meterName} Meter: <span className="text-gold">{album.rating?.toFixed(1) ?? "—"}</span>
               </label>
               <input
@@ -230,14 +230,14 @@ export function AlbumDetail({
             </div>
 
             <div className="flex flex-wrap gap-4">
-              <label className="text-sm text-zinc-400">
+              <label className="text-sm text-fg-muted">
                 Minutes
                 <input
                   type="number"
                   min={0}
                   value={album.minutes}
                   onChange={(e) => patchAlbum({ minutes: Number(e.target.value) })}
-                  className="ml-2 w-20 rounded-md border border-edge bg-panel-2 px-2 py-1 text-white"
+                  className="ml-2 w-20 rounded-md border border-edge bg-panel-2 px-2 py-1 text-fg"
                 />
               </label>
             </div>
@@ -247,25 +247,25 @@ export function AlbumDetail({
               onChange={(e) => patchAlbum({ review: e.target.value })}
               placeholder="What's the verdict?"
               rows={4}
-              className="w-full rounded-xl border border-edge bg-panel-2 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
+              className="w-full rounded-xl border border-edge bg-panel-2 p-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
             />
           </div>
         ) : album.review ? (
-          <p className="whitespace-pre-wrap leading-relaxed text-zinc-300">“{album.review}”</p>
+          <p className="whitespace-pre-wrap leading-relaxed text-fg-muted">“{album.review}”</p>
         ) : (
-          <p className="italic text-zinc-500">No review yet.</p>
+          <p className="italic text-fg-faint">No review yet.</p>
         )}
       </Panel>
 
       {/* Tracklist */}
       {(album.tracks.length > 0 || editing) && (
         <div className="mt-8">
-          <h2 className="mb-3 font-display text-xl font-black text-white">Track Ratings</h2>
+          <h2 className="mb-3 font-display text-xl font-black text-fg">Track Ratings</h2>
           <Panel className="divide-y divide-edge/60">
             {album.tracks.map((t, i) => (
               <div key={t.id} className="flex items-center gap-3 p-3">
-                <span className="w-6 text-right font-display text-sm text-zinc-600">{i + 1}</span>
-                <span className="flex-1 truncate text-sm text-white">{t.title}</span>
+                <span className="w-6 text-right font-display text-sm text-fg-faint">{i + 1}</span>
+                <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
                 {editing ? (
                   <button
                     onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
@@ -281,7 +281,7 @@ export function AlbumDetail({
               </div>
             ))}
             {album.tracks.length === 0 && (
-              <p className="p-4 text-sm italic text-zinc-500">No tracks added yet.</p>
+              <p className="p-4 text-sm italic text-fg-faint">No tracks added yet.</p>
             )}
           </Panel>
         </div>

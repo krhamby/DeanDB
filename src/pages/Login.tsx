@@ -7,7 +7,7 @@ import { Panel } from "../components/ui";
 type Mode = "signin" | "signup" | "forgot" | "mfa" | "setpw" | "confirm";
 
 const inputCls =
-  "w-full rounded-xl border border-edge bg-panel-2 px-4 py-2.5 text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+  "w-full rounded-xl border border-edge bg-panel-2 px-4 py-2.5 text-fg outline-none placeholder:text-fg-faint focus:border-gold/50";
 
 export function Login() {
   const { session, mfaPending, passwordRecovery, signIn, signUp, verifyMfa, requestPasswordReset, updatePassword } =
@@ -54,7 +54,7 @@ export function Login() {
   if (session && !mfaPending && !passwordRecovery) {
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-300">You&apos;re signed in. 🎧</p>
+        <p className="text-fg-muted">You&apos;re signed in. 🎧</p>
         <button onClick={() => navigate("/me")} className="mt-4 text-gold hover:underline">
           Go to my journey →
         </button>
@@ -166,16 +166,16 @@ export function Login() {
       <Panel className="space-y-4 p-8">
         <div className="text-center">
           <div className="text-5xl">🎧</div>
-          <h1 className="mt-2 font-display text-2xl font-black text-white">{title}</h1>
+          <h1 className="mt-2 font-display text-2xl font-black text-fg">{title}</h1>
         </div>
 
         {mode === "confirm" ? (
-          <p className="text-center text-sm text-zinc-300">
+          <p className="text-center text-sm text-fg-muted">
             Check <span className="text-gold">{email}</span> to confirm your account, then come back and sign in.
           </p>
         ) : mode === "mfa" ? (
           <>
-            <p className="text-center text-sm text-zinc-400">Enter the 6-digit code from your authenticator app.</p>
+            <p className="text-center text-sm text-fg-muted">Enter the 6-digit code from your authenticator app.</p>
             <input
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -226,7 +226,7 @@ export function Login() {
           </>
         ) : mode === "forgot" ? (
           <>
-            <p className="text-center text-sm text-zinc-400">
+            <p className="text-center text-sm text-fg-muted">
               Enter your email and we&apos;ll send a link to set a new password.
             </p>
             <input
@@ -250,7 +250,7 @@ export function Login() {
                 reset();
                 setMode("signin");
               }}
-              className="block w-full text-center text-sm text-zinc-400 hover:text-white"
+              className="block w-full text-center text-sm text-fg-muted hover:text-fg"
             >
               ← Back to sign in
             </button>
@@ -310,14 +310,14 @@ export function Login() {
                     reset();
                     setMode("forgot");
                   }}
-                  className="text-zinc-400 hover:text-white"
+                  className="text-fg-muted hover:text-fg"
                 >
                   Forgot password?
                 </button>
               )}
             </div>
             {mode === "signin" && (
-              <p className="text-center text-xs text-zinc-500">
+              <p className="text-center text-xs text-fg-faint">
                 Used a magic link before?{" "}
                 <button
                   onClick={() => {

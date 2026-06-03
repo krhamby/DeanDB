@@ -20,7 +20,7 @@ export function ArtistDetail({
   if (!artist) {
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-400">Artist not found.</p>
+        <p className="text-fg-muted">Artist not found.</p>
         <button onClick={() => navigate(`${basePath}/artists`)} className="mt-4 text-gold hover:underline">
           ← Back to artists
         </button>
@@ -36,7 +36,7 @@ export function ArtistDetail({
 
   return (
     <div>
-      <button onClick={() => navigate(`${basePath}/artists`)} className="mb-4 text-sm text-zinc-500 hover:text-gold">
+      <button onClick={() => navigate(`${basePath}/artists`)} className="mb-4 text-sm text-fg-faint hover:text-gold">
         ← All artists
       </button>
 
@@ -83,27 +83,27 @@ export function ArtistDetail({
       <Panel className="-mt-6 mx-2 flex items-center gap-6 p-5">
         <div>
           <div className="font-display text-3xl font-black text-gold">{Math.round(pct)}%</div>
-          <div className="text-xs text-zinc-500">discography</div>
+          <div className="text-xs text-fg-faint">discography</div>
         </div>
         <div className="flex-1">
           <div className="mb-1.5 flex justify-between text-sm">
-            <span className="text-zinc-400">
+            <span className="text-fg-muted">
               {completed} of {tracked.length} albums completed
             </span>
-            <span className="text-zinc-500">{tracked.length} tracked</span>
+            <span className="text-fg-faint">{tracked.length} tracked</span>
           </div>
           <ProgressBar pct={pct} className="h-2.5" />
         </div>
         {artist.verdict != null && (
           <div className="flex flex-col items-center gap-1 border-l border-edge/60 pl-6">
             <DeanMeter value={artist.verdict} size={52} />
-            <div className="text-xs text-zinc-500">verdict</div>
+            <div className="text-xs text-fg-faint">verdict</div>
           </div>
         )}
       </Panel>
 
       {artist.verdict != null && artist.verdictNote && (
-        <p className="mx-2 mt-3 text-sm italic text-zinc-400">“{artist.verdictNote}”</p>
+        <p className="mx-2 mt-3 text-sm italic text-fg-muted">“{artist.verdictNote}”</p>
       )}
 
       <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4">
