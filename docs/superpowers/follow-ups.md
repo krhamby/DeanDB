@@ -32,3 +32,4 @@ phases they came from; parked here so they aren't lost.
   preview to keep the dev console clean.
 - [ ] **Midnight contrast pass** when the in-app skin toggle ships (Phase 4): re-audit the dark skin once it's
   user-reachable (today Paper is the default and Midnight is dev/localStorage-only).
+- [ ] **More share artifacts:** "Season Wrapped" (calendar-year recap) card and a Hall-of-Fame poster, plus OG link-unfurl previews (needs a Supabase Edge Function — Phase 5). Phase 3c shipped only the Verdict card.

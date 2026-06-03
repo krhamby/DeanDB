@@ -8,6 +8,7 @@ import { sampleJourney } from "../lib/__fixtures__/sampleJourney";
 import { Dashboard } from "./Dashboard";
 import type { DeanDBData } from "../types";
 import { NextSpinner } from "../components/NextSpinner";
+import { VerdictCard } from "../components/ShareCard";
 import { AlbumDetail } from "./AlbumDetail";
 import { ArtistDetail } from "./ArtistDetail";
 import { HallOfFame } from "./HallOfFame";
@@ -99,6 +100,18 @@ export function Preview() {
       {/* ── Marathon Wheel ── */}
       <Section label="The Marathon Wheel">
         <NextSpinner artists={sampleJourney.artists} basePath="/__preview" />
+      </Section>
+
+      {/* ── Share card — Verdict ── */}
+      <Section label="Share card — Verdict">
+        <VerdictCard
+          title="Blonde"
+          artist="Frank Ocean"
+          rating={10}
+          review="A masterpiece of modern R&B that refuses easy categorisation — alien and warm at once."
+          cover={["#5a2bd0", "#b1244a"]}
+          meterName="Dean"
+        />
       </Section>
 
       {/* ── Album / Verdict ── */}
