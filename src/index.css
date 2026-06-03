@@ -9,8 +9,47 @@
   --color-gold: #f5c518;
   --color-gold-soft: #ffe082;
   --color-dean: #ff5a3c;
+  --color-fg: #241c14;        /* primary text (Paper default) */
+  --color-fg-muted: #6f6353;  /* secondary text */
+  --color-fg-faint: #8a7c68;  /* tertiary text / hints */
+  --color-surface: #f1e8d8;   /* base page surface */
   --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
   --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* ── Skins: Paper (default) + Midnight. Override the @theme tokens per skin so
+   every token-driven utility (bg-panel, text-gold, text-fg…) reskins for free. */
+:root, [data-skin="paper"] {
+  --color-ink: #f1e8d8;
+  --color-panel: #fcf7ec;
+  --color-panel-2: #f6efe1;
+  --color-edge: #e2d5bf;
+  --color-fg: #241c14;
+  --color-fg-muted: #6f6353;
+  --color-fg-faint: #8a7c68;
+  --color-surface: #f1e8d8;
+  --app-bg:
+    radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-gold) 14%, transparent), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 10%, transparent), transparent 55%),
+    var(--color-surface);
+  --scrollbar-track: #e7dcc7;
+  --scrollbar-thumb: #cdbfa4;
+}
+[data-skin="midnight"] {
+  --color-ink: #0a0a0b;
+  --color-panel: #15151a;
+  --color-panel-2: #1d1d24;
+  --color-edge: #2a2a33;
+  --color-fg: #e9e9ee;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-faint: #71717a;
+  --color-surface: #15151a;
+  --app-bg:
+    radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-gold) 8%, transparent), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 7%, transparent), transparent 55%),
+    var(--color-surface);
+  --scrollbar-track: var(--color-ink);
+  --scrollbar-thumb: var(--color-edge);
 }
 
 html {
@@ -28,11 +67,8 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-gold) 8%, transparent), transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 7%, transparent), transparent 55%),
-    var(--color-ink);
-  color: #e9e9ee;
+  background: var(--app-bg);
+  color: var(--color-fg);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
@@ -66,6 +102,6 @@ body {
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--color-ink); }
-::-webkit-scrollbar-thumb { background: var(--color-edge); border-radius: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3a45; }
