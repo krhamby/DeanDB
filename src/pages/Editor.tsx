@@ -28,6 +28,10 @@ const PALETTE: [string, string][] = [
 const pick = (): [string, string] => PALETTE[Math.floor(Math.random() * PALETTE.length)];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** An album the listener hasn't engaged with yet — safe to auto-prune on import. */
+const isPristine = (al: Album) =>
+  al.status === "want" && al.rating == null && !al.review && !al.favorite && !al.excluded && !al.dateListened;
+
 const inputCls =
   "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
 
@@ -310,21 +314,42 @@ export function Editor() {
       return;
     }
     let done = 0;
+    let pulled = 0;
+    const trackless: string[] = [];
     for (const al of todo) {
       setBulkTracks((s) => ({ ...s, [artist.id]: `Loading tracklists… ${done}/${todo.length}` }));
+      let gotTracks = false;
       try {
         const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
         if (mbid) {
           const tl = await fetchTracklist(mbid);
-          if (tl.titles.length) await applyTracks(artist.id, al, tl.titles, tl.runtimeMin);
+          if (tl.titles.length) {
+            await applyTracks(artist.id, al, tl.titles, tl.runtimeMin);
+            gotTracks = true;
+            pulled++;
+          }
         }
       } catch {
         /* skip */
       }
+      // No MusicBrainz tracklist → treat as a non-album and drop it from the
+      // journey, but only when untouched (never delete rated/owned work).
+      if (!gotTracks && isPristine(al)) trackless.push(al.id);
       done++;
       await sleep(300);
     }
-    setBulkTracks((s) => ({ ...s, [artist.id]: `✓ Pulled tracklists for ${todo.length} album(s).` }));
+    if (trackless.length) {
+      await Promise.all(
+        trackless.map((id) => api.removeUserAlbum(uid, id).catch((e) => console.error("prune trackless album failed", e))),
+      );
+      patchLocal((d) => {
+        const a = d.artists.find((x) => x.id === artist.id);
+        if (a) a.albums = a.albums.filter((al) => !trackless.includes(al.id));
+        return d;
+      });
+    }
+    const removed = trackless.length ? `, removed ${trackless.length} without tracks` : "";
+    setBulkTracks((s) => ({ ...s, [artist.id]: `✓ Pulled tracklists for ${pulled} album(s)${removed}.` }));
   };
 
   // ── Refresh genre / country / catalog size from MusicBrainz ──
