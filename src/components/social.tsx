@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PersonResult, Profile } from "../types";
-import { navigate } from "../lib/router";
+import { navigate, profilePath } from "../lib/router";
 import { useAuth } from "../lib/store";
 import * as api from "../lib/api";
 import { Panel } from "./ui";
@@ -67,7 +67,7 @@ export function PersonRow({
   return (
     <Panel className="flex items-center gap-3 p-3">
       <button
-        onClick={() => navigate(`/u/${person.profile.username}`)}
+        onClick={() => navigate(profilePath(person.profile.username))}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
         <Avatar profile={person.profile} />

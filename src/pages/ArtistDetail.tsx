@@ -1,6 +1,6 @@
 import { artistProgress } from "../lib/stats";
 import { gradient } from "../lib/format";
-import { navigate } from "../lib/router";
+import { navigate, profilePath } from "../lib/router";
 import { AlbumCard } from "../components/cards";
 import { Avatar } from "../components/social";
 import { DeanMeter, LoggedBadge, Panel, ProgressBar } from "../components/ui";
@@ -58,7 +58,7 @@ export function ArtistDetail({
               <span className="text-white/60">Recommended by</span>
               {artist.recommendedBy.username ? (
                 <button
-                  onClick={() => navigate(`/u/${artist.recommendedBy!.username}`)}
+                  onClick={() => navigate(profilePath(artist.recommendedBy!.username!))}
                   className="inline-flex items-center gap-1.5 font-semibold text-white hover:underline"
                 >
                   <Avatar

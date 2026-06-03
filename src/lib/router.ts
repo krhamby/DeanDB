@@ -35,6 +35,20 @@ export function navigate(path: string) {
   window.location.hash = path.startsWith("#") ? path : `#${path}`;
 }
 
+/** Build a link-safe path to a user's journey, e.g. "The Dean" -> "/u/The%20Dean". */
+export function profilePath(username: string): string {
+  return `/u/${encodeURIComponent(username)}`;
+}
+
+/** decodeURIComponent that won't throw on a malformed segment (lone "%", etc.). */
+function safeDecode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 /** Parse "#/album/radiohead/rh-okc" -> ["album", "radiohead", "rh-okc"] */
 export function parseRoute(hash: string): string[] {
   return hash.replace(/^#\/?/, "").split("/").filter(Boolean);
@@ -52,5 +66,7 @@ export interface UserRoute {
  */
 export function parseUserRoute(segments: string[]): UserRoute | null {
   if (segments[0] !== "u" || !segments[1]) return null;
-  return { username: segments[1], rest: segments.slice(2) };
+  // Decode so a handle with reserved chars (e.g. "The%20Dean" -> "The Dean")
+  // matches the stored username on lookup.
+  return { username: safeDecode(segments[1]), rest: segments.slice(2) };
 }

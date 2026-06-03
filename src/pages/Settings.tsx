@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth, useThemeControl } from "../lib/store";
-import { navigate } from "../lib/router";
+import { navigate, profilePath } from "../lib/router";
 import { firstWord } from "../lib/format";
 import { DEFAULT_THEME, PRESETS, SURFACE, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
@@ -8,6 +8,19 @@ import type { Visibility } from "../types";
 
 const inputCls =
   "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-white/40";
+
+// Usernames are the shareable handle (in the URL), so keep them link-safe:
+// letters, numbers and underscores only — matching the signup trigger's set.
+const USERNAME_MAX = 24;
+const sanitizeUsername = (v: string) => v.replace(/[^A-Za-z0-9_]/g, "").slice(0, USERNAME_MAX);
+function validateUsername(name: string): string | null {
+  const u = name.trim();
+  if (!u) return "Username is required.";
+  if (u.length > USERNAME_MAX) return `Username must be ${USERNAME_MAX} characters or fewer.`;
+  if (!/^[A-Za-z0-9_]+$/.test(u))
+    return "Username can only contain letters, numbers and underscores (no spaces).";
+  return null;
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -54,6 +67,11 @@ export function Settings() {
   if (!profile) return null;
 
   const save = async () => {
+    const usernameError = validateUsername(form.username);
+    if (usernameError) {
+      setMsg({ ok: false, text: usernameError });
+      return;
+    }
     setSaving(true);
     setMsg(null);
     const res = await updateProfile({
@@ -74,7 +92,7 @@ export function Settings() {
     setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.error ?? "Save failed." });
   };
 
-  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}#/u/${form.username}`;
+  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}#${profilePath(form.username)}`;
   const share = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -101,7 +119,16 @@ export function Settings() {
       <Panel className="space-y-4 p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Username (your link)">
-            <input className={inputCls} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+            <input
+              className={inputCls}
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: sanitizeUsername(e.target.value) })}
+              maxLength={USERNAME_MAX}
+              placeholder="e.g. thedean"
+            />
+            <span className="text-[11px] font-normal normal-case tracking-normal text-zinc-500">
+              Letters, numbers and underscores — no spaces.
+            </span>
           </Field>
           <Field label="Display name">
             <input className={inputCls} value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />

@@ -16,9 +16,32 @@ export function Cover({
   colors: [string, string];
   title: string;
   coverUrl?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
 }) {
-  const dim = size === "lg" ? 220 : size === "sm" ? 96 : 150;
+  const dim = size === "lg" ? 220 : size === "sm" ? 96 : size === "xs" ? 44 : 150;
+
+  // Compact thumbnail (e.g. an editor row): real art when present, else a clean
+  // gradient swatch. The vinyl + title overlay would be illegible this small.
+  if (size === "xs") {
+    return (
+      <div
+        className="relative shrink-0 overflow-hidden rounded-md shadow"
+        style={{ background: gradient(colors), width: dim, height: dim }}
+      >
+        {coverUrl && (
+          <img
+            src={coverUrl}
+            alt={title}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   // Real cover art (e.g. Cover Art Archive) when we have it — no CORS needed
   // for <img> display. The gradient stays as the backdrop while it loads.

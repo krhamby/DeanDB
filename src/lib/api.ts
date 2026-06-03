@@ -387,9 +387,11 @@ export async function removeCatalogTrack(trackId: string): Promise<void> {
 // ════════════════════════════════════════════════════════════════
 
 export async function addUserArtist(userId: string, artistId: string, color: [string, string]): Promise<void> {
+  // Insert-only (ON CONFLICT DO NOTHING): re-importing an artist must not reset
+  // an existing row's color/logged/verdict/recommender. New artists insert normally.
   const { error } = await requireClient()
     .from("user_artists")
-    .upsert({ user_id: userId, artist_id: artistId, color }, { onConflict: "user_id,artist_id" });
+    .upsert({ user_id: userId, artist_id: artistId, color }, { onConflict: "user_id,artist_id", ignoreDuplicates: true });
   if (error) throw error;
 }
 
@@ -441,7 +443,7 @@ export interface UserAlbumPatch {
   excluded?: boolean;
 }
 
-export async function upsertUserAlbum(userId: string, albumId: string, patch: UserAlbumPatch): Promise<void> {
+function userAlbumRow(userId: string, albumId: string, patch: UserAlbumPatch): Record<string, unknown> {
   const row: Record<string, unknown> = { user_id: userId, album_id: albumId };
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.rating !== undefined) row.rating = patch.rating;
@@ -450,7 +452,26 @@ export async function upsertUserAlbum(userId: string, albumId: string, patch: Us
   if (patch.dateListened !== undefined) row.date_listened = patch.dateListened;
   if (patch.favorite !== undefined) row.favorite = patch.favorite;
   if (patch.excluded !== undefined) row.excluded = patch.excluded;
-  const { error } = await requireClient().from("user_albums").upsert(row, { onConflict: "user_id,album_id" });
+  return row;
+}
+
+export async function upsertUserAlbum(userId: string, albumId: string, patch: UserAlbumPatch): Promise<void> {
+  const { error } = await requireClient()
+    .from("user_albums")
+    .upsert(userAlbumRow(userId, albumId, patch), { onConflict: "user_id,album_id" });
+  if (error) throw error;
+}
+
+/**
+ * Insert a user_albums row only when the listener doesn't already have it
+ * (ON CONFLICT DO NOTHING). Used by import so re-importing an artist adds missing
+ * albums without touching the status/rating/review/minutes on ones they already
+ * track. Unlike upsertUserAlbum this never updates an existing row.
+ */
+export async function addUserAlbumIfMissing(userId: string, albumId: string, patch: UserAlbumPatch): Promise<void> {
+  const { error } = await requireClient()
+    .from("user_albums")
+    .upsert(userAlbumRow(userId, albumId, patch), { onConflict: "user_id,album_id", ignoreDuplicates: true });
   if (error) throw error;
 }
 
@@ -535,7 +556,9 @@ export async function importArtistFromMatch(
       coverUrl: al.coverUrl,
       runtimeMin: 40,
     });
-    await upsertUserAlbum(userId, albumId, { status: "want", minutes: 40 });
+    // Insert-only so a re-import leaves albums the listener already tracks
+    // (and their ratings/status/minutes) untouched — it only adds new ones.
+    await addUserAlbumIfMissing(userId, albumId, { status: "want", minutes: 40 });
   }
   return artistId;
 }
