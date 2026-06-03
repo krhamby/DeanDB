@@ -156,7 +156,12 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
     if (open) itemRefs.current[0]?.focus();
   }, [open]);
 
-  if (!profile) return null;
+  // Reserve the avatar's 34px footprint while the profile loads. `session`
+  // resolves before `profile`, so without this the right cluster is momentarily
+  // empty, the width-measured nav fits one extra item, paints, then collapses
+  // when the avatar arrives — the load-time flash. A same-size placeholder keeps
+  // the measured width constant from first paint.
+  if (!profile) return <div aria-hidden className="h-[34px] w-[34px] rounded-full bg-white/5" />;
 
   const close = (returnFocus = false) => {
     setOpen(false);
