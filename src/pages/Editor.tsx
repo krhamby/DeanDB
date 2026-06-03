@@ -277,7 +277,31 @@ export function Editor() {
       }
       return d;
     });
-    if (runtimeMin > 0) setAlbum(al.id, { minutes: runtimeMin });
+    if (runtimeMin > 0) {
+      // Persist to BOTH layers: the per-user row (my view) and the shared catalog
+      // (every viewer's view + durable across re-imports).
+      setAlbum(al.id, { minutes: runtimeMin });
+      await api.setCatalogAlbumRuntime(al.id, runtimeMin).catch((e) => console.error("save runtime failed", e));
+    }
+  };
+
+  // ── Backfill runtime ONLY (album already has tracks) ──
+  // Re-fetching a tracklist would replace catalog tracks with new ids and orphan
+  // their song ratings, so for already-tracked albums we pull the tracklist purely
+  // to read its runtime and write that to both layers — tracks are left intact.
+  const loadRuntimeOnly = async (artist: Artist, al: Album): Promise<boolean> => {
+    const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
+    if (!mbid) return false;
+    const tl = await fetchTracklist(mbid);
+    if (tl.runtimeMin <= 0) return false;
+    patchLocal((d) => {
+      const album = d.artists.find((a) => a.id === artist.id)?.albums.find((x) => x.id === al.id);
+      if (album) album.minutes = tl.runtimeMin;
+      return d;
+    });
+    setAlbum(al.id, { minutes: tl.runtimeMin });
+    await api.setCatalogAlbumRuntime(al.id, tl.runtimeMin).catch((e) => console.error("save runtime failed", e));
+    return true;
   };
 
   const fetchTracks = async (artist: Artist, al: Album) => {
@@ -295,16 +319,24 @@ export function Editor() {
   };
 
   const loadAllTracks = async (artist: Artist) => {
-    const todo = artist.albums.filter((a) => a.tracks.length === 0);
-    if (todo.length === 0) {
-      setBulkTracks((s) => ({ ...s, [artist.id]: "Every album already has tracks." }));
+    const needTracks = artist.albums.filter((a) => a.tracks.length === 0);
+    // Already-tracked albums with no runtime yet (the post-placeholder-migration
+    // state): backfill runtime ONLY, leaving the tracklist (and its song ratings)
+    // intact. Without this they'd be skipped forever by the tracks-only filter.
+    const needRuntime = artist.albums.filter((a) => a.tracks.length > 0 && a.minutes === 0);
+    const total = needTracks.length + needRuntime.length;
+    if (total === 0) {
+      setBulkTracks((s) => ({ ...s, [artist.id]: "Every album already has tracks and runtimes." }));
       return;
     }
     let done = 0;
     let pulled = 0;
+    let filled = 0;
     const trackless: string[] = [];
-    for (const al of todo) {
-      setBulkTracks((s) => ({ ...s, [artist.id]: `Loading tracklists… ${done}/${todo.length}` }));
+    const tick = () => setBulkTracks((s) => ({ ...s, [artist.id]: `Loading tracklists… ${done}/${total}` }));
+
+    for (const al of needTracks) {
+      tick();
       let gotTracks = false;
       try {
         const mbid = al.mbid ?? (await findAlbumCover(artist.name, al.title))?.mbid ?? null;
@@ -325,6 +357,18 @@ export function Editor() {
       done++;
       await sleep(300);
     }
+
+    for (const al of needRuntime) {
+      tick();
+      try {
+        if (await loadRuntimeOnly(artist, al)) filled++;
+      } catch {
+        /* skip — leave runtime unknown */
+      }
+      done++;
+      await sleep(300);
+    }
+
     if (trackless.length) {
       await Promise.all(
         trackless.map((id) => api.removeUserAlbum(uid, id).catch((e) => console.error("prune trackless album failed", e))),
@@ -335,8 +379,10 @@ export function Editor() {
         return d;
       });
     }
-    const removed = trackless.length ? `, removed ${trackless.length} without tracks` : "";
-    setBulkTracks((s) => ({ ...s, [artist.id]: `✓ Pulled tracklists for ${pulled} album(s)${removed}.` }));
+    const parts = [`✓ Pulled tracklists for ${pulled} album(s)`];
+    if (filled) parts.push(`backfilled runtime for ${filled}`);
+    if (trackless.length) parts.push(`removed ${trackless.length} without tracks`);
+    setBulkTracks((s) => ({ ...s, [artist.id]: `${parts.join(", ")}.` }));
   };
 
   // ── Refresh genre / country / catalog size from MusicBrainz ──

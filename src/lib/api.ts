@@ -494,6 +494,22 @@ export async function setCatalogTracks(albumId: string, titles: string[]): Promi
   return (data as string[]) ?? [];
 }
 
+/**
+ * Write a real (>0) runtime to the SHARED catalog album row. Runtime is an
+ * album-level fact: persisting it here (not just to the per-user layer) means it
+ * surfaces for the owner AND every viewer via the `cat.runtime_min` fallback in
+ * journey reassembly. A 0/unknown value is a no-op server-side (never clobbers a
+ * known runtime). Leaves tracks/cover untouched, so song ratings are safe.
+ */
+export async function setCatalogAlbumRuntime(albumId: string, runtimeMin: number): Promise<void> {
+  if (!(runtimeMin > 0)) return;
+  const { error } = await requireClient().rpc("set_catalog_album_runtime", {
+    p_album_id: albumId,
+    p_runtime_min: runtimeMin,
+  });
+  if (error) throw error;
+}
+
 export async function addCatalogTrack(albumId: string, title: string): Promise<string> {
   const { data, error } = await requireClient().rpc("add_catalog_track", {
     p_album_id: albumId,

@@ -1,7 +1,7 @@
-import { useAuth, useFeed } from "../lib/store";
+import { useFeed, useMyJourney } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
-import { ACHIEVEMENT_CATALOG } from "../lib/achievements";
+import { ACHIEVEMENT_CATALOG, shouldMaskSecret } from "../lib/achievements";
 import { Cover } from "../components/cards";
 import { DeanMeter, LoggedBadge, Panel, SectionTitle, StatusBadge } from "../components/ui";
 import type { AlbumFeedItem } from "../types";
@@ -16,7 +16,9 @@ function feedVerb(it: AlbumFeedItem): string {
 
 export function Feed() {
   const { items, loading } = useFeed();
-  const { user } = useAuth();
+  // Secret-achievement masking is keyed on the VIEWER's own unlocks, so a secret
+  // someone you follow earned stays masked until you've unlocked it too.
+  const { myUnlockedAchievementIds } = useMyJourney();
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -36,9 +38,9 @@ export function Feed() {
           if (it.kind === "achievement") {
             const meta = ACHIEVEMENT_CATALOG[it.achievementId];
             if (!meta) return null; // unknown/retired id — skip
-            // Secret achievements stay masked to everyone but the earner, even
-            // after unlock, to entice followers to keep listening.
-            const masked = meta.hidden && user?.id !== it.userId;
+            // Masked unless the VIEWER has unlocked this secret themselves (global
+            // rule). Reveals everywhere once you've earned it; teases until then.
+            const masked = shouldMaskSecret(meta, myUnlockedAchievementIds.has(it.achievementId));
             return (
               <Panel key={it.achievementRowId} className="flex items-center gap-3 p-3 sm:gap-4">
                 <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-panel-2 text-3xl sm:h-16 sm:w-16">

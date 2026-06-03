@@ -3,6 +3,7 @@ import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useAuth } from "../lib/store";
 import * as api from "../lib/api";
+import { fetchTracklist, findAlbumCover } from "../lib/musicbrainz";
 import { Cover } from "../components/cards";
 import { DeanMeter, Panel, StatusBadge, Score10 } from "../components/ui";
 import { RecommendModal } from "../components/social";
@@ -29,6 +30,12 @@ export function AlbumDetail({
   const [editing, setEditing] = useState(false);
   const [agg, setAgg] = useState<AlbumAggregate | null>(null);
   const [recommending, setRecommending] = useState(false);
+  // Locally reflect a runtime just fetched via the "Load runtime" affordance. The
+  // write goes to the SHARED catalog (api.setCatalogAlbumRuntime), so it's durable
+  // for every viewer; this state only makes it appear instantly on this page,
+  // which doesn't own the journey data.
+  const [runtimeOverride, setRuntimeOverride] = useState<number | null>(null);
+  const [loadingRuntime, setLoadingRuntime] = useState(false);
 
   const artist = data.artists.find((a) => a.id === artistId);
   const album = artist?.albums.find((a) => a.id === albumId);
@@ -36,6 +43,31 @@ export function AlbumDetail({
   useEffect(() => {
     if (album) api.albumAggregate(album.id).then(setAgg).catch(() => setAgg(null));
   }, [album?.id]);
+
+  // Reset any local override when navigating between albums.
+  useEffect(() => {
+    setRuntimeOverride(null);
+  }, [album?.id]);
+
+  // Fetch a real runtime from MusicBrainz and persist it to the shared catalog so
+  // it shows for the owner and every viewer (and stops blocking the 90-min award).
+  const loadRuntime = async () => {
+    if (!artist || !album) return;
+    setLoadingRuntime(true);
+    try {
+      const mbid = album.mbid ?? (await findAlbumCover(artist.name, album.title))?.mbid ?? null;
+      if (!mbid) return;
+      const tl = await fetchTracklist(mbid);
+      if (tl.runtimeMin > 0) {
+        await api.setCatalogAlbumRuntime(album.id, tl.runtimeMin);
+        setRuntimeOverride(tl.runtimeMin);
+      }
+    } catch {
+      /* leave as "runtime not loaded" */
+    } finally {
+      setLoadingRuntime(false);
+    }
+  };
 
   if (!artist || !album) {
     return (
@@ -85,7 +117,23 @@ export function AlbumDetail({
             <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/80">
               <StatusBadge status={album.status} />
               {album.year && <span>{album.year}</span>}
-              <span>· {album.minutes > 0 ? fmtMinutes(album.minutes) : "runtime not loaded"}</span>
+              {(() => {
+                const shownMinutes = runtimeOverride ?? album.minutes;
+                if (shownMinutes > 0) return <span>· {fmtMinutes(shownMinutes)}</span>;
+                if (loadingRuntime) return <span>· loading runtime…</span>;
+                // Any signed-in user can backfill the shared catalog runtime.
+                return user ? (
+                  <button
+                    onClick={loadRuntime}
+                    className="underline decoration-dotted underline-offset-2 hover:text-gold"
+                    title="Fetch this album's runtime from MusicBrainz"
+                  >
+                    · load runtime
+                  </button>
+                ) : (
+                  <span>· runtime not loaded</span>
+                );
+              })()}
               {album.dateListened && <span>· Finished {fmtDate(album.dateListened)}</span>}
               {album.favorite && <span title="Favorite">⭐</span>}
               {agg && agg.listenerCount > 0 && (

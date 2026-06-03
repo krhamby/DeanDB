@@ -299,6 +299,10 @@ interface MyJourneyValue {
   data: DeanDBData | null;
   loading: boolean;
   userId: string | null;
+  /** Achievement ids the VIEWER (signed-in user) has unlocked — persisted unlocks
+   *  plus freshly-computed ones from their own journey. The single source of truth
+   *  for secret-achievement masking everywhere (own + others' profiles, feed). */
+  myUnlockedAchievementIds: Set<string>;
   /** Reload the journey from the server and return the fresh copy. */
   reload: () => Promise<DeanDBData | null>;
   /** Optimistically mutate the local view (no DB write) — used after bulk ops. */
@@ -326,6 +330,9 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   const userId = profile?.id ?? null;
   const [data, setData] = useState<DeanDBData | null>(null);
   const [loading, setLoading] = useState(false);
+  // The viewer's own unlocked achievement ids (persisted ∪ freshly computed),
+  // exposed for secret-achievement masking. Reactive so masking updates live.
+  const [myUnlocked, setMyUnlocked] = useState<Set<string>>(new Set());
   // Keep the latest data for fire-and-forget writers without re-subscribing.
   const dataRef = useRef<DeanDBData | null>(null);
   dataRef.current = data;
@@ -362,10 +369,19 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
     const d = dataRef.current;
     if (!userId || !d || !recordedRef.current) return;
     const stats = computeStats(d);
-    const fresh = computeAchievements(d, stats)
+    const unlockedNow = computeAchievements(d, stats)
       .filter((a) => a.unlocked)
-      .map((a) => a.id)
-      .filter((id) => !recordedRef.current!.has(id));
+      .map((a) => a.id);
+    // Keep the viewer's unlocked set current with freshly-computed own unlocks so
+    // a secret reveals on the owner's own surfaces immediately, before the DB
+    // roundtrip. Only allocate a new Set when something actually changed.
+    setMyUnlocked((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of unlockedNow) if (!next.has(id)) (next.add(id), (changed = true));
+      return changed ? next : prev;
+    });
+    const fresh = unlockedNow.filter((id) => !recordedRef.current!.has(id));
     if (fresh.length === 0) return;
     fresh.forEach((id) => recordedRef.current!.add(id)); // optimistic — prevents re-fire
     void api.recordAchievementUnlocks(userId, fresh).catch((e) => {
@@ -376,12 +392,14 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) {
       recordedRef.current = null;
+      setMyUnlocked(new Set());
       return;
     }
     let active = true;
     void api.fetchUnlockedAchievementIds(userId).then((ids) => {
       if (!active) return;
       recordedRef.current = new Set(ids);
+      setMyUnlocked((prev) => new Set([...prev, ...ids])); // seed from persisted unlocks
       detectAndRecord(); // backfill already-earned achievements once recorded ids load
     });
     return () => {
@@ -457,8 +475,8 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<MyJourneyValue>(
-    () => ({ data, loading, userId, reload, patchLocal, setAlbum, setTrack, setArtist }),
-    [data, loading, userId, reload, patchLocal, setAlbum, setTrack, setArtist],
+    () => ({ data, loading, userId, myUnlockedAchievementIds: myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist }),
+    [data, loading, userId, myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist],
   );
 
   return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;

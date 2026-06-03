@@ -52,3 +52,14 @@ export function achievementMeta(id: string): AchievementMeta | undefined {
 export function isHiddenAchievement(id: string): boolean {
   return ACHIEVEMENT_CATALOG[id]?.hidden ?? false;
 }
+
+/**
+ * The single global secret-masking rule, applied identically everywhere
+ * (own Dashboard, others' profiles, the feed): a secret achievement stays masked
+ * ("❓ Secret Achievement") unless the CURRENT VIEWER has unlocked it themselves.
+ * Keyed on the viewer — never on the profile owner or the earner — so unlocking
+ * it once reveals it for the viewer wherever it appears.
+ */
+export function shouldMaskSecret(meta: { hidden?: boolean }, viewerUnlocked: boolean): boolean {
+  return Boolean(meta.hidden) && !viewerUnlocked;
+}

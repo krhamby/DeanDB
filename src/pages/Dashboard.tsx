@@ -1,4 +1,6 @@
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
+import { shouldMaskSecret } from "../lib/achievements";
+import { useMyJourney } from "../lib/store";
 import { fmtHours } from "../lib/format";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
@@ -39,6 +41,9 @@ export function Dashboard({
   const stats = computeStats(data);
   const achievements = computeAchievements(data, stats);
   const unlocked = achievements.filter((a) => a.unlocked);
+  // Secret-achievement masking is keyed on whether the VIEWER (not this profile's
+  // owner) has unlocked it — so secrets stay hidden on others' profiles too.
+  const { myUnlockedAchievementIds } = useMyJourney();
 
   const albums = flattenAlbums(data);
   // "Now spinning" is a marathon concept — logged Library artists aren't queued.
@@ -181,7 +186,7 @@ export function Dashboard({
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {achievements.map((a) => {
-            const secret = a.hidden && !a.unlocked;
+            const secret = shouldMaskSecret(a, myUnlockedAchievementIds.has(a.id));
             return (
               <Panel
                 key={a.id}
@@ -193,7 +198,7 @@ export function Dashboard({
                 <div>
                   <div className="font-display font-black text-white">
                     {secret ? "Secret Achievement" : a.title}
-                    {a.hidden && a.unlocked && (
+                    {a.hidden && !secret && (
                       <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide text-gold">
                         ★ secret
                       </span>

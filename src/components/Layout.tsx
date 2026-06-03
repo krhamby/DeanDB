@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { navigate, useHashRoute } from "../lib/router";
 import { useAuth, useMyJourney } from "../lib/store";
 import { computeStats, flattenAlbums } from "../lib/stats";
@@ -6,13 +6,67 @@ import { fmtHours } from "../lib/format";
 import { unreadRecommendationCount } from "../lib/api";
 import { Avatar } from "./social";
 
-// Journey covers all of the signed-in user's own journey routes (its bare
-// shortcuts included), so the tab stays lit while browsing artists/albums.
-const NAV: { path: string; label: string; match?: string[] }[] = [
-  { path: "/me", label: "Journey", match: ["me", "artists", "artist", "album", "hall-of-fame"] },
-  { path: "/discover", label: "Discover" },
-  { path: "/feed", label: "Feed" },
+/** One header destination. Items live in the nav bar when there's room and
+ *  overflow into the profile menu (lowest priority first) when there isn't.
+ *  `match` lists route heads (no leading slash) that also light the tab
+ *  (Journey covers all of the owner's journey routes); `badge: "unread"` shows
+ *  the recommendations unread count. */
+type NavItem = { id: string; label: string; path: string; match?: string[]; badge?: "unread" };
+
+// Priority order = kept in the bar longest (left) → first to overflow (right).
+// Reorder this array to reprioritize. Settings + Sign out are intentionally NOT
+// here — they stay pinned in the profile menu at all times (see UserMenu).
+const NAV_PRIORITY: NavItem[] = [
+  { id: "journey", label: "Journey", path: "/me", match: ["me", "artists", "artist", "album", "hall-of-fame"] },
+  { id: "discover", label: "Discover", path: "/discover" },
+  { id: "feed", label: "Feed", path: "/feed" },
+  { id: "people", label: "People", path: "/people" },
+  { id: "recs", label: "Recs", path: "/recommendations", badge: "unread" },
+  { id: "editor", label: "Editor", path: "/editor" },
 ];
+
+/** A row in the profile dropdown (overflowed nav items + pinned Settings/Sign out). */
+type MenuEntry = { label: string; onSelect: () => void; danger?: boolean; badge?: number };
+
+/**
+ * Greedy, width-measured overflow. A hidden measurement row renders every
+ * candidate at full size; we fit as many as the nav's actual width allows (in
+ * priority order) and report the count. The rest overflow into the profile menu.
+ * Recomputes on width changes (resize, font load) and when the measured row's own
+ * size changes (e.g. the Recs badge appearing).
+ */
+function useOverflowNav(itemCount: number, active: boolean) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(itemCount);
+
+  useLayoutEffect(() => {
+    if (!active) return;
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+    const GAP = 4; // matches the nav's gap-1 (0.25rem)
+    const compute = () => {
+      const avail = container.clientWidth;
+      const kids = Array.from(measure.children) as HTMLElement[];
+      let used = 0;
+      let count = 0;
+      for (let i = 0; i < kids.length; i++) {
+        used += kids[i].offsetWidth + (i > 0 ? GAP : 0);
+        if (used <= avail) count++;
+        else break;
+      }
+      setVisibleCount(count);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
+    ro.observe(measure);
+    return () => ro.disconnect();
+  }, [itemCount, active]);
+
+  return { containerRef, measureRef, visibleCount };
+}
 
 function Logo() {
   return (
@@ -82,7 +136,7 @@ function NavButton({
   );
 }
 
-function UserMenu() {
+function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number }) {
   const { profile, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -113,12 +167,19 @@ function UserMenu() {
     navigate(p);
   };
 
-  const items: { label: string; onSelect: () => void; danger?: boolean }[] = [
-    { label: "People", onSelect: () => go("/people") },
-    { label: "Editor", onSelect: () => go("/editor") },
+  // Nav items that didn't fit in the bar sit at the top, then a divider, then the
+  // always-pinned Settings / Sign out.
+  const overflowEntries: MenuEntry[] = overflow.map((n) => ({
+    label: n.label,
+    badge: n.badge === "unread" ? unread : undefined,
+    onSelect: () => go(n.path),
+  }));
+  const pinned: MenuEntry[] = [
     { label: "Settings", onSelect: () => go("/settings") },
     { label: "Sign out", onSelect: () => { close(); void signOut(); }, danger: true },
   ];
+  const items: MenuEntry[] = [...overflowEntries, ...pinned];
+  const dividerAt = overflowEntries.length > 0 ? overflowEntries.length : -1;
 
   return (
     <div className="relative" ref={ref}>
@@ -168,20 +229,27 @@ function UserMenu() {
         >
           <div className="border-b border-edge/60 px-3 py-2 text-xs text-zinc-500">@{profile.username}</div>
           {items.map((it, i) => (
-            <button
-              key={it.label}
-              ref={(el) => {
-                itemRefs.current[i] = el;
-              }}
-              role="menuitem"
-              tabIndex={-1}
-              onClick={it.onSelect}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-white/5 focus:bg-white/10 focus:outline-none ${
-                it.danger ? "text-zinc-400 hover:text-dean" : "text-zinc-300"
-              }`}
-            >
-              {it.label}
-            </button>
+            <Fragment key={it.label}>
+              {i === dividerAt && <div role="separator" className="my-1 border-t border-edge/60" />}
+              <button
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
+                role="menuitem"
+                tabIndex={-1}
+                onClick={it.onSelect}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-white/5 focus:bg-white/10 focus:outline-none ${
+                  it.danger ? "text-zinc-400 hover:text-dean" : "text-zinc-300"
+                }`}
+              >
+                <span>{it.label}</span>
+                {it.badge ? (
+                  <span className="grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-black">
+                    {it.badge}
+                  </span>
+                ) : null}
+              </button>
+            </Fragment>
           ))}
         </div>
       )}
@@ -195,6 +263,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const route = useHashRoute();
   const stats = data ? computeStats(data) : null;
   const [unread, setUnread] = useState(0);
+  const { containerRef, measureRef, visibleCount } = useOverflowNav(NAV_PRIORITY.length, !!session);
+  const overflow = session ? NAV_PRIORITY.slice(visibleCount) : [];
 
   // Refetch on navigation so the badge clears after the Recommendations page
   // marks its inbox read (the page owns that state; this header doesn't).
@@ -211,10 +281,40 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-edge/60 bg-ink/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-4">
           <Logo />
-          <nav className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {session && NAV.map((n) => <NavButton key={n.path} {...n} />)}
-            {session && <NavButton path="/recommendations" label="Recs" badge={unread} />}
-          </nav>
+          {session ? (
+            <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
+              <nav aria-label="Primary" className="flex items-center gap-1">
+                {NAV_PRIORITY.slice(0, visibleCount).map((n) => (
+                  <NavButton
+                    key={n.id}
+                    path={n.path}
+                    label={n.label}
+                    match={n.match}
+                    badge={n.badge === "unread" ? unread : undefined}
+                  />
+                ))}
+              </nav>
+              {/* Hidden measurement row: every candidate at full size, in priority
+                  order, so the bar can be fitted to its real available width. */}
+              <div
+                ref={measureRef}
+                aria-hidden
+                className="pointer-events-none invisible absolute left-0 top-0 flex items-center gap-1"
+              >
+                {NAV_PRIORITY.map((n) => (
+                  <NavButton
+                    key={n.id}
+                    path={n.path}
+                    label={n.label}
+                    match={n.match}
+                    badge={n.badge === "unread" ? unread : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {stats && (
               <button
@@ -227,7 +327,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </button>
             )}
             {session ? (
-              <UserMenu />
+              <UserMenu overflow={overflow} unread={unread} />
             ) : (
               <button
                 onClick={() => navigate("/login")}
