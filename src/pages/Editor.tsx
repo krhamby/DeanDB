@@ -455,7 +455,7 @@ export function Editor() {
   };
 
   const removeArtist = async (artistId: string) => {
-    if (!confirm("Remove this artist and all their albums from your journey?")) return;
+    if (!confirm("Permanently remove this artist and ALL of their albums, ratings and reviews from your journey?\n\nThis can't be undone.")) return;
     await api.removeUserArtist(artistId);
     patchLocal((d) => {
       d.artists = d.artists.filter((a) => a.id !== artistId);
@@ -625,6 +625,13 @@ export function Editor() {
             placeholder="Search artists or albums…"
             className={`${inputCls} flex-1 sm:max-w-xs`}
           />
+          <button
+            onClick={() => setFavOnly((v) => !v)}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
+            title="Show favorite albums only"
+          >
+            ⭐ Favorites
+          </button>
           {allAlbumIds.length > 0 && (
             <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white">
               {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
@@ -652,13 +659,6 @@ export function Editor() {
             <option value="rated">Rated only</option>
             <option value="unrated">Unrated only</option>
           </Select>
-          <button
-            onClick={() => setFavOnly((v) => !v)}
-            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-black" : "border border-edge text-zinc-400 hover:text-white"}`}
-            title="Show favorites only"
-          >
-            ⭐ Favorites
-          </button>
           <Select value={albumSort} onChange={(v) => setAlbumSort(v as typeof albumSort)} title="Sort albums within each artist" ariaLabel="Sort albums">
             <option value="default">Sort: default</option>
             <option value="title">Title A–Z</option>
@@ -688,15 +688,15 @@ export function Editor() {
         )}
         {shownArtists.map((artist: Artist) => (
           <Panel key={artist.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-display text-lg font-black text-white">{artist.name}</span>
                 {artist.logged && <LoggedBadge />}
-                <span className="ml-1 text-xs text-zinc-500">
+                <span className="text-xs text-zinc-500">
                   {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
                 </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                 <button
                   onClick={() => setArtist(artist.id, { logged: !artist.logged })}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${

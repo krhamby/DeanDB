@@ -71,6 +71,15 @@ export function artistProgress(artist: Artist): number {
   return Math.min(completed / denom, 1);
 }
 
+/** Fallback runtime (minutes) for an album whose real length isn't loaded yet.
+ *  Used ONLY for marathon goal/total estimates so the goal reads as a sensible
+ *  number instead of collapsing to ~0 when tracklists haven't been pulled. The
+ *  Endurance achievement still requires a REAL (>0) runtime, so an estimate
+ *  never trips it, and a real runtime replaces it once a tracklist is loaded. */
+export const EST_ALBUM_MINUTES = 40;
+const effMinutes = (a: { minutes: number }): number =>
+  a.minutes > 0 ? a.minutes : EST_ALBUM_MINUTES;
+
 export function computeStats(data: DeanDBData): Stats {
   // Excluded albums (e.g. ones Dean will never finish) are out of all math.
   const collection = flattenAlbums(data).filter((a) => !a.excluded);
@@ -79,10 +88,12 @@ export function computeStats(data: DeanDBData): Stats {
 
   // ── Marathon scope: progress, goal, queue ──
   const marathonCompleted = marathon.filter((a) => a.status === "completed");
-  const totalMinutes = marathonCompleted.reduce((sum, a) => sum + (a.minutes || 0), 0);
+  // effMinutes estimates albums whose real runtime isn't loaded yet so the goal
+  // and listened totals stay sensible (not gutted to ~0) until tracklists land.
+  const totalMinutes = marathonCompleted.reduce((sum, a) => sum + effMinutes(a), 0);
   const hours = totalMinutes / 60;
-  // The goal is the actual total runtime of everything in the marathon.
-  const runtimeMinutes = marathon.reduce((sum, a) => sum + (a.minutes || 0), 0);
+  // The goal is the total runtime of everything in the marathon (estimated where unknown).
+  const runtimeMinutes = marathon.reduce((sum, a) => sum + effMinutes(a), 0);
 
   // Conquered = a marathon artist whose every curated (non-excluded) album is
   // completed. Keyed on the user's list, not catalogSize, so it agrees with

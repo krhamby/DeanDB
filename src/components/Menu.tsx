@@ -80,7 +80,7 @@ export function Menu({
               }}
               className={`block w-full px-3 py-2 text-left text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-40 ${
                 a.danger
-                  ? "text-dean hover:bg-dean/10"
+                  ? "text-red-400 hover:bg-red-500/10"
                   : "text-zinc-200 hover:bg-white/5 hover:text-white"
               }`}
             >

@@ -19,7 +19,7 @@ export function Feed() {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4">
       <SectionTitle kicker="From people you follow" title="Activity Feed" />
       {loading ? (
         <p className="py-12 text-center text-zinc-500">Loading…</p>
@@ -40,7 +40,7 @@ export function Feed() {
             // after unlock, to entice followers to keep listening.
             const masked = meta.hidden && user?.id !== it.userId;
             return (
-              <Panel key={it.achievementRowId} className="flex items-start gap-3 p-3 sm:gap-4">
+              <Panel key={it.achievementRowId} className="flex items-center gap-3 p-3 sm:gap-4">
                 <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-panel-2 text-3xl sm:h-16 sm:w-16">
                   {masked ? "❓" : meta.emoji}
                 </div>
@@ -72,28 +72,23 @@ export function Feed() {
             );
           }
           return (
-            <Panel key={it.userAlbumId} className="flex items-start gap-3 p-3 sm:gap-4">
+            <Panel key={it.userAlbumId} className="flex items-center gap-3 p-3">
               <div className="shrink-0">
                 <Cover colors={it.cover} title={it.albumTitle} coverUrl={it.coverUrl ?? undefined} size="sm" />
               </div>
               <div className="min-w-0 flex-1">
-                {/* Actor + verb on the left; rating meter pinned top-right so it
-                    never steals horizontal room from the (wrapping) title below. */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 text-xs text-zinc-500">
-                    <button
-                      onClick={() => navigate(profilePath(it.username))}
-                      className="font-semibold text-gold hover:underline"
-                    >
-                      {it.displayName}
-                    </button>{" "}
-                    {feedVerb(it)}
-                  </div>
-                  {it.rating != null && <DeanMeter value={it.rating} size={44} name={it.displayName} />}
+                <div className="text-xs text-zinc-500">
+                  <button
+                    onClick={() => navigate(profilePath(it.username))}
+                    className="font-semibold text-gold hover:underline"
+                  >
+                    {it.displayName}
+                  </button>{" "}
+                  {feedVerb(it)}
                 </div>
                 <button
                   onClick={() => navigate(`${profilePath(it.username)}/album/${it.artistId}/${it.albumId}`)}
-                  className="mt-0.5 block text-left font-display text-base font-black leading-tight text-white line-clamp-2 hover:text-gold sm:text-lg"
+                  className="block text-left font-display text-base font-black leading-tight text-white line-clamp-2 hover:text-gold sm:text-lg"
                 >
                   {it.albumTitle}
                   {it.favorite && <span title="Favorite" className="ml-1">⭐</span>}
@@ -106,6 +101,9 @@ export function Feed() {
                 </div>
                 {it.review && <p className="mt-1 line-clamp-2 text-sm text-zinc-500">“{it.review}”</p>}
               </div>
+              {/* Rating sits at the card's right edge, vertically centered — the
+                  narrow max-w-2xl column keeps it close to the content (no big gap). */}
+              {it.rating != null && <DeanMeter value={it.rating} size={48} name={it.displayName} />}
             </Panel>
           );
         })

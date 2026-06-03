@@ -118,6 +118,12 @@ function Router() {
   const userRoute = parseUserRoute(segments);
   if (userRoute) return <Profile key={userRoute.username} username={userRoute.username} rest={userRoute.rest} />;
 
+  // A recovery-link session (must set a new password) or an MFA-pending session
+  // goes straight to the auth flow regardless of which route the link landed on —
+  // otherwise a reset link drops the user on their empty journey instead of the
+  // set-password screen.
+  if (session && (passwordRecovery || mfaPending)) return <Login />;
+
   switch (head) {
     case undefined:
       if (loading) return <Loading />;

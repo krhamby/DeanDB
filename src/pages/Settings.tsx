@@ -457,18 +457,20 @@ export function Settings() {
 
       <SecuritySection />
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={save}
-          disabled={saving || !form.username.trim()}
-          className="rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
-        >
-          {saving ? "Saving…" : "Save changes"}
-        </button>
+      <div className="flex items-center justify-between gap-3">
         <button onClick={() => navigate("/me")} className="text-sm text-zinc-400 hover:text-white">
           ← Back to my journey
         </button>
-        {msg && <span className={`text-sm font-semibold ${msg.ok ? "text-emerald-400" : "text-dean"}`}>{msg.text}</span>}
+        <div className="flex items-center gap-3">
+          {msg && <span className={`text-sm font-semibold ${msg.ok ? "text-emerald-400" : "text-dean"}`}>{msg.text}</span>}
+          <button
+            onClick={save}
+            disabled={saving || !form.username.trim()}
+            className="rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
       </div>
     </div>
   );

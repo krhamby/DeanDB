@@ -85,7 +85,7 @@ export function AlbumDetail({
             <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/80">
               <StatusBadge status={album.status} />
               {album.year && <span>{album.year}</span>}
-              <span>· {fmtMinutes(album.minutes)}</span>
+              <span>· {album.minutes > 0 ? fmtMinutes(album.minutes) : "runtime not loaded"}</span>
               {album.dateListened && <span>· Finished {fmtDate(album.dateListened)}</span>}
               {album.favorite && <span title="Favorite">⭐</span>}
               {agg && agg.listenerCount > 0 && (
