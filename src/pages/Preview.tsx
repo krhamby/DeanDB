@@ -6,6 +6,7 @@
 import { useThemeControl } from "../lib/store";
 import { sampleJourney } from "../lib/__fixtures__/sampleJourney";
 import { Dashboard } from "./Dashboard";
+import type { DeanDBData } from "../types";
 import { NextSpinner } from "../components/NextSpinner";
 import { AlbumDetail } from "./AlbumDetail";
 import { ArtistDetail } from "./ArtistDetail";
@@ -42,6 +43,20 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 export function Preview() {
   const { skin, setSkin } = useThemeControl();
 
+  const summitJourney: DeanDBData = {
+    ...sampleJourney,
+    artists: sampleJourney.artists.map((a) =>
+      a.logged
+        ? a
+        : {
+            ...a,
+            albums: a.albums.map((al) =>
+              al.excluded ? al : { ...al, status: "completed" as const, dateListened: al.dateListened ?? "2024-12-31" },
+            ),
+          },
+    ),
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-12 px-4 py-10">
       {/* ── Top bar ── */}
@@ -74,6 +89,11 @@ export function Preview() {
       {/* ── Dashboard ── */}
       <Section label="Dashboard">
         <Dashboard data={sampleJourney} basePath="/__preview" canEdit />
+      </Section>
+
+      {/* ── Dashboard — Summit reached ── */}
+      <Section label="Dashboard — Summit reached">
+        <Dashboard data={summitJourney} basePath="/__preview-summit" canEdit />
       </Section>
 
       {/* ── Marathon Wheel ── */}
