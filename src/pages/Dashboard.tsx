@@ -57,7 +57,7 @@ export function Dashboard({
           {data.season}
         </div>
         <h1 className="mt-1 font-display text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">
-          {data.listener.name}&apos;s Discography Marathon
+          {data.listener.meterName}&apos;s Discography Marathon
         </h1>
         <p className="mt-2 max-w-2xl text-zinc-400">{data.listener.tagline}</p>
 
@@ -93,30 +93,25 @@ export function Dashboard({
           <EmptyState />
         ) : (
           <Panel className="px-6 py-16 text-center text-zinc-400">
-            {data.listener.name} hasn&apos;t added any artists yet. 🎙️
+            {data.listener.meterName} hasn&apos;t added any artists yet. 🎙️
           </Panel>
         )
       ) : (
         <>
-          {/* ── What's next ── */}
-          {stats.marathonArtistsTotal > 0 ? (
-            <NextSpinner artists={data.artists} basePath={basePath} />
-          ) : (
-            <Panel className="px-6 py-10 text-center text-zinc-400">
-              <div className="mb-2 text-4xl">📚</div>
-              Everything here is in the Library — no marathon artists yet.
-              {canEdit && (
-                <>
-                  {" "}
-                  Start one in the{" "}
-                  <button onClick={() => navigate("/editor")} className="text-gold hover:underline">
-                    Editor
-                  </button>
-                  .
-                </>
-              )}
-            </Panel>
-          )}
+          {/* ── What's next (owner-only — the marathon "what to play next" tool) ── */}
+          {canEdit &&
+            (stats.marathonArtistsTotal > 0 ? (
+              <NextSpinner artists={data.artists} basePath={basePath} />
+            ) : (
+              <Panel className="px-6 py-10 text-center text-zinc-400">
+                <div className="mb-2 text-4xl">📚</div>
+                Everything here is in the Library — no marathon artists yet. Start one in the{" "}
+                <button onClick={() => navigate("/editor")} className="text-gold hover:underline">
+                  Editor
+                </button>
+                .
+              </Panel>
+            ))}
 
       {/* ── Stat grid ── */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -130,7 +125,7 @@ export function Dashboard({
               : `${stats.artistsConquered} conquered`
           }
         />
-        <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub="Dean Meter" />
+        <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
         <StatCard label="Songs rated" value={String(stats.songsRated)} />
         <StatCard label="Now spinning" value={String(stats.albumsListening)} />
         <StatCard label="Top genre" value={stats.topGenre ?? "—"} />

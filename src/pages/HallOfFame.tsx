@@ -22,7 +22,7 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
   return (
     <div className="space-y-12">
       <div>
-        <SectionTitle kicker="The greatest of all time (so far)" title={`${data.listener.name}'s Hall of Fame`} />
+        <SectionTitle kicker="The greatest of all time (so far)" title={`${data.listener.meterName}'s Hall of Fame`} />
         {ranked.length === 0 ? (
           <p className="py-8 text-zinc-500">No rated albums yet — the Hall awaits its first inductee.</p>
         ) : (
@@ -52,7 +52,7 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
 
       {favTracks.length > 0 && (
         <div>
-          <SectionTitle kicker="On permanent repeat" title={`${data.listener.name}'s Desert-Island Tracks`} />
+          <SectionTitle kicker="On permanent repeat" title={`${data.listener.meterName}'s Desert-Island Tracks`} />
           <div className="grid gap-2 sm:grid-cols-2">
             {favTracks.map((t, i) => (
               <Panel key={i} className="flex items-center gap-3 p-3">

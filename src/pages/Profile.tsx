@@ -1,5 +1,8 @@
-import { useJourney } from "../lib/store";
+import { useEffect } from "react";
+import { MeterNameProvider, useJourney, useThemeControl } from "../lib/store";
+import { resolveTheme } from "../lib/themes";
 import { Avatar, FollowButton } from "../components/social";
+import { JourneyNav } from "../components/JourneyNav";
 import { Panel } from "../components/ui";
 import { Dashboard } from "./Dashboard";
 import { Artists } from "./Artists";
@@ -14,12 +17,25 @@ import { HallOfFame } from "./HallOfFame";
 export function Profile({ username, rest }: { username: string; rest: string[] }) {
   const view = useJourney(username);
   const basePath = `/u/${username}`;
+  const { setThemeOverride } = useThemeControl();
+
+  // While viewing someone else's visible journey, paint the app in their accent.
+  // Own journey (canEdit) already uses the global theme, so it's left alone.
+  const owner = view.owner;
+  const themed = Boolean(view.data) && !view.canEdit;
+  const accent = owner?.themeAccent;
+  const secondary = owner?.themeSecondary;
+  useEffect(() => {
+    if (!themed) return;
+    setThemeOverride(resolveTheme({ themeAccent: accent, themeSecondary: secondary }));
+    return () => setThemeOverride(null);
+  }, [themed, accent, secondary, setThemeOverride]);
 
   if (view.loading) {
     return <div className="py-16 text-center text-zinc-500">Loading…</div>;
   }
 
-  if (view.notFound || !view.owner) {
+  if (view.notFound || !owner) {
     return (
       <Panel className="mx-auto max-w-md px-6 py-16 text-center text-zinc-400">
         <div className="mb-3 text-5xl">🤷</div>
@@ -27,8 +43,6 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
       </Panel>
     );
   }
-
-  const owner = view.owner;
 
   const Header = (
     <Panel className="mb-6 flex flex-wrap items-center gap-4 p-5">
@@ -82,9 +96,10 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
   }
 
   return (
-    <div>
+    <MeterNameProvider name={data.listener.meterName}>
       {Header}
+      {data.artists.length > 0 && <JourneyNav basePath={basePath} />}
       {content}
-    </div>
+    </MeterNameProvider>
   );
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { AlbumStatus } from "../types";
+import { useMeterName } from "../lib/store";
 
 /** Shared 0–10 color ramp used by the Dean Meter and per-song scores. */
 export function scoreColor(value: number | null): string {
@@ -15,10 +16,15 @@ export function scoreColor(value: number | null): string {
 export function DeanMeter({
   value,
   size = 56,
+  name,
 }: {
   value: number | null;
   size?: number;
+  /** Persona name for the tooltip — defaults to the surrounding journey's. */
+  name?: string;
 }) {
+  const ctxName = useMeterName();
+  const label = name ?? ctxName;
   const pct = value == null ? 0 : value / 10;
   const stroke = 5;
   const r = (size - stroke) / 2;
@@ -28,7 +34,7 @@ export function DeanMeter({
     <div
       className="relative grid place-items-center shrink-0"
       style={{ width: size, height: size }}
-      title={value == null ? "Unrated" : `Dean Meter: ${value.toFixed(1)}/10`}
+      title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke="#26262e" strokeWidth={stroke} fill="none" />

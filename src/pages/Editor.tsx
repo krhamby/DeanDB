@@ -750,7 +750,7 @@ export function Editor() {
                             value={al.rating ?? 0}
                             onChange={(e) => setAlbum(al.id, { rating: Number(e.target.value) })}
                             className="h-6 w-32 cursor-pointer accent-gold"
-                            title="Dean Meter — overall album score"
+                            title={`${data.listener.meterName} Meter — overall album score`}
                           />
                           <span className="w-8 text-right text-xs font-bold text-gold">{al.rating != null ? al.rating.toFixed(1) : "—"}</span>
                         </div>

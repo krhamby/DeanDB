@@ -11,6 +11,8 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import type { Artist, DeanDBData, FeedItem, PersonResult, Profile, Recommendation } from "../types";
 import { supabase, supabaseEnabled } from "./supabase";
+import { firstWord } from "./format";
+import { applyTheme, resolveTheme, type Theme } from "./themes";
 import * as api from "./api";
 
 // ──────────────────────────────────────────────────────────────
@@ -36,7 +38,18 @@ interface AuthValue {
     patch: Partial<
       Pick<
         Profile,
-        "username" | "displayName" | "handle" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility"
+        | "username"
+        | "displayName"
+        | "handle"
+        | "tagline"
+        | "bio"
+        | "avatarUrl"
+        | "season"
+        | "goalHours"
+        | "visibility"
+        | "meterName"
+        | "themeAccent"
+        | "themeSecondary"
       >
     >,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -116,7 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      <MyJourneyProvider>{children}</MyJourneyProvider>
+      <ThemeProvider>
+        <AutoMeterName>
+          <MyJourneyProvider>{children}</MyJourneyProvider>
+        </AutoMeterName>
+      </ThemeProvider>
     </AuthContext.Provider>
   );
 }
@@ -125,6 +142,56 @@ export function useAuth(): AuthValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Theme — global accent colors, with a per-profile override
+// ════════════════════════════════════════════════════════════════
+
+interface ThemeControl {
+  /** Override the active accent theme (viewing someone's profile, or previewing). Pass null to clear. */
+  setThemeOverride: (t: Theme | null) => void;
+}
+
+const ThemeContext = createContext<ThemeControl>({ setThemeOverride: () => {} });
+
+export function useThemeControl(): ThemeControl {
+  return useContext(ThemeContext);
+}
+
+/** Applies the signed-in user's colors globally; an override (e.g. another
+ *  person's profile) takes precedence while mounted. */
+function ThemeProvider({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
+  const [override, setOverride] = useState<Theme | null>(null);
+  const active = override ?? resolveTheme(profile);
+  useEffect(() => {
+    applyTheme(active);
+  }, [active.accent, active.secondary]);
+  const value = useMemo<ThemeControl>(() => ({ setThemeOverride: setOverride }), []);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Meter name — the journey owner's short persona name for labels
+// ════════════════════════════════════════════════════════════════
+
+const MeterNameContext = createContext<string>("Dean");
+
+export function useMeterName(): string {
+  return useContext(MeterNameContext);
+}
+
+/** Scope a subtree to one journey's persona name (own journey or a profile). */
+export function MeterNameProvider({ name, children }: { name: string; children: ReactNode }) {
+  return <MeterNameContext.Provider value={name}>{children}</MeterNameContext.Provider>;
+}
+
+/** Default scope: the signed-in user's own meter name. */
+function AutoMeterName({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
+  const name = profile ? profile.meterName?.trim() || firstWord(profile.displayName) || "Listener" : "Dean";
+  return <MeterNameProvider name={name}>{children}</MeterNameProvider>;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -350,6 +417,9 @@ export function useJourney(username: string | undefined): JourneyView {
             season: "",
             goalHours: 0,
             visibility: header.visibility,
+            meterName: null,
+            themeAccent: null,
+            themeSecondary: null,
           },
           canEdit: false,
           denied: true,
