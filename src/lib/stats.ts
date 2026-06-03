@@ -213,7 +213,7 @@ export function computeAchievements(data: DeanDBData, stats: Stats): Achievement
       id: "perfect-ten",
       emoji: "🏆",
       title: "The Perfect Ten",
-      desc: "Award a 10.0 on the Dean Meter.",
+      desc: `Award a 10.0 on the ${data.listener.meterName} Meter.`,
       unlocked: hasPerfectScore,
     },
     {

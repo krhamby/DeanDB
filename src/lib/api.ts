@@ -9,6 +9,7 @@
 // ──────────────────────────────────────────────────────────────
 
 import { requireClient, authRedirectTo } from "./supabase";
+import { firstWord } from "./format";
 import type {
   Album,
   AlbumAggregate,
@@ -43,6 +44,9 @@ interface ProfileRow {
   season: string;
   goal_hours: number;
   journey_visibility: "private" | "public";
+  meter_name: string | null;
+  theme_accent: string | null;
+  theme_secondary: string | null;
 }
 
 function mapProfile(r: ProfileRow): Profile {
@@ -57,11 +61,14 @@ function mapProfile(r: ProfileRow): Profile {
     season: r.season,
     goalHours: r.goal_hours,
     visibility: r.journey_visibility,
+    meterName: r.meter_name,
+    themeAccent: r.theme_accent,
+    themeSecondary: r.theme_secondary,
   };
 }
 
 const PROFILE_COLS =
-  "id, username, display_name, handle, tagline, bio, avatar_url, season, goal_hours, journey_visibility";
+  "id, username, display_name, handle, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary";
 
 // ════════════════════════════════════════════════════════════════
 // Auth
@@ -99,7 +106,7 @@ export async function fetchProfileByUsername(username: string): Promise<Profile 
 
 export async function updateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "username" | "displayName" | "handle" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility">>,
+  patch: Partial<Pick<Profile, "username" | "displayName" | "handle" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.username !== undefined) row.username = patch.username;
@@ -111,6 +118,9 @@ export async function updateProfile(
   if (patch.season !== undefined) row.season = patch.season;
   if (patch.goalHours !== undefined) row.goal_hours = patch.goalHours;
   if (patch.visibility !== undefined) row.journey_visibility = patch.visibility;
+  if (patch.meterName !== undefined) row.meter_name = patch.meterName;
+  if (patch.themeAccent !== undefined) row.theme_accent = patch.themeAccent;
+  if (patch.themeSecondary !== undefined) row.theme_secondary = patch.themeSecondary;
   const { error } = await requireClient().from("profiles").update(row).eq("id", id);
   if (error) {
     return {
@@ -291,7 +301,12 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
   }
 
   return {
-    listener: { name: profile.displayName, handle: profile.handle ?? "", tagline: profile.tagline },
+    listener: {
+      name: profile.displayName,
+      meterName: profile.meterName?.trim() || firstWord(profile.displayName),
+      handle: profile.handle ?? "",
+      tagline: profile.tagline,
+    },
     goalHours: profile.goalHours,
     season: profile.season,
     artists: [...artistById.values()],
@@ -641,6 +656,9 @@ function followEdgeToPerson(
       season: "",
       goalHours: 0,
       visibility: r.visibility,
+      meterName: null,
+      themeAccent: null,
+      themeSecondary: null,
     },
     followStatus,
     followsMe,
@@ -695,6 +713,9 @@ export async function searchPeople(me: string, q: string): Promise<PersonResult[
       season: "",
       goalHours: 0,
       visibility: r.visibility,
+      meterName: null,
+      themeAccent: null,
+      themeSecondary: null,
     },
     followStatus: edgeMap.get(r.id) ?? null,
     followsMe: false,

@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { Layout } from "./components/Layout";
 import { Panel } from "./components/ui";
 import { parseRoute, parseUserRoute, useHashRoute, navigate } from "./lib/router";
-import { useAuth, useMyJourney } from "./lib/store";
+import { MeterNameProvider, useAuth, useMyJourney } from "./lib/store";
 import { supabaseEnabled } from "./lib/supabase";
+import { JourneyNav } from "./components/JourneyNav";
 import { Dashboard } from "./pages/Dashboard";
 import { Artists } from "./pages/Artists";
 import { ArtistDetail } from "./pages/ArtistDetail";
@@ -68,20 +69,33 @@ function MyJourney({ rest }: { rest: string[] }) {
   if (loading) return <Loading />;
   if (!data) return <Loading />;
   const [head, a, b] = rest;
+  let content;
   switch (head) {
     case undefined:
-      return <Dashboard data={data} canEdit basePath="" />;
+      content = <Dashboard data={data} canEdit basePath="" />;
+      break;
     case "artists":
-      return <Artists data={data} basePath="" />;
+      content = <Artists data={data} basePath="" />;
+      break;
     case "artist":
-      return <ArtistDetail data={data} artistId={a} basePath="" />;
+      content = <ArtistDetail data={data} artistId={a} basePath="" />;
+      break;
     case "album":
-      return <AlbumDetail data={data} artistId={a} albumId={b} canEdit basePath="" setAlbum={setAlbum} setTrack={setTrack} />;
+      content = <AlbumDetail data={data} artistId={a} albumId={b} canEdit basePath="" setAlbum={setAlbum} setTrack={setTrack} />;
+      break;
     case "hall-of-fame":
-      return <HallOfFame data={data} basePath="" />;
+      content = <HallOfFame data={data} basePath="" />;
+      break;
     default:
-      return <Dashboard data={data} canEdit basePath="" />;
+      content = <Dashboard data={data} canEdit basePath="" />;
   }
+
+  return (
+    <MeterNameProvider name={data.listener.meterName}>
+      {data.artists.length > 0 && <JourneyNav basePath="" />}
+      {content}
+    </MeterNameProvider>
+  );
 }
 
 function Router() {

@@ -6,9 +6,11 @@ import { fmtHours } from "../lib/format";
 import { unreadRecommendationCount } from "../lib/api";
 import { Avatar } from "./social";
 
-const NAV = [
+// Journey covers all of the signed-in user's own journey routes (its bare
+// shortcuts included), so the tab stays lit while browsing artists/albums.
+const NAV: { path: string; label: string; match?: string[] }[] = [
+  { path: "/me", label: "Journey", match: ["me", "artists", "artist", "album", "hall-of-fame"] },
   { path: "/feed", label: "Feed" },
-  { path: "/people", label: "People" },
 ];
 
 function Logo() {
@@ -45,10 +47,22 @@ function Ticker() {
   );
 }
 
-function NavButton({ path, label, badge }: { path: string; label: string; badge?: number }) {
+function NavButton({
+  path,
+  label,
+  badge,
+  match,
+}: {
+  path: string;
+  label: string;
+  badge?: number;
+  /** Route heads (no leading slash) that should also light this tab. */
+  match?: string[];
+}) {
   const hash = useHashRoute();
   const active = hash.replace(/^#/, "") || "/";
-  const isActive = active === path || active.startsWith(path + "/");
+  const heads = match ?? [path.replace(/^\//, "")];
+  const isActive = heads.some((h) => active === `/${h}` || active.startsWith(`/${h}/`));
   return (
     <button
       onClick={() => navigate(path)}
@@ -90,7 +104,7 @@ function UserMenu() {
       {open && (
         <div className="absolute right-0 top-11 z-40 w-44 overflow-hidden rounded-xl border border-edge bg-panel-2 py-1 shadow-xl">
           <div className="border-b border-edge/60 px-3 py-2 text-xs text-zinc-500">@{profile.username}</div>
-          <button onClick={() => go("/me")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">My journey</button>
+          <button onClick={() => go("/people")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">People</button>
           <button onClick={() => go("/editor")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">Editor</button>
           <button onClick={() => go("/settings")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">Settings</button>
           <button onClick={() => { setOpen(false); void signOut(); }} className="block w-full px-3 py-2 text-left text-sm text-zinc-400 hover:bg-white/5 hover:text-dean">Sign out</button>

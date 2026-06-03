@@ -58,7 +58,7 @@ export function Feed() {
               </div>
               {it.review && <p className="mt-1 line-clamp-2 text-sm text-zinc-500">“{it.review}”</p>}
             </div>
-            {it.rating != null && <DeanMeter value={it.rating} size={52} />}
+            {it.rating != null && <DeanMeter value={it.rating} size={52} name={it.displayName} />}
           </Panel>
         ))
       )}

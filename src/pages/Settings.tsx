@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { useAuth } from "../lib/store";
+import { useEffect, useState } from "react";
+import { useAuth, useThemeControl } from "../lib/store";
 import { navigate } from "../lib/router";
+import { firstWord } from "../lib/format";
+import { DEFAULT_THEME, PRESETS, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
 import type { Visibility } from "../types";
 
@@ -21,6 +23,7 @@ export function Settings() {
   const [form, setForm] = useState(() => ({
     username: profile?.username ?? "",
     displayName: profile?.displayName ?? "",
+    meterName: profile?.meterName ?? "",
     handle: profile?.handle ?? "",
     tagline: profile?.tagline ?? "",
     bio: profile?.bio ?? "",
@@ -33,6 +36,15 @@ export function Settings() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Live-preview the theme while editing; cleared on leave (saved colors then
+  // apply globally via the updated profile).
+  const { setThemeOverride } = useThemeControl();
+  const [theme, setTheme] = useState<Theme>(() => resolveTheme(profile));
+  useEffect(() => {
+    setThemeOverride(theme);
+    return () => setThemeOverride(null);
+  }, [theme, setThemeOverride]);
+
   if (!profile) return null;
 
   const save = async () => {
@@ -41,6 +53,7 @@ export function Settings() {
     const res = await updateProfile({
       username: form.username.trim(),
       displayName: form.displayName.trim() || form.username.trim(),
+      meterName: form.meterName.trim() || null,
       handle: form.handle.trim() || null,
       tagline: form.tagline,
       bio: form.bio,
@@ -48,6 +61,8 @@ export function Settings() {
       season: form.season,
       goalHours: Number(form.goalHours) || 250,
       visibility,
+      themeAccent: theme.accent,
+      themeSecondary: theme.secondary,
     });
     setSaving(false);
     setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.error ?? "Save failed." });
@@ -75,6 +90,14 @@ export function Settings() {
           </Field>
           <Field label="Display name">
             <input className={inputCls} value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
+          </Field>
+          <Field label="Meter name (labels)">
+            <input
+              className={inputCls}
+              value={form.meterName}
+              onChange={(e) => setForm({ ...form, meterName: e.target.value })}
+              placeholder={firstWord(form.displayName) || "e.g. Kevin"}
+            />
           </Field>
           <Field label="Handle">
             <input className={inputCls} value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value })} placeholder="@you" />
@@ -122,6 +145,61 @@ export function Settings() {
           <code className="flex-1 truncate rounded bg-black/40 px-2 py-1.5 text-xs text-gold">{shareUrl}</code>
           <button onClick={share} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-zinc-300 hover:text-white">
             {copied ? "Copied!" : "📋 Copy link"}
+          </button>
+        </div>
+      </Panel>
+
+      {/* Theme */}
+      <Panel className="space-y-3 p-5">
+        <h3 className="font-display text-lg font-black text-white">Theme</h3>
+        <p className="text-xs text-zinc-500">
+          Recolor the accents — changes preview live, Save to keep them. Friends see your colors on your profile.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {PRESETS.map((p) => {
+            const active =
+              theme.accent.toLowerCase() === p.theme.accent.toLowerCase() &&
+              theme.secondary.toLowerCase() === p.theme.secondary.toLowerCase();
+            return (
+              <button
+                key={p.id}
+                onClick={() => setTheme(p.theme)}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  active ? "border-gold text-white" : "border-edge text-zinc-400 hover:text-white"
+                }`}
+              >
+                <span className="flex overflow-hidden rounded-full ring-1 ring-black/30">
+                  <span className="h-4 w-4" style={{ background: p.theme.accent }} />
+                  <span className="h-4 w-4" style={{ background: p.theme.secondary }} />
+                </span>
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-5">
+          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Accent
+            <input
+              type="color"
+              value={theme.accent}
+              onChange={(e) => setTheme({ ...theme, accent: e.target.value })}
+              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2"
+              aria-label="Accent color"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Secondary
+            <input
+              type="color"
+              value={theme.secondary}
+              onChange={(e) => setTheme({ ...theme, secondary: e.target.value })}
+              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2"
+              aria-label="Secondary color"
+            />
+          </label>
+          <button onClick={() => setTheme(DEFAULT_THEME)} className="text-xs text-zinc-400 hover:text-white">
+            Reset to default
           </button>
         </div>
       </Panel>

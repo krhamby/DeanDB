@@ -1,5 +1,6 @@
 import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
+import { useMeterName } from "../lib/store";
 import type { Album, Artist } from "../types";
 import { artistProgress } from "../lib/stats";
 import { DeanMeter, LoggedBadge, ProgressBar, Score10, StatusBadge } from "./ui";
@@ -78,6 +79,7 @@ export function AlbumCard({
   /** Route prefix for links, e.g. "/u/dean" when viewing someone's journey. */
   basePath?: string;
 }) {
+  const meterName = useMeterName();
   return (
     <button
       onClick={() => navigate(`${basePath}/album/${artistId}/${album.id}`)}
@@ -93,7 +95,7 @@ export function AlbumCard({
           </span>
         )}
         {album.favorite && (
-          <span className="absolute left-2 top-2 text-lg drop-shadow" title="Dean's favorite">
+          <span className="absolute left-2 top-2 text-lg drop-shadow" title={`${meterName}'s favorite`}>
             ⭐
           </span>
         )}

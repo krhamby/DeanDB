@@ -80,7 +80,10 @@ export interface Artist {
 export interface DeanDBData {
   /** Branding + the human this journey belongs to. */
   listener: {
+    /** Full display name (used for the profile header). */
     name: string;
+    /** Short persona name for journey labels — "Kevin Meter", "Kevin's Review". */
+    meterName: string;
     handle: string;
     tagline: string;
   };
@@ -110,6 +113,12 @@ export interface Profile {
   season: string;
   goalHours: number;
   visibility: Visibility;
+  /** Short persona name for journey labels. null = derive from displayName. */
+  meterName: string | null;
+  /** Primary accent color (hex). null = the default gold. */
+  themeAccent: string | null;
+  /** Secondary accent color (hex). null = the default "dean" red. */
+  themeSecondary: string | null;
 }
 
 /** A person surfaced by search, with my relationship to them. */

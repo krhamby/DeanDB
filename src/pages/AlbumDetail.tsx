@@ -98,7 +98,7 @@ export function AlbumDetail({
           <div className="flex flex-col items-center gap-1">
             <DeanMeter value={album.rating} size={88} />
             <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
-              {data.listener.name} Meter
+              {data.listener.meterName} Meter
             </span>
           </div>
         </div>
@@ -107,7 +107,7 @@ export function AlbumDetail({
       {/* Actions */}
       <div className="mt-5 flex items-center justify-between gap-3">
         <h2 className="font-display text-xl font-black text-white">
-          {album.review ? `${data.listener.name}'s Review` : "The Verdict"}
+          {album.review ? `${data.listener.meterName}'s Review` : "The Verdict"}
         </h2>
         <div className="flex items-center gap-2">
           {user && (
@@ -168,7 +168,7 @@ export function AlbumDetail({
 
             <div>
               <label className="text-sm font-semibold uppercase tracking-wide text-zinc-500 sm:text-xs">
-                Dean Meter: <span className="text-gold">{album.rating?.toFixed(1) ?? "—"}</span>
+                {data.listener.meterName} Meter: <span className="text-gold">{album.rating?.toFixed(1) ?? "—"}</span>
               </label>
               <input
                 type="range"

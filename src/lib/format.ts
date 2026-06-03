@@ -37,6 +37,11 @@ export function slugify(s: string): string {
   );
 }
 
+/** First word of a name — the default short "meter name" (e.g. "Kevin Hamby" → "Kevin"). */
+export function firstWord(name: string): string {
+  return name.trim().split(/\s+/)[0] || name.trim();
+}
+
 export function uid(prefix = "id"): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}${Date.now()
     .toString(36)
