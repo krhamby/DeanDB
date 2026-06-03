@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useAuth, useThemeControl } from "../lib/store";
@@ -8,6 +8,8 @@ import { fetchTracklist, findAlbumCover } from "../lib/musicbrainz";
 import { Cover } from "../components/cards";
 import { DeanMeter, Panel, StatusBadge, Score10 } from "../components/ui";
 import { RecommendModal } from "../components/social";
+import { VerdictCard } from "../components/ShareCard";
+import { toPng } from "html-to-image";
 import type { AlbumAggregate, AlbumStatus, DeanDBData } from "../types";
 
 export function AlbumDetail({
@@ -38,6 +40,8 @@ export function AlbumDetail({
   // which doesn't own the journey data.
   const [runtimeOverride, setRuntimeOverride] = useState<number | null>(null);
   const [loadingRuntime, setLoadingRuntime] = useState(false);
+  // Must be declared before any early return to satisfy Rules of Hooks.
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const artist = data.artists.find((a) => a.id === artistId);
   const album = artist?.albums.find((a) => a.id === albumId);
@@ -81,6 +85,15 @@ export function AlbumDetail({
       </div>
     );
   }
+
+  const downloadCard = async () => {
+    if (!cardRef.current) return;
+    const url = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${artist?.name ?? "album"} - ${album?.title ?? "verdict"} — DeanDB.png`;
+    a.click();
+  };
 
   const albumAccent = legible(album.cover[0], surface);
 
@@ -175,6 +188,15 @@ export function AlbumDetail({
               title="Recommend this to a friend"
             >
               ✉️ Recommend
+            </button>
+          )}
+          {user && (
+            <button
+              onClick={downloadCard}
+              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-gold"
+              title="Download a shareable Verdict card"
+            >
+              ⬇️ Share card
             </button>
           )}
           {canEdit && setAlbum && (
@@ -316,6 +338,19 @@ export function AlbumDetail({
           </Panel>
         </div>
       )}
+
+      {/* Offscreen VerdictCard — captured by html-to-image on download */}
+      <div style={{ position: "fixed", left: -9999, top: 0, pointerEvents: "none" }} aria-hidden>
+        <VerdictCard
+          ref={cardRef}
+          title={album.title}
+          artist={artist.name}
+          rating={album.rating}
+          review={album.review}
+          cover={album.cover}
+          meterName={data.listener.meterName}
+        />
+      </div>
     </div>
   );
 }
