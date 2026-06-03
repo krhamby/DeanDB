@@ -218,7 +218,7 @@ export function Settings() {
 
   // Live-preview the theme while editing; cleared on leave (saved colors then
   // apply globally via the updated profile).
-  const { setThemeOverride, surface } = useThemeControl();
+  const { setThemeOverride, surface, skin, setSkin } = useThemeControl();
   const [theme, setTheme] = useState<Theme>(() => resolveTheme(profile));
   // Resync from the profile when it first resolves / its identity changes (the
   // useState initializer only runs once). Keyed on id so in-page edits and
@@ -353,6 +353,26 @@ export function Settings() {
           <button onClick={share} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
             {copied ? "Copied!" : "📋 Copy link"}
           </button>
+        </div>
+      </Panel>
+
+      {/* Appearance / skin */}
+      <Panel className="space-y-3 p-5">
+        <h3 className="font-display text-lg font-black text-fg">Appearance</h3>
+        <p className="text-sm text-fg-muted">Pick your skin. Saved on this device.</p>
+        <div className="flex gap-2">
+          {(["paper", "midnight"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSkin(s)}
+              aria-pressed={skin === s}
+              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition ${
+                skin === s ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
+              }`}
+            >
+              {s === "paper" ? "📰 Paper" : "🌙 Midnight"}
+            </button>
+          ))}
         </div>
       </Panel>
 
