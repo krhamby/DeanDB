@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { legible, contrastRatio, darken, SKIN_SURFACE } from "./themes";
+import { scoreColor } from "../components/ui";
 
 const MIDNIGHT = SKIN_SURFACE.midnight; // "#15151a"
 const PAPER = SKIN_SURFACE.paper;       // off-white
@@ -22,5 +23,16 @@ describe("contrast math", () => {
 
   it("darken moves a color toward black", () => {
     expect(contrastRatio(darken("#ffffff", 0.5), "#ffffff")).toBeGreaterThan(1);
+  });
+});
+describe("scoreColor legibility", () => {
+  it("clamps the ramp legible on Paper", () => {
+    for (const v of [9.5, 8, 6, 3]) {
+      const c = scoreColor(v, SKIN_SURFACE.paper);
+      expect(contrastRatio(c, SKIN_SURFACE.paper)).toBeGreaterThanOrEqual(4.4);
+    }
+  });
+  it("keeps bright values when no surface is given (export)", () => {
+    expect(scoreColor(9.5).toLowerCase()).toBe("#f5c518");
   });
 });

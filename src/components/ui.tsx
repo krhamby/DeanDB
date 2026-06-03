@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import type { AlbumStatus } from "../types";
-import { useMeterName } from "../lib/store";
+import { useMeterName, useThemeControl } from "../lib/store";
+import { legible } from "../lib/themes";
 
-/** Shared 0–10 color ramp used by the Dean Meter and per-song scores. */
-export function scoreColor(value: number | null): string {
+/** 0-10 color ramp. Pass `surface` to clamp legible for the active skin (UI);
+ *  omit it to get the bright base colors (e.g. the fixed-palette share card). */
+export function scoreColor(value: number | null, surface?: string): string {
   if (value == null) return "var(--color-fg-faint)";
-  if (value >= 9) return "#f5c518";
-  if (value >= 7) return "#7ee081";
-  if (value >= 5) return "#ffb84d";
-  return "#ff5a3c";
+  const base = value >= 9 ? "#f5c518" : value >= 7 ? "#7ee081" : value >= 5 ? "#ffb84d" : "#ff5a3c";
+  return surface ? legible(base, surface) : base;
 }
 
 // ── The Dean Meter ──────────────────────────────────────────────
@@ -24,12 +24,13 @@ export function DeanMeter({
   name?: string;
 }) {
   const ctxName = useMeterName();
+  const { surface } = useThemeControl();
   const label = name ?? ctxName;
   const pct = value == null ? 0 : value / 10;
   const stroke = 5;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const color = scoreColor(value);
+  const color = scoreColor(value, surface);
   return (
     <div
       className="relative grid place-items-center shrink-0"
@@ -76,7 +77,8 @@ export function Score10({
   value: number | null;
   onChange?: (v: number | null) => void;
 }) {
-  const color = scoreColor(value);
+  const { surface } = useThemeControl();
+  const color = scoreColor(value, surface);
   if (!onChange) {
     return (
       <span className="font-display text-base font-black tabular-nums sm:text-sm" style={{ color }}>
@@ -98,7 +100,7 @@ export function Score10({
           onChange(v === "" ? null : Math.max(0, Math.min(10, Number(v))));
         }}
         // Roomy tap target on phones; trims back down on ≥sm screens.
-        className="h-10 w-16 rounded-md border border-edge bg-panel-2 px-2 text-right text-base font-bold tabular-nums outline-none focus:border-gold/50 sm:h-8 sm:w-14 sm:text-sm"
+        className="h-11 w-16 rounded-md border border-[var(--color-edge-strong)] bg-panel-2 px-2 text-right text-base font-bold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-gold sm:h-9 sm:w-14 sm:text-sm"
         style={{ color }}
         aria-label="Song score out of 10"
       />
@@ -108,9 +110,9 @@ export function Score10({
 }
 
 const STATUS_META: Record<AlbumStatus, { label: string; cls: string }> = {
-  completed: { label: "✓ Completed", cls: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
+  completed: { label: "✓ Completed", cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30" },
   listening: { label: "▶ Now Spinning", cls: "bg-gold/15 text-gold-soft ring-gold/30" },
-  want: { label: "☆ On the List", cls: "bg-fg/5 text-fg-muted ring-fg/10" },
+  want: { label: "☆ On the List", cls: "bg-fg/10 text-fg-muted ring-fg/10" },
 };
 
 export function StatusBadge({ status }: { status: AlbumStatus }) {
@@ -126,7 +128,7 @@ export function StatusBadge({ status }: { status: AlbumStatus }) {
 export function LoggedBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-violet-300 ring-1 ring-violet-500/30 ${className}`}
+      className={`inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-status-lib)] ring-1 ring-violet-500/30 ${className}`}
       title="Already listened — kept for ratings & Hall of Fame, but out of the marathon"
     >
       📚 Library
