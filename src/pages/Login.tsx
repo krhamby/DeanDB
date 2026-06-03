@@ -161,12 +161,29 @@ export function Login() {
               ? "Confirm your email"
               : "Sign in to DeanDB";
 
+  const subtitle =
+    mode === "signup"
+      ? "Start your discography marathon."
+      : mode === "forgot"
+        ? "We'll email a link to set a new password."
+        : mode === "mfa"
+          ? "One more step to keep your journey yours."
+          : mode === "setpw"
+            ? "Choose a password for your account."
+            : mode === "confirm"
+              ? "Almost there."
+              : "Pick up where you left off.";
+
   return (
     <div className="mx-auto max-w-md py-12">
       <Panel className="space-y-4 p-8">
         <div className="text-center">
-          <div className="text-5xl">🎧</div>
-          <h1 className="mt-2 font-display text-2xl font-black text-fg">{title}</h1>
+          <div className="inline-flex items-center font-display text-2xl leading-none">
+            <span className="rounded-lg bg-gold px-2.5 py-1 text-on-accent">Dean</span>
+            <span className="ml-1.5 text-fg">DB</span>
+          </div>
+          <h1 className="mt-5 font-display text-2xl font-black text-fg">{title}</h1>
+          <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>
         </div>
 
         {mode === "confirm" ? (
