@@ -91,7 +91,8 @@ export function AlbumDetail({
     const url = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${artist?.name ?? "album"} - ${album?.title ?? "verdict"} — DeanDB.png`;
+    const safe = (s: string) => s.replace(/[/\\]+/g, "-");
+    a.download = `${safe(artist?.name ?? "album")} - ${safe(album?.title ?? "verdict")} — DeanDB.png`;
     a.click();
   };
 
