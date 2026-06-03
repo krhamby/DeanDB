@@ -225,9 +225,14 @@ export function AlbumDetail({
             </div>
 
             <div>
-              <label className="text-sm font-semibold uppercase tracking-wide text-fg-faint sm:text-xs">
-                {data.listener.meterName} Meter: <span className="text-gold">{album.rating?.toFixed(1) ?? "—"}</span>
-              </label>
+              <div className="mb-1 flex items-baseline justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
+                  {data.listener.meterName} Meter
+                </label>
+                <span className="font-display text-3xl font-black leading-none text-gold">
+                  {album.rating?.toFixed(1) ?? "—"}
+                </span>
+              </div>
               <input
                 type="range"
                 min={0}
@@ -235,8 +240,13 @@ export function AlbumDetail({
                 step={0.1}
                 value={album.rating ?? 0}
                 onChange={(e) => patchAlbum({ rating: Number(e.target.value) })}
-                className="mt-1 h-6 w-full cursor-pointer accent-gold"
+                className="h-6 w-full cursor-pointer accent-gold"
+                aria-label="Album score out of 10"
               />
+              <div className="mt-0.5 flex justify-between text-[10px] font-semibold text-fg-faint">
+                <span>0</span>
+                <span>10</span>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-4">
@@ -261,7 +271,17 @@ export function AlbumDetail({
             />
           </div>
         ) : album.review ? (
-          <p className="whitespace-pre-wrap leading-relaxed text-fg-muted">“{album.review}”</p>
+          <blockquote className="relative pl-6">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -top-3 left-0 select-none font-display text-6xl leading-none text-gold/40"
+            >
+              {"\u201c"}
+            </span>
+            <p className="whitespace-pre-wrap font-display text-lg italic leading-relaxed text-fg sm:text-xl">
+              {album.review}
+            </p>
+          </blockquote>
         ) : (
           <p className="italic text-fg-faint">No review yet.</p>
         )}
