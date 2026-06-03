@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
-import { useAuth } from "../lib/store";
+import { useAuth, useThemeControl } from "../lib/store";
+import { legible, pickOnAccent } from "../lib/themes";
 import * as api from "../lib/api";
 import { fetchTracklist, findAlbumCover } from "../lib/musicbrainz";
 import { Cover } from "../components/cards";
@@ -27,6 +28,7 @@ export function AlbumDetail({
   setTrack?: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
 }) {
   const { user } = useAuth();
+  const { surface } = useThemeControl();
   const [editing, setEditing] = useState(false);
   const [agg, setAgg] = useState<AlbumAggregate | null>(null);
   const [recommending, setRecommending] = useState(false);
@@ -80,12 +82,20 @@ export function AlbumDetail({
     );
   }
 
+  const albumAccent = legible(album.cover[0], surface);
+
   const patchAlbum = (patch: api.UserAlbumPatch) => setAlbum?.(album.id, patch);
   const patchTrack = (trackId: string, patch: { rating?: number | null; favorite?: boolean }) =>
     setTrack?.(album.id, trackId, patch);
 
   return (
-    <div>
+    <div
+      style={{
+        ["--color-gold" as string]: albumAccent,
+        ["--color-gold-soft" as string]: albumAccent,
+        ["--color-on-accent" as string]: pickOnAccent(albumAccent),
+      }}
+    >
       {recommending && (
         <RecommendModal
           subject={{ albumId: album.id }}

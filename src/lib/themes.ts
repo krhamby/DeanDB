@@ -112,6 +112,11 @@ export function legible(hex: string, surface: string = SKIN_SURFACE.midnight, mi
   return c;
 }
 
+/** Black or white — whichever is more legible as text on top of `accent`. */
+export function pickOnAccent(accent: string): string {
+  return contrastRatio(accent, "#000000") >= contrastRatio(accent, "#ffffff") ? "#000000" : "#ffffff";
+}
+
 /** Write a theme onto the document root, overriding the @theme CSS variables.
  *  Non-hex inputs fall back to the defaults, and every colour is clamped to a
  *  legible luminance before reaching the CSS sink, so no user choice can make
@@ -124,6 +129,6 @@ export function applyTheme(t: Theme, surface: string = SKIN_SURFACE.midnight): v
   root.setProperty("--color-gold", accent);
   root.setProperty("--color-gold-soft", surface === SKIN_SURFACE.paper ? darken(accent, 0.12) : lighten(accent, 0.55));
   root.setProperty("--color-dean", secondary);
-  const onAccent = contrastRatio(accent, "#000000") >= contrastRatio(accent, "#ffffff") ? "#000000" : "#ffffff";
+  const onAccent = pickOnAccent(accent);
   root.setProperty("--color-on-accent", onAccent);
 }

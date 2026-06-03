@@ -1,6 +1,8 @@
 import { artistProgress } from "../lib/stats";
 import { gradient } from "../lib/format";
 import { navigate, profilePath } from "../lib/router";
+import { useThemeControl } from "../lib/store";
+import { legible, pickOnAccent } from "../lib/themes";
 import { AlbumCard } from "../components/cards";
 import { Avatar } from "../components/social";
 import { DeanMeter, LoggedBadge, Panel, ProgressBar } from "../components/ui";
@@ -15,6 +17,7 @@ export function ArtistDetail({
   artistId: string;
   basePath?: string;
 }) {
+  const { surface } = useThemeControl();
   const artist = data.artists.find((a) => a.id === artistId);
 
   if (!artist) {
@@ -28,6 +31,7 @@ export function ArtistDetail({
     );
   }
 
+  const artistAccent = legible(artist.color[0], surface);
   const tracked = artist.albums.filter((a) => !a.excluded);
   const completed = tracked.filter((a) => a.status === "completed").length;
   const pct = artistProgress(artist) * 100;
@@ -35,7 +39,13 @@ export function ArtistDetail({
   const albums = [...artist.albums].sort((a, b) => order[a.status] - order[b.status]);
 
   return (
-    <div>
+    <div
+      style={{
+        ["--color-gold" as string]: artistAccent,
+        ["--color-gold-soft" as string]: artistAccent,
+        ["--color-on-accent" as string]: pickOnAccent(artistAccent),
+      }}
+    >
       <button onClick={() => navigate(`${basePath}/artists`)} className="mb-4 text-sm text-fg-faint hover:text-gold">
         ← All artists
       </button>
