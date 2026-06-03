@@ -12,7 +12,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import type { Artist, DeanDBData, FeedItem, PersonResult, Profile, Recommendation } from "../types";
 import { supabase, supabaseEnabled } from "./supabase";
 import { firstWord } from "./format";
-import { applyTheme, resolveTheme, type Theme } from "./themes";
+import { applyTheme, resolveTheme, SKIN_SURFACE, type SkinId, type Theme } from "./themes";
 import * as api from "./api";
 import { computeAchievements, computeStats } from "./stats";
 
@@ -245,11 +245,19 @@ export function useAuth(): AuthValue {
 // ════════════════════════════════════════════════════════════════
 
 interface ThemeControl {
-  /** Override the active accent theme (viewing someone's profile, or previewing). Pass null to clear. */
   setThemeOverride: (t: Theme | null) => void;
+  skin: SkinId;
+  /** Active skin's base surface hex (for per-surface accent legibility). */
+  surface: string;
+  setSkin: (s: SkinId) => void;
 }
 
-const ThemeContext = createContext<ThemeControl>({ setThemeOverride: () => {} });
+const ThemeContext = createContext<ThemeControl>({
+  setThemeOverride: () => {},
+  skin: "paper",
+  surface: SKIN_SURFACE.paper,
+  setSkin: () => {},
+});
 
 export function useThemeControl(): ThemeControl {
   return useContext(ThemeContext);
@@ -260,11 +268,33 @@ export function useThemeControl(): ThemeControl {
 function ThemeProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
   const [override, setOverride] = useState<Theme | null>(null);
+  const [skin, setSkinState] = useState<SkinId>(() => {
+    if (typeof localStorage !== "undefined") {
+      const s = localStorage.getItem("deandb.skin");
+      if (s === "paper" || s === "midnight") return s;
+    }
+    return "paper"; // Paper is the authored default
+  });
+  const surface = SKIN_SURFACE[skin];
   const active = override ?? resolveTheme(profile);
+
+  // Reflect the skin on <html> and feed the surface to the accent clamp.
   useEffect(() => {
-    applyTheme(active);
-  }, [active.accent, active.secondary]);
-  const value = useMemo<ThemeControl>(() => ({ setThemeOverride: setOverride }), []);
+    document.documentElement.dataset.skin = skin;
+  }, [skin]);
+  useEffect(() => {
+    applyTheme(active, surface);
+  }, [active.accent, active.secondary, surface]);
+
+  const setSkin = useCallback((s: SkinId) => {
+    setSkinState(s);
+    try { localStorage.setItem("deandb.skin", s); } catch { /* ignore */ }
+  }, []);
+
+  const value = useMemo<ThemeControl>(
+    () => ({ setThemeOverride: setOverride, skin, surface, setSkin }),
+    [skin, surface, setSkin],
+  );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
