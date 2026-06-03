@@ -122,7 +122,7 @@ function NavButton({
     <button
       onClick={() => navigate(path)}
       aria-current={isActive ? "page" : undefined}
-      className={`relative shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:px-3 ${
+      className={`relative shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50 sm:px-3 ${
         isActive ? "bg-gold text-black" : "text-fg-muted hover:bg-fg/5 hover:text-fg"
       }`}
     >
@@ -200,7 +200,7 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu, @${profile.username}`}
-        className="flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        className="flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50"
       >
         <Avatar profile={profile} size={34} />
       </button>

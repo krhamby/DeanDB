@@ -8,7 +8,7 @@ import * as api from "../lib/api";
 import type { Visibility } from "../types";
 
 const inputCls =
-  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-white/40";
+  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-fg/40";
 
 // Usernames are the shareable handle (in the URL), so keep them link-safe:
 // letters, numbers and underscores only — matching the signup trigger's set.
@@ -372,7 +372,7 @@ export function Settings() {
                 key={p.id}
                 onClick={() => setTheme(p.theme)}
                 aria-pressed={active}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50 ${
                   active ? "border-gold text-fg" : "border-edge text-fg-muted hover:text-fg"
                 }`}
               >
@@ -393,7 +393,7 @@ export function Settings() {
               type="color"
               value={theme.accent}
               onChange={(e) => setTheme({ ...theme, accent: e.target.value })}
-              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50"
             />
           </label>
           <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-fg-faint">
@@ -402,12 +402,12 @@ export function Settings() {
               type="color"
               value={theme.secondary}
               onChange={(e) => setTheme({ ...theme, secondary: e.target.value })}
-              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50"
             />
           </label>
           <button
             onClick={() => setTheme(DEFAULT_THEME)}
-            className="rounded text-xs text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            className="rounded text-xs text-fg-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50"
           >
             Reset to default
           </button>
