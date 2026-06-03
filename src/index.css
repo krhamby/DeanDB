@@ -114,7 +114,10 @@ body {
   animation: wheel-reveal 0.5s cubic-bezier(0.16, 1, 0.2, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-wheel-reveal { animation: none; }
+  .animate-wheel-reveal,
+  .animate-pop,
+  .animate-marquee,
+  .animate-shimmer { animation: none; }
 }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
