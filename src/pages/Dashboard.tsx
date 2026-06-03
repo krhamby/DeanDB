@@ -2,9 +2,10 @@ import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
 import { useMyJourney } from "../lib/store";
 import { fmtHours } from "../lib/format";
+import { useCountUp } from "../lib/useCountUp";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
-import { DeanMeter, Panel, ProgressBar, SectionTitle } from "../components/ui";
+import { DeanMeter, Panel, SectionTitle } from "../components/ui";
 import { EmptyState } from "../components/EmptyState";
 import { NextSpinner } from "../components/NextSpinner";
 import type { DeanDBData } from "../types";
@@ -39,6 +40,8 @@ export function Dashboard({
   canEdit?: boolean;
 }) {
   const stats = computeStats(data);
+  const animatedHours = useCountUp(stats.hoursListened);
+  const animatedPct = useCountUp(stats.goalPct);
   const achievements = computeAchievements(data, stats);
   const unlocked = achievements.filter((a) => a.unlocked);
   // Secret-achievement masking is keyed on whether the VIEWER (not this profile's
@@ -66,25 +69,43 @@ export function Dashboard({
         </h1>
         <p className="mt-2 max-w-2xl text-fg-muted">{data.listener.tagline}</p>
 
-        <Panel className="mt-6 p-6">
-          <div className="flex items-end justify-between gap-4">
+        <Panel className="mt-6 overflow-hidden p-6 sm:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
                 Total time logged
               </div>
-              <div className="font-display text-5xl font-black text-gold">
-                {fmtHours(stats.hoursListened)}
+              <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
+                {fmtHours(animatedHours)}
               </div>
             </div>
             <div className="text-right">
-              <div className="font-display text-2xl font-black text-fg">
-                {stats.goalPct.toFixed(1)}%
+              <div className="font-display text-3xl font-black leading-none text-fg">
+                {animatedPct.toFixed(1)}%
               </div>
-              <div className="text-xs text-fg-faint">of {fmtHours(stats.totalRuntimeHours)} total runtime</div>
+              <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
             </div>
           </div>
-          <div className="mt-4">
-            <ProgressBar pct={stats.goalPct} className="h-3" />
+
+          {/* Climb meter */}
+          <div className="relative mt-5">
+            <div className="relative h-4 w-full overflow-hidden rounded-full bg-fg/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
+                style={{
+                  width: `${Math.max(2, Math.min(100, stats.goalPct))}%`,
+                  boxShadow: "0 0 16px color-mix(in srgb, var(--color-gold) 55%, transparent)",
+                }}
+              />
+              {/* milestone ticks */}
+              {[25, 50, 75].map((m) => (
+                <span
+                  key={m}
+                  className="absolute top-0 h-full w-px bg-fg/20"
+                  style={{ left: `${m}%` }}
+                />
+              ))}
+            </div>
             <div className="mt-2 flex justify-between text-xs text-fg-faint">
               <span>0h</span>
               <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
