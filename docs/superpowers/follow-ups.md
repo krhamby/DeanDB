@@ -22,6 +22,8 @@ phases they came from; parked here so they aren't lost.
 
 ## Minor / polish
 
+- [ ] **Live badge-unlock toasts:** when `useMyJourney` detects a newly unlocked achievement, surface a transient neon toast (portal + the existing `detectAndRecord` diff). Deferred from Phase 2d (needs global toast state).
+
 - [ ] **Per-album `--color-gold-soft`** is currently set equal to the album accent on the scoped detail-page
   wrapper (not a softened variant like `applyTheme` derives). Mirror the soft derivation if the difference
   ever shows (used by `text-gold-soft` / subtle fills).
