@@ -80,9 +80,8 @@ export interface Artist {
 export interface DeanDBData {
   /** Branding + the human this journey belongs to. */
   listener: {
-    /** Full display name (used for the profile header). */
-    name: string;
-    /** Short persona name for journey labels — "Kevin Meter", "Kevin's Review". */
+    /** Short persona name for journey labels — "Kevin Meter", "Kevin's Review".
+     *  The profile header shows the full display name separately (Profile.tsx). */
     meterName: string;
     handle: string;
     tagline: string;

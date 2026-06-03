@@ -1,4 +1,4 @@
-import { navigate, useHashRoute } from "../lib/router";
+import { useHashRoute } from "../lib/router";
 
 // Sub-navigation across a single journey. The same three views exist for your
 // own journey (#/me) and anyone else's (#/u/:username), so this is threaded
@@ -30,22 +30,24 @@ export function JourneyNav({ basePath = "" }: { basePath?: string }) {
         : "overview";
 
   return (
-    <nav className="mb-6 flex items-center gap-1 border-b border-edge/60">
+    <nav aria-label="Journey sections" className="mb-6 flex items-center gap-1 border-b border-edge/60">
       {TABS.map((t) => {
         const isActive = active === t.key;
+        const href = `#${t.key === "overview" ? base : `${basePath}${t.seg}`}`;
         return (
-          <button
+          <a
             key={t.key}
-            onClick={() => navigate(t.key === "overview" ? base : `${basePath}${t.seg}`)}
-            className={`relative px-3 py-2 text-sm font-semibold transition-colors ${
+            href={href}
+            aria-current={isActive ? "page" : undefined}
+            className={`relative rounded-t-md px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
               isActive ? "text-gold" : "text-zinc-400 hover:text-white"
             }`}
           >
             {t.label}
             {isActive && (
-              <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-gold" />
+              <span aria-hidden className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-gold" />
             )}
-          </button>
+          </a>
         );
       })}
     </nav>

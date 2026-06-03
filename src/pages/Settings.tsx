@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate } from "../lib/router";
 import { firstWord } from "../lib/format";
-import { DEFAULT_THEME, PRESETS, isHexColor, resolveTheme, type Theme } from "../lib/themes";
+import { DEFAULT_THEME, PRESETS, SURFACE, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
 import type { Visibility } from "../types";
 
 const inputCls =
-  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-white/40";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -85,6 +85,15 @@ export function Settings() {
     }
   };
 
+  // What the colors actually render as: each is clamped to stay legible on the
+  // dark surface, so we preview the *applied* color and flag any auto-lightening.
+  const appliedAccent = legible(theme.accent);
+  const appliedSecondary = legible(theme.secondary);
+  const accentRatio = contrastRatio(appliedAccent, SURFACE);
+  const adjusted =
+    appliedAccent.toLowerCase() !== theme.accent.toLowerCase() ||
+    appliedSecondary.toLowerCase() !== theme.secondary.toLowerCase();
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <SectionTitle kicker="Your account" title="Settings" />
@@ -103,6 +112,7 @@ export function Settings() {
               value={form.meterName}
               onChange={(e) => setForm({ ...form, meterName: e.target.value })}
               placeholder={firstWord(form.displayName) || "e.g. Kevin"}
+              maxLength={40}
             />
           </Field>
           <Field label="Handle">
@@ -170,7 +180,8 @@ export function Settings() {
               <button
                 key={p.id}
                 onClick={() => setTheme(p.theme)}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                aria-pressed={active}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                   active ? "border-gold text-white" : "border-edge text-zinc-400 hover:text-white"
                 }`}
               >
@@ -179,6 +190,7 @@ export function Settings() {
                   <span className="h-4 w-4" style={{ background: p.theme.secondary }} />
                 </span>
                 {p.name}
+                {active && <span aria-hidden className="text-gold">✓</span>}
               </button>
             );
           })}
@@ -190,8 +202,7 @@ export function Settings() {
               type="color"
               value={theme.accent}
               onChange={(e) => setTheme({ ...theme, accent: e.target.value })}
-              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2"
-              aria-label="Accent color"
+              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             />
           </label>
           <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -200,14 +211,42 @@ export function Settings() {
               type="color"
               value={theme.secondary}
               onChange={(e) => setTheme({ ...theme, secondary: e.target.value })}
-              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2"
-              aria-label="Secondary color"
+              className="h-8 w-12 cursor-pointer rounded border border-edge bg-panel-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             />
           </label>
-          <button onClick={() => setTheme(DEFAULT_THEME)} className="text-xs text-zinc-400 hover:text-white">
+          <button
+            onClick={() => setTheme(DEFAULT_THEME)}
+            className="rounded text-xs text-zinc-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          >
             Reset to default
           </button>
         </div>
+
+        {/* Live preview + contrast read-out so the chosen colors are WYSIWYG. */}
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-edge/60 bg-panel-2/60 p-3">
+          <span
+            className="rounded-md px-3 py-1.5 text-sm font-bold text-black"
+            style={{ background: appliedAccent }}
+          >
+            Button
+          </span>
+          <span className="text-sm font-bold" style={{ color: appliedAccent }}>
+            Accent text
+          </span>
+          <span
+            className="h-5 w-5 rounded-full ring-1 ring-black/30"
+            style={{ background: appliedSecondary }}
+            title="Secondary"
+          />
+          <span className="text-xs text-zinc-500">
+            contrast {accentRatio.toFixed(1)}:1 {accentRatio >= 4.5 ? "· AA ✓" : ""}
+          </span>
+        </div>
+        {adjusted && (
+          <p className="text-[11px] text-zinc-500">
+            Dark colors are lightened automatically so accent text and buttons stay readable.
+          </p>
+        )}
       </Panel>
 
       <div className="flex items-center gap-3">

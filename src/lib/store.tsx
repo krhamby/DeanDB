@@ -190,7 +190,7 @@ export function MeterNameProvider({ name, children }: { name: string; children: 
 /** Default scope: the signed-in user's own meter name. */
 function AutoMeterName({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
-  const name = profile ? profile.meterName?.trim() || firstWord(profile.displayName) : "Dean";
+  const name = profile ? profile.meterName?.trim() || firstWord(profile.displayName) || "Listener" : "Dean";
   return <MeterNameProvider name={name}>{children}</MeterNameProvider>;
 }
 

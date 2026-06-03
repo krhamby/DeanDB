@@ -302,8 +302,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
 
   return {
     listener: {
-      name: profile.displayName,
-      meterName: profile.meterName?.trim() || firstWord(profile.displayName),
+      meterName: profile.meterName?.trim() || firstWord(profile.displayName) || "Listener",
       handle: profile.handle ?? "",
       tagline: profile.tagline,
     },

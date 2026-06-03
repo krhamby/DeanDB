@@ -66,13 +66,14 @@ function NavButton({
   return (
     <button
       onClick={() => navigate(path)}
-      className={`relative rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+      aria-current={isActive ? "page" : undefined}
+      className={`relative rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
         isActive ? "bg-gold text-black" : "text-zinc-400 hover:bg-white/5 hover:text-white"
       }`}
     >
       {label}
       {badge ? (
-        <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-white">
+        <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-black">
           {badge}
         </span>
       ) : null}
@@ -84,6 +85,9 @@ function UserMenu() {
   const { profile, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -91,23 +95,93 @@ function UserMenu() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  // Move focus into the menu when it opens (keyboard + screen-reader support).
+  useEffect(() => {
+    if (open) itemRefs.current[0]?.focus();
+  }, [open]);
+
   if (!profile) return null;
-  const go = (p: string) => {
+
+  const close = (returnFocus = false) => {
     setOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  };
+  const go = (p: string) => {
+    close();
     navigate(p);
   };
+
+  const items: { label: string; onSelect: () => void; danger?: boolean }[] = [
+    { label: "People", onSelect: () => go("/people") },
+    { label: "Editor", onSelect: () => go("/editor") },
+    { label: "Settings", onSelect: () => go("/settings") },
+    { label: "Sign out", onSelect: () => { close(); void signOut(); }, danger: true },
+  ];
+
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2">
+      <button
+        ref={triggerRef}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Account menu, @${profile.username}`}
+        className="flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      >
         <Avatar profile={profile} size={34} />
       </button>
       {open && (
-        <div className="absolute right-0 top-11 z-40 w-44 overflow-hidden rounded-xl border border-edge bg-panel-2 py-1 shadow-xl">
+        <div
+          role="menu"
+          aria-label="Account"
+          onKeyDown={(e) => {
+            const last = items.length - 1;
+            const idx = itemRefs.current.findIndex((el) => el === document.activeElement);
+            if (e.key === "Escape") {
+              e.preventDefault();
+              close(true);
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              itemRefs.current[idx < last ? idx + 1 : 0]?.focus();
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              itemRefs.current[idx > 0 ? idx - 1 : last]?.focus();
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              itemRefs.current[0]?.focus();
+            } else if (e.key === "End") {
+              e.preventDefault();
+              itemRefs.current[last]?.focus();
+            } else if (e.key === "Tab") {
+              close();
+            }
+          }}
+          className="absolute right-0 top-11 z-40 w-44 overflow-hidden rounded-xl border border-edge bg-panel-2 py-1 shadow-xl"
+        >
           <div className="border-b border-edge/60 px-3 py-2 text-xs text-zinc-500">@{profile.username}</div>
-          <button onClick={() => go("/people")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">People</button>
-          <button onClick={() => go("/editor")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">Editor</button>
-          <button onClick={() => go("/settings")} className="block w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-white/5">Settings</button>
-          <button onClick={() => { setOpen(false); void signOut(); }} className="block w-full px-3 py-2 text-left text-sm text-zinc-400 hover:bg-white/5 hover:text-dean">Sign out</button>
+          {items.map((it, i) => (
+            <button
+              key={it.label}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              role="menuitem"
+              tabIndex={-1}
+              onClick={it.onSelect}
+              className={`block w-full px-3 py-2 text-left text-sm hover:bg-white/5 focus:bg-white/10 focus:outline-none ${
+                it.danger ? "text-zinc-400 hover:text-dean" : "text-zinc-300"
+              }`}
+            >
+              {it.label}
+            </button>
+          ))}
         </div>
       )}
     </div>

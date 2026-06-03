@@ -59,12 +59,52 @@ export function lighten(hex: string, amt: number): string {
   return `#${to2(r)}${to2(g)}${to2(b)}`;
 }
 
+// ── Contrast (WCAG 2.x relative luminance) ──────────────────────
+// The accent is used BOTH as a fill behind black text (`bg-gold text-black`)
+// and as text on the dark UI surface (`text-gold`). Guaranteeing the accent
+// clears 4.5:1 against the dark surface satisfies both at once: a colour that
+// light reads on the panel, and a colour that light keeps black text legible
+// on top of it. So one clamp legibly bounds every accent the user can pick.
+
+/** The darkest large surface accents sit on/in (the `panel` token). */
+export const SURFACE = "#15151a";
+
+function channelLuminance(c: number): number {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+}
+
+export function relativeLuminance(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
+}
+
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Lighten a colour just enough to clear `min`:1 contrast against the dark
+ * surface, preserving its hue. Already-legible colours (every preset, the
+ * default gold/red) pass through untouched; only too-dark custom picks move.
+ */
+export function legible(hex: string, min = 4.5): string {
+  let c = isHexColor(hex) ? hex : DEFAULT_THEME.accent;
+  for (let i = 0; i < 24 && contrastRatio(c, SURFACE) < min; i++) c = lighten(c, 0.1);
+  return c;
+}
+
 /** Write a theme onto the document root, overriding the @theme CSS variables.
- *  Non-hex inputs are dropped to the defaults before reaching the CSS sink. */
+ *  Non-hex inputs fall back to the defaults, and every colour is clamped to a
+ *  legible luminance before reaching the CSS sink, so no user choice can make
+ *  accent text or accent buttons unreadable. */
 export function applyTheme(t: Theme): void {
   if (typeof document === "undefined") return;
-  const accent = isHexColor(t.accent) ? t.accent : DEFAULT_THEME.accent;
-  const secondary = isHexColor(t.secondary) ? t.secondary : DEFAULT_THEME.secondary;
+  const accent = legible(isHexColor(t.accent) ? t.accent : DEFAULT_THEME.accent);
+  const secondary = legible(isHexColor(t.secondary) ? t.secondary : DEFAULT_THEME.secondary);
   const root = document.documentElement.style;
   root.setProperty("--color-gold", accent);
   root.setProperty("--color-gold-soft", lighten(accent, 0.55));

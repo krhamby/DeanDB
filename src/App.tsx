@@ -104,9 +104,11 @@ function Router() {
   const segments = parseRoute(hash);
   const head = segments[0];
 
-  // #/u/:username/... — another user's journey (read-only, RLS-gated).
+  // #/u/:username/... — another user's journey (read-only, RLS-gated). Keyed on
+  // the username so switching profiles remounts cleanly (theme override resets
+  // per-owner instead of briefly reverting to the global theme mid-load).
   const userRoute = parseUserRoute(segments);
-  if (userRoute) return <Profile username={userRoute.username} rest={userRoute.rest} />;
+  if (userRoute) return <Profile key={userRoute.username} username={userRoute.username} rest={userRoute.rest} />;
 
   switch (head) {
     case undefined:
