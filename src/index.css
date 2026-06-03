@@ -14,6 +14,12 @@
 
 html {
   scroll-behavior: smooth;
+  /* Always reserve the (custom, 10px) classic scrollbar's gutter so the layout
+     width is identical whether or not a page scrolls. Without this, navigating
+     to a long page (e.g. the Journey dashboard) makes the scrollbar appear and
+     shrinks the viewport by 10px — enough to bump the borderline item out of the
+     width-measured header nav and into the profile menu. */
+  scrollbar-gutter: stable;
 }
 
 body {
