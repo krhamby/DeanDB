@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMyJourney } from "../lib/store";
 import { navigate } from "../lib/router";
 import * as api from "../lib/api";
 import { lookupArtist } from "../lib/musicbrainz";
+import { loadArtistTracklists } from "../lib/tracklists";
 import { GRADIENT_PALETTE, gradient, pickGradient } from "../lib/format";
 import { Panel, SectionTitle } from "../components/ui";
 import type { Artist, ArtistSuggestion } from "../types";
@@ -34,8 +35,18 @@ function tasteScore(a: Artist): number {
   return rated.length ? rated.reduce((s, r) => s + r, 0) / rated.length : -1;
 }
 
+/** Cycling ".", "..", "..." so the add button shows active progress. */
+function AddingDots() {
+  const [n, setN] = useState(1);
+  useEffect(() => {
+    const t = setInterval(() => setN((x) => (x % 3) + 1), 350);
+    return () => clearInterval(t);
+  }, []);
+  return <span className="inline-block w-3 text-left">{".".repeat(n)}</span>;
+}
+
 export function Discover() {
-  const { data, userId, reload } = useMyJourney();
+  const { data, userId, reload, patchLocal, setAlbum } = useMyJourney();
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -85,12 +96,31 @@ export function Discover() {
         return;
       }
       const artistId = await api.importArtistFromMatch(userId, match, pickGradient(), pickGradient);
-      await reload();
+      const fresh = await reload();
       setAdd(key, {
         status: "added",
         artistId,
         msg: `${match.albums.length} album${match.albums.length === 1 ? "" : "s"} added`,
       });
+      // Fill in tracklists + real runtimes in the background. Every MusicBrainz
+      // call goes through the shared ~1 req/sec queue, so this won't trip rate
+      // limits — even if several added artists are still loading at once.
+      const added = fresh?.artists.find((a) => a.id === artistId);
+      if (added) {
+        void loadArtistTracklists(added, ({ albumId, titles, trackIds, runtimeMin }) => {
+          patchLocal((d) => {
+            for (const ar of d.artists) {
+              const al = ar.albums.find((x) => x.id === albumId);
+              if (al) {
+                al.tracks = titles.map((t, i) => ({ id: trackIds[i], title: t, rating: null, favorite: false }));
+                break;
+              }
+            }
+            return d;
+          });
+          if (runtimeMin > 0) setAlbum(albumId, { minutes: runtimeMin });
+        }).catch(() => {});
+      }
     } catch (e) {
       setAdd(key, { status: "error", msg: e instanceof Error ? e.message : "Import failed." });
     }
@@ -184,7 +214,14 @@ export function Discover() {
                       disabled={add$.status === "adding"}
                       className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
                     >
-                      {add$.status === "adding" ? "Adding…" : "＋ Add to my journey"}
+                      {add$.status === "adding" ? (
+                        <span>
+                          Adding
+                          <AddingDots />
+                        </span>
+                      ) : (
+                        "＋ Add to my journey"
+                      )}
                     </button>
                   )}
                   {add$.msg && (
