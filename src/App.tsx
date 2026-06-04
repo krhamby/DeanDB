@@ -24,11 +24,12 @@ import { Landing } from "./pages/Landing";
 // the unconditional static import below is what actually satisfies TypeScript —
 // tree-shaking removes it from the prod bundle because the call site is guarded.
 import { Preview } from "./pages/Preview";
+import { Wordmark } from "./components/Wordmark";
 
 function Loading() {
   return (
     <div className="grid min-h-[60vh] place-items-center">
-      <div className="animate-pulse font-display text-2xl font-black text-gold">DeanDB</div>
+      <div className="animate-pulse"><Wordmark size="hero" /></div>
     </div>
   );
 }

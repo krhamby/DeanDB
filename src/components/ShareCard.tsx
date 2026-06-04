@@ -79,8 +79,8 @@ export const VerdictCard = forwardRef<HTMLDivElement, VerdictCardProps>(function
         )}
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontFamily: "'Fraunces Variable', Fraunces, serif", fontWeight: 900, fontSize: 20 }}>
-            <span style={{ background: "#f5c518", color: "#000", padding: "2px 8px", borderRadius: 7 }}>Dean</span>
-            <span style={{ marginLeft: 5 }}>DB</span>
+            <span style={{ color: "#f5c518" }}>Dean</span>
+            <span style={{ color: "#e7e2d8" }}>DB</span>
           </span>
           <span style={{ fontSize: 13, color: "#8d8678" }}>deandb.app</span>
         </div>

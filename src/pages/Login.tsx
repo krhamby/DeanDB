@@ -3,6 +3,7 @@ import { useAuth } from "../lib/store";
 import { navigate } from "../lib/router";
 import * as api from "../lib/api";
 import { Panel } from "../components/ui";
+import { Wordmark } from "../components/Wordmark";
 
 type Mode = "signin" | "signup" | "forgot" | "mfa" | "setpw" | "confirm";
 
@@ -178,10 +179,7 @@ export function Login() {
     <div className="mx-auto max-w-md py-12">
       <Panel className="space-y-4 p-8">
         <div className="text-center">
-          <div className="inline-flex items-center font-display text-2xl leading-none">
-            <span className="rounded-lg bg-gold px-2.5 py-1 text-on-accent">Dean</span>
-            <span className="ml-1.5 text-fg">DB</span>
-          </div>
+          <Wordmark size="hero" />
           <h1 className="mt-5 font-display text-2xl font-black text-fg">{title}</h1>
           <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>
         </div>
