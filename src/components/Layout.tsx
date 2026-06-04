@@ -281,6 +281,10 @@ export function Layout({ children }: { children: ReactNode }) {
     unreadRecommendationCount(user.id).then(setUnread).catch(() => setUnread(0));
   }, [user, route]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [route]);
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-edge/60 bg-ink/85 backdrop-blur-md">
@@ -346,7 +350,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <Ticker />
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <main key={route} className="mx-auto max-w-6xl px-4 py-8 animate-fade-in">{children}</main>
 
       <footer className="mt-16 border-t border-edge/60 py-8 text-center text-xs text-fg-faint">
         <p>
