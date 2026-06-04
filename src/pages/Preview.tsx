@@ -14,6 +14,10 @@ import { AlbumDetail } from "./AlbumDetail";
 import { ArtistDetail } from "./ArtistDetail";
 import { HallOfFame } from "./HallOfFame";
 import { Onboarding } from "./Onboarding";
+import { Feed } from "./Feed";
+import { People } from "./People";
+import { Recommendations } from "./Recommendations";
+import { Discover } from "./Discover";
 
 // The first artist with a completed + rated album is Frank Ocean / Blonde.
 const PREVIEW_ARTIST_ID = "artist-frank-ocean";
@@ -153,6 +157,26 @@ export function Preview() {
         <MockJourneyProvider data={sampleJourney}>
           <Editor />
         </MockJourneyProvider>
+      </Section>
+
+      {/* ── Feed (logged-out: empty state) ── */}
+      <Section label="Feed (empty state / logged-out)">
+        <Feed />
+      </Section>
+
+      {/* ── People (logged-out: search input + empty lists) ── */}
+      <Section label="People (search input / logged-out)">
+        <People />
+      </Section>
+
+      {/* ── Recommendations (logged-out: empty state) ── */}
+      <Section label="Recommendations (empty state / logged-out)">
+        <Recommendations />
+      </Section>
+
+      {/* ── Discover (logged-out: prompt panel) ── */}
+      <Section label="Discover (prompt panel / logged-out)">
+        <Discover />
       </Section>
     </div>
   );
