@@ -5,7 +5,7 @@ phases they came from; parked here so they aren't lost.
 
 ## High priority
 
-- [ ] **Accessibility / contrast expert review across the whole app.** Run a WCAG 2.1 **AA** audit of
+- [x] **Accessibility / contrast expert review across the whole app.** ✅ Done 2026-06-03 — measured audit + full remediation; see [a11y-audit-2026-06-03.md](a11y-audit-2026-06-03.md) (all findings resolved, both skins now AA). Run a WCAG 2.1 **AA** audit of
   every surface in **both skins** (Paper = light/default, Midnight = dark), since the redesign introduced
   light-mode and per-album/per-cover dynamic accent colors. Specifically check:
   - Text/!accent contrast on **Paper** cream (`--color-surface` `#f1e8d8`) — especially `--color-fg-muted`
