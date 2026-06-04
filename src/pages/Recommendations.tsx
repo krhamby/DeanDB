@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Mail } from "lucide-react";
 import { useRecommendations } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
@@ -20,8 +21,9 @@ export function Recommendations() {
       {loading ? (
         <RecommendationsSkeleton />
       ) : inbox.length === 0 ? (
-        <Panel className="px-6 py-16 text-center text-fg-muted">
-          No recommendations yet. When a friend recommends an album, it lands here. ✉
+        <Panel className="inline-flex w-full flex-wrap items-center justify-center gap-1.5 px-6 py-16 text-center text-fg-muted">
+          No recommendations yet. When a friend recommends an album, it lands here.
+          <Mail className="h-4 w-4" aria-hidden />
         </Panel>
       ) : (
         <div className="space-y-4 stagger-children">

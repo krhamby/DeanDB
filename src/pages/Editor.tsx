@@ -1,4 +1,24 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  Ban,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  Footprints,
+  Hourglass,
+  Image as ImageIcon,
+  Library,
+  Loader2,
+  Mic,
+  Music,
+  RefreshCw,
+  Search,
+  Settings as SettingsIcon,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
 import { fmtHours, gradient, pickGradient } from "../lib/format";
@@ -605,11 +625,11 @@ export function Editor() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SectionTitle kicker="Mission control" title="The Editor" />
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate("/settings")} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
-            ⚙ Profile & sharing
+          <button onClick={() => navigate("/settings")} className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
+            <SettingsIcon className="h-4 w-4" aria-hidden /> Profile & sharing
           </button>
-          <button onClick={exportJson} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
-            ⬇ Export backup
+          <button onClick={exportJson} className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
+            <Download className="h-4 w-4" aria-hidden /> Export backup
           </button>
         </div>
       </div>
@@ -636,7 +656,7 @@ export function Editor() {
           className="flex items-center gap-2 text-sm font-bold text-fg-muted hover:text-fg"
           aria-expanded={importOpen}
         >
-          <span className="text-fg-faint">{importOpen ? "▾" : "▸"}</span> Add / import artists
+          <span className="text-fg-faint">{importOpen ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronRight className="h-4 w-4" aria-hidden />}</span> Add / import artists
         </button>
         {importOpen && (
           <div className="space-y-4">
@@ -658,8 +678,16 @@ export function Editor() {
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={importArtist} disabled={lookupBusy || !newArtist.name.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
-            {lookupBusy ? "🔎 Searching…" : "🔎 Import from MusicBrainz"}
+          <button onClick={importArtist} disabled={lookupBusy || !newArtist.name.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
+            {lookupBusy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Searching…
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4" aria-hidden /> Import from MusicBrainz
+              </>
+            )}
           </button>
           <button onClick={addArtist} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-fg-muted hover:text-fg">
             + Add blank artist
@@ -687,8 +715,16 @@ export function Editor() {
           placeholder={"50 Cent\nAlice in Chains\nBig Thief\nTool\n…"}
           className={`${inputCls} w-full font-mono`}
         />
-        <button onClick={bulkImport} disabled={bulkImporting || !bulkText.trim()} className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
-          {bulkImporting ? "⏳ Importing… (don't close this tab)" : "⇊ Import all from MusicBrainz"}
+        <button onClick={bulkImport} disabled={bulkImporting || !bulkText.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40">
+          {bulkImporting ? (
+            <>
+              <Hourglass className="h-4 w-4" aria-hidden /> Importing… (don't close this tab)
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" aria-hidden /> Import all from MusicBrainz
+            </>
+          )}
         </button>
         {bulkLog.length > 0 && (
           <div className="max-h-56 space-y-0.5 overflow-auto rounded-lg border border-edge bg-panel-2/60 p-3 font-mono text-xs text-fg-muted">
@@ -718,14 +754,22 @@ export function Editor() {
             />
             <button
               onClick={() => setFavOnly((v) => !v)}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"}`}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"}`}
               title="Show favorite albums only"
             >
-              ⭐ Favorites
+              <Star className={`h-3.5 w-3.5 ${favOnly ? "fill-current" : ""}`} aria-hidden /> Favorites
             </button>
             {allAlbumIds.length > 0 && (
-              <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
-                {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
+              <button onClick={toggleAllAlbums} className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
+                {allCollapsed ? (
+                  <>
+                    <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden /> Expand all albums
+                  </>
+                ) : (
+                  <>
+                    <ChevronsDownUp className="h-3.5 w-3.5" aria-hidden /> Collapse to album names
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -771,9 +815,11 @@ export function Editor() {
         </Panel>
         {shownArtists.length === 0 && (
           <Panel className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <span className="text-4xl" aria-hidden>
-              {data.artists.length === 0 ? "🎙" : "🔍"}
-            </span>
+            {data.artists.length === 0 ? (
+              <Mic className="h-10 w-10 text-fg-muted" aria-hidden />
+            ) : (
+              <Search className="h-10 w-10 text-fg-muted" aria-hidden />
+            )}
             <p className="text-sm text-fg-faint">
               {data.artists.length === 0
                 ? "Your roster is empty — import or add your first artist to begin."
@@ -822,7 +868,7 @@ export function Editor() {
               <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                 <button
                   onClick={() => setArtist(artist.id, { logged: !artist.logged })}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
                     artist.logged
                       ? "bg-violet-500/15 text-[var(--color-status-lib)] ring-1 ring-violet-500/30"
                       : "border border-edge text-fg-muted hover:text-fg"
@@ -833,33 +879,55 @@ export function Editor() {
                       : "A marathon artist. Click to move to your Library (already heard)."
                   }
                 >
-                  {artist.logged ? "📚 Library" : "🏃 Marathon"}
+                  {artist.logged ? (
+                    <>
+                      <Library className="h-3.5 w-3.5" aria-hidden /> Library
+                    </>
+                  ) : (
+                    <>
+                      <Footprints className="h-3.5 w-3.5" aria-hidden /> Marathon
+                    </>
+                  )}
                 </button>
                 <Menu
                   label="Actions"
                   actions={[
                     {
-                      label: artistPanelOpen[artist.id] ? "▾ Verdict & credit" : "★ Verdict & credit",
+                      label: (
+                        <span className="inline-flex items-center gap-1.5">
+                          {artistPanelOpen[artist.id] ? <ChevronDown className="h-3.5 w-3.5" aria-hidden /> : <Star className="h-3.5 w-3.5" aria-hidden />} Verdict & credit
+                        </span>
+                      ),
                       title: "Set an overall verdict and who recommended this artist",
                       onSelect: () => setArtistPanelOpen((s) => ({ ...s, [artist.id]: !s[artist.id] })),
                     },
                     {
-                      label: metaBusy[artist.id] ? "↻ Refreshing…" : "↻ Genre & country",
+                      label: (
+                        <span className="inline-flex items-center gap-1.5">
+                          <RefreshCw className={`h-3.5 w-3.5 ${metaBusy[artist.id] ? "animate-spin" : ""}`} aria-hidden /> {metaBusy[artist.id] ? "Refreshing…" : "Genre & country"}
+                        </span>
+                      ),
                       title: "Update genre, country & catalog size from MusicBrainz",
                       disabled: metaBusy[artist.id],
                       onSelect: () => refreshMeta(artist),
                     },
                     {
-                      label: "🎵 Load all tracklists",
+                      label: (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Music className="h-3.5 w-3.5" aria-hidden /> Load all tracklists
+                        </span>
+                      ),
                       title: "Fetch tracklists for every album from MusicBrainz",
                       onSelect: () => loadAllTracks(artist),
                     },
                     ...(artist.albums.length > 0
                       ? [
                           {
-                            label: artist.albums.every((a) => albumOpen[a.id])
-                              ? "⤡ Collapse all albums"
-                              : "⤢ Expand all albums",
+                            label: (
+                              <span className="inline-flex items-center gap-1.5">
+                                {artist.albums.every((a) => albumOpen[a.id]) ? <ChevronsDownUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden />} {artist.albums.every((a) => albumOpen[a.id]) ? "Collapse all albums" : "Expand all albums"}
+                              </span>
+                            ),
                             onSelect: () => {
                               const open = artist.albums.every((a) => albumOpen[a.id]);
                               setAlbumOpen((s) => {
@@ -872,7 +940,11 @@ export function Editor() {
                         ]
                       : []),
                     {
-                      label: "🗑 Remove artist",
+                      label: (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden /> Remove artist
+                        </span>
+                      ),
                       danger: true,
                       title: "Remove this artist and all their albums from your journey",
                       onSelect: () => removeArtist(artist.id),
@@ -929,13 +1001,13 @@ export function Editor() {
               {visibleAlbumsOf(artist).map((al) => (
                 <div key={al.id} className={`overflow-hidden rounded-xl border border-edge/60 bg-panel-2/60 ${al.excluded ? "opacity-60" : ""}`}>
                   <button onClick={() => setAlbumOpen((s) => ({ ...s, [al.id]: !s[al.id] }))} className="flex w-full items-center gap-2 p-3 text-left hover:bg-fg/5">
-                    <span className="w-3 shrink-0 text-xs text-fg-faint">{albumOpen[al.id] ? "▾" : "▸"}</span>
+                    <span className="w-3 shrink-0 text-fg-faint">{albumOpen[al.id] ? <ChevronDown className="h-3.5 w-3.5" aria-hidden /> : <ChevronRight className="h-3.5 w-3.5" aria-hidden />}</span>
                     <Cover size="xs" colors={al.cover} title={al.title} coverUrl={al.coverUrl} />
                     <span className="flex-1 truncate text-sm font-semibold text-fg">
                       {al.title} <span className="font-normal text-fg-faint">{al.year ?? ""}</span>
                     </span>
-                    {al.excluded && <span className="shrink-0 text-xs text-dean" title="Excluded">🚫</span>}
-                    {al.favorite && <span className="shrink-0 text-xs" title="Favorite">⭐</span>}
+                    {al.excluded && <Ban className="h-3.5 w-3.5 shrink-0 text-dean" aria-label="Excluded" />}
+                    {al.favorite && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-gold" aria-label="Favorite" />}
                     <span className="hidden shrink-0 text-xs text-fg-faint sm:inline">{al.tracks.length} trk</span>
                     <span className="hidden shrink-0 sm:inline">
                       <StatusBadge status={al.status} />
@@ -949,11 +1021,27 @@ export function Editor() {
                     <div className="border-t border-edge/50 p-3">
                       <div className="flex items-center justify-end">
                         <div className="flex items-center gap-3">
-                          <button onClick={() => fetchCover(artist, al)} disabled={coverBusy[al.id]} className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch cover art from the Cover Art Archive">
-                            {coverBusy[al.id] ? "🎨 …" : al.coverUrl ? "🎨 Refresh cover" : "🎨 Find cover"}
+                          <button onClick={() => fetchCover(artist, al)} disabled={coverBusy[al.id]} className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch cover art from the Cover Art Archive">
+                            {coverBusy[al.id] ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> …
+                              </>
+                            ) : (
+                              <>
+                                <ImageIcon className="h-3.5 w-3.5" aria-hidden /> {al.coverUrl ? "Refresh cover" : "Find cover"}
+                              </>
+                            )}
                           </button>
-                          <button onClick={() => fetchTracks(artist, al)} disabled={trackBusy[al.id]} className="text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch this album's tracklist from MusicBrainz">
-                            {trackBusy[al.id] ? "🎵 …" : al.tracks.length ? "🎵 Reload tracks" : "🎵 Get tracks"}
+                          <button onClick={() => fetchTracks(artist, al)} disabled={trackBusy[al.id]} className="inline-flex items-center gap-1.5 text-xs font-semibold text-gold hover:brightness-110 disabled:opacity-50" title="Fetch this album's tracklist from MusicBrainz">
+                            {trackBusy[al.id] ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> …
+                              </>
+                            ) : (
+                              <>
+                                <Music className="h-3.5 w-3.5" aria-hidden /> {al.tracks.length ? "Reload tracks" : "Get tracks"}
+                              </>
+                            )}
                           </button>
                           <button onClick={() => removeAlbum(artist.id, al.id)} className="text-xs text-fg-faint hover:text-dean">
                             Delete
@@ -971,15 +1059,21 @@ export function Editor() {
                             {s === "want" ? "Want" : s === "listening" ? "Listening" : "Done"}
                           </button>
                         ))}
-                        <button onClick={() => setAlbum(al.id, { favorite: !al.favorite })} className="text-base transition-transform hover:scale-110" title="Favorite album">
-                          {al.favorite ? "⭐" : "☆"}
+                        <button onClick={() => setAlbum(al.id, { favorite: !al.favorite })} className="inline-flex transition-transform hover:scale-110" title="Favorite album" aria-label={al.favorite ? "Unfavorite album" : "Favorite album"}>
+                          <Star className={`h-4 w-4 text-gold ${al.favorite ? "fill-current" : ""}`} aria-hidden />
                         </button>
                         <button
                           onClick={() => setAlbum(al.id, { excluded: !al.excluded })}
-                          className={`rounded-md px-2 py-1 text-xs font-semibold ${al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-fg-faint hover:text-fg"}`}
+                          className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${al.excluded ? "bg-dean/20 text-dean ring-1 ring-dean/40" : "border border-edge text-fg-faint hover:text-fg"}`}
                           title="Exclude from the marathon (won't count toward runtime or progress)"
                         >
-                          {al.excluded ? "🚫 Excluded" : "Exclude"}
+                          {al.excluded ? (
+                            <>
+                              <Ban className="h-3.5 w-3.5" aria-hidden /> Excluded
+                            </>
+                          ) : (
+                            "Exclude"
+                          )}
                         </button>
                         <div className="ml-auto flex items-center gap-2">
                           <DeanMeter value={al.rating} size={34} />
@@ -999,8 +1093,8 @@ export function Editor() {
 
                       {al.tracks.length > 0 && (
                         <div className="mt-2">
-                          <button onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))} className="text-xs font-semibold text-fg-muted hover:text-fg">
-                            {expanded[al.id] ? "▾" : "▸"} {al.tracks.length} tracks — rate songs
+                          <button onClick={() => setExpanded((s) => ({ ...s, [al.id]: !s[al.id] }))} className="inline-flex items-center gap-1.5 text-xs font-semibold text-fg-muted hover:text-fg">
+                            {expanded[al.id] ? <ChevronDown className="h-3.5 w-3.5" aria-hidden /> : <ChevronRight className="h-3.5 w-3.5" aria-hidden />} {al.tracks.length} tracks — rate songs
                           </button>
                           {expanded[al.id] && (
                             <div className="mt-2 divide-y divide-edge/40 rounded-lg border border-edge/40 bg-panel/40">
@@ -1008,8 +1102,8 @@ export function Editor() {
                                 <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
                                   <span className="w-5 text-right text-xs text-fg-faint">{i + 1}</span>
                                   <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
-                                  <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="px-1 text-lg leading-none transition-transform hover:scale-110 sm:text-sm" title="Favorite track">
-                                    {t.favorite ? "⭐" : "☆"}
+                                  <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="inline-flex px-1 transition-transform hover:scale-110" title="Favorite track" aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}>
+                                    <Star className={`h-4 w-4 text-gold ${t.favorite ? "fill-current" : ""}`} aria-hidden />
                                   </button>
                                   <Score10 value={t.rating} onChange={(v) => setTrack(al.id, t.id, { rating: v })} />
                                   <button onClick={() => removeTrack(artist.id, al.id, t.id)} className="text-fg-faint hover:text-dean" title="Remove track">

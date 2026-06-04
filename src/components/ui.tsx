@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Bookmark, Check, Play, type LucideIcon } from "lucide-react";
+import { Bookmark, Check, ChevronDown, Library, Play, type LucideIcon } from "lucide-react";
 import type { AlbumStatus } from "../types";
 import { useMeterName, useThemeControl } from "../lib/store";
 import { legible } from "../lib/themes";
@@ -166,14 +166,15 @@ export function StatusBadge({ status, onMedia = false }: { status: AlbumStatus; 
 export function LoggedBadge({ className = "", onMedia = false }: { className?: string; onMedia?: boolean }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
         onMedia
           ? "bg-violet-500/25 text-violet-200 ring-violet-400/30"
           : "bg-violet-500/15 text-[var(--color-status-lib)] ring-violet-500/30"
       } ${className}`}
       title="Already listened — kept for ratings & Hall of Fame, but out of the marathon"
     >
-      📚 Library
+      <Library className="h-3.5 w-3.5" aria-hidden />
+      Library
     </span>
   );
 }
@@ -249,12 +250,10 @@ export function Select({
       >
         {children}
       </select>
-      <span
+      <ChevronDown
         aria-hidden
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-fg-faint"
-      >
-        ▾
-      </span>
+        className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-faint"
+      />
     </div>
   );
 }

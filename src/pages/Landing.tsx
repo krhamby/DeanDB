@@ -1,3 +1,4 @@
+import { Crown, Disc3, SlidersVertical, Trophy, type LucideIcon } from "lucide-react";
 import { navigate } from "../lib/router";
 import { GRADIENT_PALETTE, gradient } from "../lib/format";
 
@@ -25,10 +26,10 @@ function CoverWall() {
   );
 }
 
-const FEATURES = [
-  { icon: "🎡", title: "The Wheel", body: "Can't decide who's next? Spin the Marathon Wheel and let fate pick your next artist." },
-  { icon: "🎚️", title: "Your verdict", body: "Score every album on the Dean Meter, rate the deep cuts, and write the review." },
-  { icon: "🏆", title: "Hall of Fame", body: "Your highest-rated records, desert-island tracks, and unlockable achievements." },
+const FEATURES: { Icon: LucideIcon; title: string; body: string }[] = [
+  { Icon: Disc3, title: "The Wheel", body: "Can't decide who's next? Spin the Marathon Wheel and let fate pick your next artist." },
+  { Icon: SlidersVertical, title: "Your verdict", body: "Score every album on the Dean Meter, rate the deep cuts, and write the review." },
+  { Icon: Trophy, title: "Hall of Fame", body: "Your highest-rated records, desert-island tracks, and unlockable achievements." },
 ];
 
 /** Marketing landing for signed-out visitors. */
@@ -67,7 +68,7 @@ export function Landing() {
       <section className="mt-16 grid gap-4 sm:grid-cols-3">
         {FEATURES.map((f) => (
           <div key={f.title} className="rounded-2xl border border-edge bg-panel/70 p-6 text-left">
-            <div className="text-3xl">{f.icon}</div>
+            <f.Icon className="h-8 w-8 text-gold" aria-hidden />
             <div className="mt-3 font-display text-xl font-black text-fg">{f.title}</div>
             <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">{f.body}</p>
           </div>
@@ -90,7 +91,7 @@ export function Landing() {
           </div>
           <div className="mt-2 flex justify-between text-xs text-fg-faint">
             <span>0h</span>
-            <span>241h — The Summit 👑</span>
+            <span className="inline-flex items-center gap-1">241h — The Summit <Crown className="h-4 w-4" aria-hidden /></span>
           </div>
         </div>
       </section>

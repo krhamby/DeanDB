@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Check, Copy, Globe, Lock, Moon, Newspaper } from "lucide-react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { firstWord } from "../lib/format";
@@ -130,7 +131,7 @@ function SecuritySection() {
         <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">Two-factor authentication</div>
         {verified ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-[var(--color-status-done)]">✓ On (authenticator app)</span>
+            <span className="inline-flex items-center gap-1.5 text-sm text-[var(--color-status-done)]"><Check className="h-4 w-4" aria-hidden /> On (authenticator app)</span>
             <button onClick={disable} disabled={busy} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-dean hover:brightness-110 disabled:opacity-40">
               Turn off
             </button>
@@ -335,11 +336,19 @@ export function Settings() {
             <button
               key={v}
               onClick={() => setVisibility(v)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold capitalize ${
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold capitalize ${
                 visibility === v ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
-              {v === "private" ? "🔒 Private" : "🌍 Public"}
+              {v === "private" ? (
+                <>
+                  <Lock className="h-4 w-4" aria-hidden /> Private
+                </>
+              ) : (
+                <>
+                  <Globe className="h-4 w-4" aria-hidden /> Public
+                </>
+              )}
             </button>
           ))}
           <span className="text-xs text-fg-faint">
@@ -350,8 +359,14 @@ export function Settings() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <code className="flex-1 truncate rounded bg-fg/5 px-2 py-1.5 text-xs text-gold">{shareUrl}</code>
-          <button onClick={share} className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
-            {copied ? "Copied!" : "📋 Copy link"}
+          <button onClick={share} className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg">
+            {copied ? (
+              "Copied!"
+            ) : (
+              <>
+                <Copy className="h-4 w-4" aria-hidden /> Copy link
+              </>
+            )}
           </button>
         </div>
       </Panel>
@@ -366,11 +381,19 @@ export function Settings() {
               key={s}
               onClick={() => setSkin(s)}
               aria-pressed={skin === s}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition ${
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold transition ${
                 skin === s ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
-              {s === "paper" ? "📰 Paper" : "🌙 Midnight"}
+              {s === "paper" ? (
+                <>
+                  <Newspaper className="h-4 w-4" aria-hidden /> Paper
+                </>
+              ) : (
+                <>
+                  <Moon className="h-4 w-4" aria-hidden /> Midnight
+                </>
+              )}
             </button>
           ))}
         </div>
@@ -401,7 +424,7 @@ export function Settings() {
                   <span className="h-4 w-4" style={{ background: p.theme.secondary }} />
                 </span>
                 {p.name}
-                {active && <span aria-hidden className="text-gold">✓</span>}
+                {active && <Check className="h-4 w-4 text-gold" aria-hidden />}
               </button>
             );
           })}
@@ -449,8 +472,13 @@ export function Settings() {
             style={{ background: appliedSecondary }}
             title="Secondary"
           />
-          <span className="text-xs text-fg-faint">
-            contrast {accentRatio.toFixed(1)}:1 {accentRatio >= 4.5 ? "· AA ✓" : ""}
+          <span className="inline-flex items-center gap-1 text-xs text-fg-faint">
+            contrast {accentRatio.toFixed(1)}:1
+            {accentRatio >= 4.5 && (
+              <>
+                · AA <Check className="h-3 w-3" aria-hidden />
+              </>
+            )}
           </span>
         </div>
         {adjusted && (

@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { HelpCircle, Lock, Medal } from "lucide-react";
+import { Crown, HelpCircle, Library, Lock, Medal, Mic, Play } from "lucide-react";
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
 import { useMyJourney, useThemeControl } from "../lib/store";
@@ -147,8 +147,8 @@ export function Dashboard({
                 className="animate-pop relative overflow-hidden rounded-xl border border-gold/50 bg-gradient-to-r from-gold/20 via-dean/10 to-transparent p-6 text-center"
                 style={{ boxShadow: "0 0 32px -6px color-mix(in srgb, var(--color-gold) 50%, transparent)" }}
               >
-                <div className="font-display text-[11px] uppercase tracking-[0.3em] text-gold">
-                  The Summit — conquered 👑
+                <div className="inline-flex items-center justify-center gap-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-gold">
+                  The Summit — conquered <Crown className="h-4 w-4" aria-hidden />
                 </div>
                 <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
                   {fmtHours(animatedHours)}
@@ -190,7 +190,7 @@ export function Dashboard({
                   </div>
                   <div className="mt-2 flex justify-between text-xs text-fg-faint">
                     <span>0h</span>
-                    <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
+                    <span className="inline-flex items-center gap-1">{fmtHours(stats.totalRuntimeHours)} — The Summit <Crown className="h-4 w-4" aria-hidden /></span>
                   </div>
                 </div>
               </>
@@ -212,7 +212,7 @@ export function Dashboard({
                   >
                     <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="xs" />
                     <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-wide text-gold">▶ Live</div>
+                      <div className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-gold"><Play className="h-3 w-3 fill-current" aria-hidden /> Live</div>
                       <div className="truncate font-display text-sm font-black text-fg">{a.title}</div>
                       <div className="truncate text-xs text-fg-muted">{a.artistName}</div>
                     </div>
@@ -249,8 +249,9 @@ export function Dashboard({
         canEdit ? (
           <Onboarding />
         ) : (
-          <Panel className="px-6 py-16 text-center text-fg-muted">
-            {data.listener.meterName} hasn&apos;t added any artists yet. 🎙️
+          <Panel className="flex flex-col items-center gap-3 px-6 py-16 text-center text-fg-muted">
+            <Mic className="h-12 w-12 text-fg-muted" aria-hidden />
+            {data.listener.meterName} hasn&apos;t added any artists yet.
           </Panel>
         )
       ) : (
@@ -261,7 +262,7 @@ export function Dashboard({
               <NextSpinner artists={data.artists} basePath={basePath} />
             ) : (
               <Panel className="px-6 py-10 text-center text-fg-muted">
-                <div className="mb-2 text-4xl">📚</div>
+                <div className="mb-2 flex justify-center"><Library className="h-10 w-10" aria-hidden /></div>
                 Everything here is in the Library — no marathon artists yet. Start one in the{" "}
                 <button onClick={() => navigate("/editor")} className="text-gold hover:underline">
                   Editor

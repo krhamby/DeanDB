@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Check, Lock } from "lucide-react";
 import type { PersonResult, Profile } from "../types";
 import { navigate, profilePath } from "../lib/router";
 import { useAuth } from "../lib/store";
@@ -76,7 +77,9 @@ export function PersonRow({
           <div className="truncate font-display font-black text-fg">{person.profile.displayName}</div>
           <div className="truncate text-xs text-fg-faint">
             @{person.profile.username}
-            {person.profile.visibility === "private" && " · 🔒 private"}
+            {person.profile.visibility === "private" && (
+              <span className="inline-flex items-center gap-1"> · <Lock className="h-3 w-3" aria-hidden /> private</span>
+            )}
             {person.followsMe && " · follows you"}
           </div>
         </div>
@@ -136,7 +139,7 @@ export function FollowButton({
     <button
       onClick={toggle}
       disabled={busy}
-      className={`rounded-xl px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
+      className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
         status === "accepted"
           ? "border border-edge text-fg-muted hover:text-dean"
           : status === "pending"
@@ -144,7 +147,15 @@ export function FollowButton({
             : "bg-gold text-on-accent hover:brightness-110"
       }`}
     >
-      {status === "accepted" ? "✓ Following" : status === "pending" ? "Requested" : "+ Follow"}
+      {status === "accepted" ? (
+        <>
+          <Check className="h-3.5 w-3.5" aria-hidden /> Following
+        </>
+      ) : status === "pending" ? (
+        "Requested"
+      ) : (
+        "+ Follow"
+      )}
     </button>
   );
 }
@@ -196,7 +207,9 @@ export function RecommendModal({
         <div onClick={(e) => e.stopPropagation()} className="space-y-4">
           <h3 className="font-display text-lg font-black text-fg">Recommend “{label}”</h3>
           {sent ? (
-            <p className="text-sm font-semibold text-[var(--color-status-done)]">Sent! 🎉</p>
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-status-done)]">
+              <Check className="h-4 w-4" aria-hidden /> Sent!
+            </p>
           ) : people.length === 0 ? (
             <p className="text-sm text-fg-muted">
               Follow some people first — you can recommend to anyone you follow.

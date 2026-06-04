@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface MenuAction {
@@ -57,7 +58,7 @@ export function Menu({
         className="inline-flex items-center gap-1 rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg"
       >
         {label}
-        <span aria-hidden className="text-[10px] text-fg-faint">▾</span>
+        <ChevronDown aria-hidden className="h-3 w-3 text-fg-faint" />
       </button>
       {open && (
         <div

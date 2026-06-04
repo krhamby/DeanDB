@@ -1,4 +1,4 @@
-import { Medal } from "lucide-react";
+import { Medal, Star } from "lucide-react";
 import { flattenAlbums } from "../lib/stats";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
@@ -114,7 +114,7 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
           <div className="grid gap-2 sm:grid-cols-2">
             {favTracks.map((t, i) => (
               <Panel key={i} className="flex items-center gap-3 p-3">
-                <span className="text-xl">⭐</span>
+                <Star className="h-5 w-5 shrink-0 fill-current text-gold" aria-hidden />
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-fg">{t.track}</div>
                   <div className="truncate text-xs text-fg-faint">

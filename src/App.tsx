@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Plug } from "lucide-react";
 import { Layout } from "./components/Layout";
 import { Panel } from "./components/ui";
 import { parseRoute, parseUserRoute, useHashRoute, navigate } from "./lib/router";
@@ -185,7 +186,7 @@ export default function App() {
     return (
       <Layout>
         <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
-          <div className="mb-3 text-5xl">🔌</div>
+          <div className="mb-3 flex justify-center"><Plug className="h-12 w-12" aria-hidden /></div>
           <p className="font-display text-lg font-black text-fg">Backend not configured</p>
           <p className="mt-1 text-sm">
             Set <code className="text-gold">SUPABASE_URL</code> and{" "}

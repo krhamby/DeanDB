@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Download, Globe, Mail, Pencil, Star } from "lucide-react";
 import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useAuth, useThemeControl } from "../lib/store";
@@ -180,10 +181,14 @@ export function AlbumDetail({
                 );
               })()}
               {album.dateListened && <span>· Finished {fmtDate(album.dateListened)}</span>}
-              {album.favorite && <span title="Favorite">⭐</span>}
+              {album.favorite && (
+                <span title="Favorite">
+                  <Star className="h-4 w-4 fill-current text-gold" aria-label="Favorite" />
+                </span>
+              )}
               {agg && agg.listenerCount > 0 && (
-                <span title="Community average across all listeners">
-                  · 🌍 {agg.avgRating?.toFixed(1)} avg ({agg.listenerCount})
+                <span className="inline-flex items-center gap-1" title="Community average across all listeners">
+                  · <Globe className="h-4 w-4" aria-hidden /> {agg.avgRating?.toFixed(1)} avg ({agg.listenerCount})
                 </span>
               )}
             </div>
@@ -206,29 +211,35 @@ export function AlbumDetail({
           {user && (
             <button
               onClick={() => setRecommending(true)}
-              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-gold"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-gold"
               title="Recommend this to a friend"
             >
-              ✉️ Recommend
+              <Mail className="h-4 w-4" aria-hidden /> Recommend
             </button>
           )}
           {user && (
             <button
               onClick={downloadCard}
-              className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-gold"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-fg-muted hover:text-gold"
               title="Download a shareable Verdict card"
             >
-              ⬇️ Share card
+              <Download className="h-4 w-4" aria-hidden /> Share card
             </button>
           )}
           {canEdit && setAlbum && (
             <button
               onClick={() => setEditing((e) => !e)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${
                 editing ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
               }`}
             >
-              {editing ? "Done" : "✎ Edit"}
+              {editing ? (
+                "Done"
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4" aria-hidden /> Edit
+                </>
+              )}
             </button>
           )}
         </div>
@@ -260,11 +271,11 @@ export function AlbumDetail({
               ))}
               <button
                 onClick={() => patchAlbum({ favorite: !album.favorite })}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${
                   album.favorite ? "bg-gold text-on-accent" : "border border-edge text-fg-muted"
                 }`}
               >
-                ⭐ Favorite
+                <Star className={`h-4 w-4 ${album.favorite ? "fill-current" : ""}`} aria-hidden /> Favorite
               </button>
             </div>
 
@@ -343,13 +354,14 @@ export function AlbumDetail({
                 {editing ? (
                   <button
                     onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-xl leading-none transition-transform hover:scale-125 sm:text-base"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center leading-none transition-transform hover:scale-125"
                     title="Favorite track"
+                    aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}
                   >
-                    {t.favorite ? "⭐" : "☆"}
+                    <Star className={`h-5 w-5 text-gold ${t.favorite ? "fill-current" : ""}`} aria-hidden />
                   </button>
                 ) : (
-                  t.favorite && <span className="text-xl sm:text-base">⭐</span>
+                  t.favorite && <Star className="h-5 w-5 fill-current text-gold" aria-label="Favorite" />
                 )}
                 <Score10 value={t.rating} onChange={editing ? (v) => patchTrack(t.id, { rating: v }) : undefined} />
               </div>
