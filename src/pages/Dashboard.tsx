@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { HelpCircle, Lock, Medal } from "lucide-react";
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
 import { useMyJourney, useThemeControl } from "../lib/store";
@@ -326,9 +327,14 @@ export function Dashboard({
             ) : (
               unlocked.slice(0, 4).map((a) => {
                 const secret = shouldMaskSecret(a, myUnlockedAchievementIds.has(a.id));
+                const Icon = a.Icon;
                 return (
                   <div key={a.id} className="flex items-center gap-3">
-                    <span className="text-2xl">{secret ? "❓" : a.emoji}</span>
+                    {secret ? (
+                      <HelpCircle className="h-6 w-6 text-fg-faint" aria-hidden />
+                    ) : (
+                      <Icon className="h-6 w-6 text-gold" aria-hidden />
+                    )}
                     <span className="truncate font-display text-sm font-black text-fg">
                       {secret ? "Secret Achievement" : a.title}
                     </span>
@@ -360,8 +366,11 @@ export function Dashboard({
                   onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
                   className="group flex w-full items-center gap-3 text-left transition-transform hover:-translate-y-0.5"
                 >
-                  <span className="w-6 shrink-0 text-center text-lg">
-                    {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                  <span className="grid w-6 shrink-0 place-items-center">
+                    <Medal
+                      className={`h-5 w-5 ${i === 0 ? "text-gold" : i === 1 ? "text-zinc-400" : "text-amber-700"}`}
+                      aria-label={`Rank ${i + 1}`}
+                    />
                   </span>
                   <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="xs" />
                   <span className="min-w-0 flex-1 truncate font-display text-sm font-black text-fg">
@@ -405,6 +414,7 @@ export function Dashboard({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {achievements.map((a) => {
               const secret = shouldMaskSecret(a, myUnlockedAchievementIds.has(a.id));
+              const Icon = a.Icon;
               return (
                 <Panel
                   key={a.id}
@@ -412,7 +422,13 @@ export function Dashboard({
                     a.unlocked ? "" : "opacity-50 grayscale"
                   } ${a.hidden && a.unlocked ? "border-gold/50" : ""}`}
                 >
-                  <span className="text-3xl">{secret ? "❓" : a.unlocked ? a.emoji : "🔒"}</span>
+                  {secret ? (
+                    <HelpCircle className="h-7 w-7 shrink-0 text-fg-faint" aria-hidden />
+                  ) : a.unlocked ? (
+                    <Icon className="h-7 w-7 shrink-0 text-gold" aria-hidden />
+                  ) : (
+                    <Lock className="h-7 w-7 shrink-0 text-fg-faint" aria-hidden />
+                  )}
                   <div>
                     <div className="font-display font-black text-fg">
                       {secret ? "Secret Achievement" : a.title}

@@ -1,3 +1,4 @@
+import { HelpCircle } from "lucide-react";
 import { useFeed, useMyJourney } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
@@ -43,10 +44,15 @@ export function Feed() {
             // Masked unless the VIEWER has unlocked this secret themselves (global
             // rule). Reveals everywhere once you've earned it; teases until then.
             const masked = shouldMaskSecret(meta, myUnlockedAchievementIds.has(it.achievementId));
+            const Icon = meta.Icon;
             return (
               <Panel key={it.achievementRowId} className="flex items-center gap-3 p-3 sm:gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-panel-2 text-3xl sm:h-16 sm:w-16">
-                  {masked ? "❓" : meta.emoji}
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-panel-2 sm:h-16 sm:w-16">
+                  {masked ? (
+                    <HelpCircle className="h-7 w-7 text-fg-faint" aria-hidden />
+                  ) : (
+                    <Icon className="h-7 w-7 text-gold" aria-hidden />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-fg-faint">

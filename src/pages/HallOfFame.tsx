@@ -1,3 +1,4 @@
+import { Medal } from "lucide-react";
 import { flattenAlbums } from "../lib/stats";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
@@ -17,7 +18,13 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
     ),
   );
 
-  const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`);
+  // Ranks 1–3 get a colored medal (gold/silver/bronze — the documented brand
+  // exception where color is intended); rank ≥4 stays the plain "#n" text.
+  const medal = (i: number) => {
+    if (i > 2) return `#${i + 1}`;
+    const color = i === 0 ? "text-gold" : i === 1 ? "text-zinc-400" : "text-amber-700";
+    return <Medal className={`mx-auto h-[1em] w-[1em] ${color}`} aria-label={`Rank ${i + 1}`} />;
+  };
 
   // Gold / silver / bronze accents for the podium; subtle edge for the rest.
   const rankClass = (i: number) =>

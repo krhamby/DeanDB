@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Bookmark, Check, Play, type LucideIcon } from "lucide-react";
 import type { AlbumStatus } from "../types";
 import { useMeterName, useThemeControl } from "../lib/store";
 import { legible } from "../lib/themes";
@@ -124,19 +125,22 @@ export function Score10({
 // Each status has two looks: `cls` for badges on a panel/surface (skin-aware —
 // dark text on Paper, light on Midnight), and `onMediaCls` for badges layered
 // over a dark cover-art hero (always light text, both skins).
-const STATUS_META: Record<AlbumStatus, { label: string; cls: string; onMediaCls: string }> = {
+const STATUS_META: Record<AlbumStatus, { label: string; Icon: LucideIcon; cls: string; onMediaCls: string }> = {
   completed: {
-    label: "✓ Completed",
+    label: "Completed",
+    Icon: Check,
     cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30",
     onMediaCls: "bg-emerald-500/20 text-emerald-200 ring-emerald-400/30",
   },
   listening: {
-    label: "▶ Now Spinning",
+    label: "Now Spinning",
+    Icon: Play,
     cls: "bg-gold/15 text-gold-soft ring-gold/30",
     onMediaCls: "bg-white/15 text-[#ffe082] ring-white/25",
   },
   want: {
-    label: "☆ On the List",
+    label: "On the List",
+    Icon: Bookmark,
     cls: "bg-fg/10 text-fg ring-fg/10",
     onMediaCls: "bg-white/15 text-zinc-100 ring-white/25",
   },
@@ -144,12 +148,14 @@ const STATUS_META: Record<AlbumStatus, { label: string; cls: string; onMediaCls:
 
 export function StatusBadge({ status, onMedia = false }: { status: AlbumStatus; onMedia?: boolean }) {
   const m = STATUS_META[status];
+  const Icon = m.Icon;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
         onMedia ? m.onMediaCls : m.cls
       }`}
     >
+      <Icon className="h-3.5 w-3.5" aria-hidden />
       {m.label}
     </span>
   );
