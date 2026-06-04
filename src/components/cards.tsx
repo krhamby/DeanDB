@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useMeterName } from "../lib/store";
@@ -21,6 +21,7 @@ export function Cover({
 }) {
   const dim = size === "lg" ? 220 : size === "sm" ? 96 : size === "xs" ? 44 : 150;
   const [imgState, setImgState] = useState<"loading" | "loaded" | "error">("loading");
+  useEffect(() => setImgState("loading"), [coverUrl]);
   // Cached images (the common case once the cover service-worker cache is warm)
   // can finish loading before React attaches onLoad, which would otherwise strand
   // them at opacity-0. A callback ref catches the already-complete case on mount.

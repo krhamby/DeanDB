@@ -49,6 +49,7 @@ export function DeanMeter({
           strokeDasharray={c}
           strokeDashoffset={c * (1 - pct)}
           strokeLinecap="round"
+          className="rm-no-transition"
           style={{
             transition: "stroke-dashoffset 0.6s ease",
             filter: value != null && value >= 9 ? `drop-shadow(0 0 5px ${color})` : "none",

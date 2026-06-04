@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { fmtDate, fmtMinutes, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useAuth, useThemeControl } from "../lib/store";
-import { legible, pickOnAccent } from "../lib/themes";
+import { darken, legible, lighten, pickOnAccent, SKIN_SURFACE } from "../lib/themes";
 import * as api from "../lib/api";
 import { fetchTracklist, findAlbumCover } from "../lib/musicbrainz";
 import { Cover } from "../components/cards";
@@ -104,12 +104,16 @@ export function AlbumDetail({
 
   const downloadCard = async () => {
     if (!cardRef.current) return;
-    const url = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
-    const a = document.createElement("a");
-    a.href = url;
-    const safe = (s: string) => s.replace(/[/\\]+/g, "-");
-    a.download = `${safe(artist?.name ?? "album")} - ${safe(album?.title ?? "verdict")} — DeanDB.png`;
-    a.click();
+    try {
+      const url = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
+      const a = document.createElement("a");
+      a.href = url;
+      const safe = (s: string) => s.replace(/[/\\]+/g, "-");
+      a.download = `${safe(artist?.name ?? "album")} - ${safe(album?.title ?? "verdict")} — DeanDB.png`;
+      a.click();
+    } catch (e) {
+      console.error("share card export failed:", e);
+    }
   };
 
   const albumAccent = legible(extractedColor ?? album.dominantColor ?? album.cover[0], surface);
@@ -122,7 +126,8 @@ export function AlbumDetail({
     <div
       style={{
         ["--color-gold" as string]: albumAccent,
-        ["--color-gold-soft" as string]: albumAccent,
+        ["--color-gold-soft" as string]:
+          surface === SKIN_SURFACE.paper ? darken(albumAccent, 0.12) : lighten(albumAccent, 0.55),
         ["--color-on-accent" as string]: pickOnAccent(albumAccent),
       }}
     >

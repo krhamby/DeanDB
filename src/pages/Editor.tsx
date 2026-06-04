@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
 import { fmtHours, gradient, pickGradient } from "../lib/format";
@@ -173,9 +173,13 @@ export function Editor() {
   const [albumSort, setAlbumSort] = useState<"default" | "title" | "year" | "rating" | "date">("default");
   // Roster-first: imports tuck into a disclosure, auto-opened only when the roster is empty.
   const [importOpen, setImportOpen] = useState(false);
+  const importInitRef = useRef(false);
   useEffect(() => {
-    if (data) setImportOpen(data.artists.length === 0);
-  }, []);
+    if (data && !importInitRef.current) {
+      importInitRef.current = true;
+      setImportOpen(data.artists.length === 0);
+    }
+  }, [data]);
 
   if (!data || !userId) return null;
   const uid = userId;
