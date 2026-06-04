@@ -3,6 +3,7 @@ import { useRecommendations } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
 import { Panel, SectionTitle } from "../components/ui";
+import { RecommendationsSkeleton } from "../components/skeletons";
 
 export function Recommendations() {
   const { inbox, loading, markRead } = useRecommendations();
@@ -17,7 +18,7 @@ export function Recommendations() {
     <div className="space-y-4">
       <SectionTitle kicker="Sent your way" title="Recommendations" />
       {loading ? (
-        <p className="py-12 text-center text-fg-faint">Loading…</p>
+        <RecommendationsSkeleton />
       ) : inbox.length === 0 ? (
         <Panel className="px-6 py-16 text-center text-fg-muted">
           No recommendations yet. When a friend recommends an album, it lands here. ✉

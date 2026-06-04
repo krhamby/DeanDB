@@ -4,6 +4,7 @@ import { fmtDate } from "../lib/format";
 import { ACHIEVEMENT_CATALOG, shouldMaskSecret } from "../lib/achievements";
 import { Cover } from "../components/cards";
 import { DeanMeter, LoggedBadge, Panel, SectionTitle, StatusBadge } from "../components/ui";
+import { FeedSkeleton } from "../components/skeletons";
 import type { AlbumFeedItem } from "../types";
 
 /** How to phrase the activity, e.g. "logged an old favorite" vs "rated". */
@@ -24,7 +25,7 @@ export function Feed() {
     <div className="mx-auto max-w-2xl space-y-4">
       <SectionTitle kicker="From people you follow" title="Activity Feed" />
       {loading ? (
-        <p className="py-12 text-center text-fg-faint">Loading…</p>
+        <FeedSkeleton />
       ) : items.length === 0 ? (
         <Panel className="px-6 py-16 text-center text-fg-muted">
           Your feed is quiet. Find friends on{" "}

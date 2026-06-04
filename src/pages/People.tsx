@@ -4,6 +4,7 @@ import * as api from "../lib/api";
 import type { PersonResult } from "../types";
 import { Panel, SectionTitle } from "../components/ui";
 import { PersonRow } from "../components/social";
+import { PeopleSearchSkeleton } from "../components/skeletons";
 
 export function People() {
   const { user } = useAuth();
@@ -36,7 +37,7 @@ export function People() {
           className="w-full rounded-xl border border-[var(--color-edge-strong)] bg-panel px-4 py-2.5 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
         />
         <div className="mt-3 space-y-2 stagger-children">
-          {loading && <p className="text-sm text-fg-faint">Searching…</p>}
+          {loading && <PeopleSearchSkeleton />}
           {!loading && q.trim().length >= 2 && results.length === 0 && (
             <p className="text-sm text-fg-faint">No one matches “{q}”.</p>
           )}

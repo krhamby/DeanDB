@@ -5,6 +5,7 @@ import { resolveTheme } from "../lib/themes";
 import { Avatar, FollowButton } from "../components/social";
 import { JourneyNav } from "../components/JourneyNav";
 import { Panel } from "../components/ui";
+import { JourneySkeleton } from "../components/skeletons";
 import { Dashboard } from "./Dashboard";
 import { Artists } from "./Artists";
 import { ArtistDetail } from "./ArtistDetail";
@@ -35,7 +36,7 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
   }, [themed, accent, secondary, setThemeOverride]);
 
   if (view.loading) {
-    return <div className="py-16 text-center text-fg-faint">Loading…</div>;
+    return <JourneySkeleton />;
   }
 
   if (view.notFound || !owner) {
