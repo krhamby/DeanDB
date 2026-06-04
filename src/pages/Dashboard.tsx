@@ -97,10 +97,11 @@ export function Dashboard({
 
         <div
           className={`mt-6 grid gap-6 ${
-            featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-stretch" : ""
+            featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start" : ""
           }`}
         >
-          {/* LEFT — the marathon meter (or Summit) */}
+          {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
+          <div className="flex flex-col gap-6">
           <Panel className="overflow-hidden p-6 sm:p-7">
             {stats.goalPct >= 100 ? (
               <div
@@ -156,6 +157,31 @@ export function Dashboard({
               </>
             )}
           </Panel>
+
+          {nowSpinning.length > 0 && (
+            <Panel className="p-5">
+              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+                On the turntable
+              </div>
+              <div className="mt-3 space-y-3">
+                {nowSpinning.slice(0, 2).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
+                    className="group flex w-full items-center gap-3 text-left transition-transform hover:-translate-y-0.5"
+                  >
+                    <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="xs" />
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-gold">▶ Live</div>
+                      <div className="truncate font-display text-sm font-black text-fg">{a.title}</div>
+                      <div className="truncate text-xs text-fg-muted">{a.artistName}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </Panel>
+          )}
+          </div>
 
           {/* RIGHT — the hero's companion "featured record" card */}
           {featured && (
@@ -315,45 +341,18 @@ export function Dashboard({
           </button>
         </Panel>
 
-        {/* Card C — Now Spinning / Season */}
+        {/* Card C — This Season (Now Spinning now lives in the hero) */}
         <Panel className="flex h-full flex-col p-5">
-          {nowSpinning.length > 0 ? (
-            <>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
-                Now Spinning
-              </span>
-              <div className="mt-4 flex-1 space-y-3">
-                {nowSpinning.slice(0, 2).map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
-                    className="group flex w-full items-center gap-3 text-left transition-transform hover:-translate-y-0.5"
-                  >
-                    <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="xs" />
-                    <div className="min-w-0">
-                      <div className="truncate font-display text-sm font-black text-fg">{a.title}</div>
-                      <div className="truncate text-xs text-fg-muted">{a.artistName}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
-                This Season
-              </span>
-              <div className="mt-4 flex-1 space-y-1">
-                <div className="font-display text-lg font-black leading-tight text-fg">
-                  {data.season}
-                </div>
-                <div className="text-sm text-fg-muted">{fmtHours(stats.hoursListened)} logged</div>
-                <div className="text-xs font-semibold text-gold">
-                  {stats.goalPct.toFixed(0)}% to the Summit
-                </div>
-              </div>
-            </>
-          )}
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+            This Season
+          </span>
+          <div className="mt-4 flex-1 space-y-1">
+            <div className="font-display text-lg font-black leading-tight text-fg">{data.season}</div>
+            <div className="text-sm text-fg-muted">{fmtHours(stats.hoursListened)} logged</div>
+            <div className="text-xs font-semibold text-gold">
+              {stats.goalPct.toFixed(0)}% to the Summit
+            </div>
+          </div>
         </Panel>
       </div>
 

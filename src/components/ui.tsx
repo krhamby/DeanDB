@@ -33,8 +33,15 @@ export function DeanMeter({
   const color = scoreColor(value, surface);
   return (
     <div
-      className="relative grid place-items-center shrink-0"
-      style={{ width: size, height: size }}
+      className="relative grid place-items-center shrink-0 rounded-full"
+      style={{
+        width: size,
+        height: size,
+        // A high-score glow that fades cleanly as a circle (a drop-shadow on the
+        // SVG circle clips to its square viewport — box-shadow on the round wrapper
+        // doesn't).
+        boxShadow: value != null && value >= 9 ? `0 0 14px -2px ${color}` : undefined,
+      }}
       title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
       <svg width={size} height={size} className="-rotate-90">
@@ -50,10 +57,7 @@ export function DeanMeter({
           strokeDashoffset={c * (1 - pct)}
           strokeLinecap="round"
           className="rm-no-transition"
-          style={{
-            transition: "stroke-dashoffset 0.6s ease",
-            filter: value != null && value >= 9 ? `drop-shadow(0 0 5px ${color})` : "none",
-          }}
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
         />
       </svg>
       <div className="absolute flex flex-col items-center leading-none">
