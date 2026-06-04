@@ -203,7 +203,7 @@ export function Select({
         onChange={(e) => onChange(e.target.value)}
         title={title}
         aria-label={ariaLabel ?? title}
-        className="w-full cursor-pointer appearance-none rounded-lg border border-edge bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-fg outline-none transition-colors hover:border-gold/40 focus:border-gold/50"
+        className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-fg outline-none transition-colors hover:border-gold/40 focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
       >
         {children}
       </select>

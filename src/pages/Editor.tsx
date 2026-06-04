@@ -23,7 +23,7 @@ const isPristine = (al: Album) =>
   al.status === "want" && al.rating == null && !al.review && !al.favorite && !al.excluded && !al.dateListened;
 
 const inputCls =
-  "rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50";
+  "rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

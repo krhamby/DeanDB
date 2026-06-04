@@ -84,13 +84,13 @@ export function Onboarding() {
             onChange={(e) => setCustom(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && custom.trim() && start(custom.trim())}
             placeholder="Search any artist…"
-            className="w-64 rounded-xl border border-edge bg-panel-2 px-4 py-2.5 text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
+            className="w-64 rounded-xl border border-[var(--color-edge-strong)] bg-panel-2 px-4 py-2.5 text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
             aria-label="Search for an artist to start with"
           />
           <button
             onClick={() => custom.trim() && start(custom.trim())}
             disabled={busy != null || !custom.trim()}
-            className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110 disabled:opacity-40"
+            className="min-h-11 rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110 disabled:opacity-40"
           >
             Start &rarr;
           </button>

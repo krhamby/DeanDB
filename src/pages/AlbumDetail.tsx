@@ -280,7 +280,7 @@ export function AlbumDetail({
                   min={0}
                   value={album.minutes}
                   onChange={(e) => patchAlbum({ minutes: Number(e.target.value) })}
-                  className="ml-2 w-20 rounded-md border border-edge bg-panel-2 px-2 py-1 text-fg"
+                  className="ml-2 w-20 rounded-md border border-[var(--color-edge-strong)] bg-panel-2 px-2 py-1 text-fg outline-none focus-visible:ring-2 focus-visible:ring-gold"
                 />
               </label>
             </div>
@@ -290,7 +290,7 @@ export function AlbumDetail({
               onChange={(e) => patchAlbum({ review: e.target.value })}
               placeholder="What's the verdict?"
               rows={4}
-              className="w-full rounded-xl border border-edge bg-panel-2 p-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
+              className="w-full rounded-xl border border-[var(--color-edge-strong)] bg-panel-2 p-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
             />
           </div>
         ) : album.review ? (
@@ -322,7 +322,7 @@ export function AlbumDetail({
                 {editing ? (
                   <button
                     onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
-                    className="px-1 text-xl leading-none transition-transform hover:scale-125 sm:text-base"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-xl leading-none transition-transform hover:scale-125 sm:text-base"
                     title="Favorite track"
                   >
                     {t.favorite ? "⭐" : "☆"}

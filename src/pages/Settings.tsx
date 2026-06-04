@@ -8,7 +8,7 @@ import * as api from "../lib/api";
 import type { Visibility } from "../types";
 
 const inputCls =
-  "w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-fg/40";
+  "w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold";
 
 // Usernames are the shareable handle (in the URL), so keep them link-safe:
 // letters, numbers and underscores only — matching the signup trigger's set.
@@ -486,7 +486,7 @@ export function Settings() {
           <button
             onClick={save}
             disabled={saving || !form.username.trim()}
-            className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
+            className="min-h-11 rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>

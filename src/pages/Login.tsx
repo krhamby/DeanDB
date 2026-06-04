@@ -7,7 +7,7 @@ import { Panel } from "../components/ui";
 type Mode = "signin" | "signup" | "forgot" | "mfa" | "setpw" | "confirm";
 
 const inputCls =
-  "w-full rounded-xl border border-edge bg-panel-2 px-4 py-2.5 text-fg outline-none placeholder:text-fg-faint focus:border-gold/50";
+  "w-full rounded-xl border border-[var(--color-edge-strong)] bg-panel-2 px-4 py-2.5 text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold";
 
 export function Login() {
   const { session, mfaPending, passwordRecovery, signIn, signUp, verifyMfa, requestPasswordReset, updatePassword } =
@@ -222,6 +222,7 @@ export function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="New password"
+              aria-label="New password"
               className={inputCls}
             />
             <input
@@ -231,6 +232,7 @@ export function Login() {
               onChange={(e) => setConfirm(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doSetPw()}
               placeholder="Confirm password"
+              aria-label="Confirm new password"
               className={inputCls}
             />
             <button
@@ -253,6 +255,7 @@ export function Login() {
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doForgot()}
               placeholder="you@example.com"
+              aria-label="Email"
               className={inputCls}
             />
             <button
@@ -281,6 +284,7 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              aria-label="Email"
               className={inputCls}
             />
             <input
@@ -290,6 +294,7 @@ export function Login() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (mode === "signup" ? doSignUp() : doSignIn())}
               placeholder="Password"
+              aria-label="Password"
               className={inputCls}
             />
             {mode === "signup" && (
@@ -300,13 +305,14 @@ export function Login() {
                 onChange={(e) => setConfirm(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && doSignUp()}
                 placeholder="Confirm password"
+                aria-label="Confirm password"
                 className={inputCls}
               />
             )}
             <button
               onClick={mode === "signup" ? doSignUp : doSignIn}
               disabled={busy || !email.trim() || !password}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
+              className="w-full min-h-11 rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
             </button>
