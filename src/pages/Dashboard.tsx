@@ -135,10 +135,9 @@ export function Dashboard({
           {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
           <div className="flex flex-col gap-6">
           <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex flex-1 flex-col justify-center"}`}>
-            {/* Faint Summit mountain backdrop. Skip it when the progress card is
-                alone (no featured record) AND the Summit isn't reached yet — a
-                brand-new, pre-summit marathon shouldn't show the peak. */}
-            {nowSpinning.length === 0 && (featured || stats.goalPct >= 100) && (
+            {/* Faint Summit mountain backdrop — shown only once the Summit is
+                reached. Pre-summit it stays hidden; you earn the peak. */}
+            {nowSpinning.length === 0 && stats.goalPct >= 100 && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 opacity-[0.12]" aria-hidden>
                 <SummitMountain pct={stats.goalPct} />
               </div>
