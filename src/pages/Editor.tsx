@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
 import { fmtHours, pickGradient } from "../lib/format";
@@ -31,6 +31,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {label}
       {children}
     </label>
+  );
+}
+
+/** One tile in the mission-control stats strip. */
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl border border-edge bg-panel/70 px-4 py-3">
+      <div className="font-display text-2xl font-black leading-none text-fg">{value}</div>
+      <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-fg-faint">{label}</div>
+      {sub && <div className="text-[11px] text-fg-faint">{sub}</div>}
+    </div>
   );
 }
 
@@ -160,9 +171,15 @@ export function Editor() {
   const [favOnly, setFavOnly] = useState(false);
   const [ratedFilter, setRatedFilter] = useState<"all" | "rated" | "unrated">("all");
   const [albumSort, setAlbumSort] = useState<"default" | "title" | "year" | "rating" | "date">("default");
+  // Roster-first: imports tuck into a disclosure, auto-opened only when the roster is empty.
+  const [importOpen, setImportOpen] = useState(false);
+  useEffect(() => {
+    if (data) setImportOpen(data.artists.length === 0);
+  }, []);
 
   if (!data || !userId) return null;
   const uid = userId;
+  const stats = computeStats(data);
 
   // ── Import a single artist's whole studio discography from MusicBrainz ──
   const importArtist = async () => {
@@ -595,11 +612,30 @@ export function Editor() {
 
       <p className="text-sm text-fg-faint">
         Every change saves to your account instantly. Your goal — {" "}
-        <span className="text-gold">{fmtHours(computeStats(data).totalRuntimeHours)}</span> of total runtime — grows
+        <span className="text-gold">{fmtHours(stats.totalRuntimeHours)}</span> of total runtime — grows
         as you add albums. Set your season, goal and visibility in{" "}
         <button onClick={() => navigate("/settings")} className="text-gold hover:underline">Settings</button>.
       </p>
 
+      {/* Mission-control stats strip */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Artists" value={String(data.artists.length)} />
+        <Stat label="Albums" value={String(stats.albumsTotal)} />
+        <Stat label="Logged" value={fmtHours(stats.hoursListened)} sub={`of ${fmtHours(stats.totalRuntimeHours)}`} />
+        <Stat label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} />
+      </div>
+
+      {/* Add / import artists — tucked into a disclosure so the roster leads. */}
+      <div className="space-y-4">
+        <button
+          onClick={() => setImportOpen((v) => !v)}
+          className="flex items-center gap-2 text-sm font-bold text-fg-muted hover:text-fg"
+          aria-expanded={importOpen}
+        >
+          <span className="text-fg-faint">{importOpen ? "▾" : "▸"}</span> Add / import artists
+        </button>
+        {importOpen && (
+          <div className="space-y-4">
       {/* Add artist */}
       <Panel className="space-y-3 p-5">
         <h3 className="font-display text-lg font-black text-fg">Add an Artist</h3>
@@ -660,6 +696,9 @@ export function Editor() {
           </div>
         )}
       </Panel>
+          </div>
+        )}
+      </div>
 
       {/* Manage artists */}
       <div className="space-y-4">
