@@ -130,7 +130,7 @@ function SecuritySection() {
         <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">Two-factor authentication</div>
         {verified ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-emerald-400">✓ On (authenticator app)</span>
+            <span className="text-sm text-[var(--color-status-done)]">✓ On (authenticator app)</span>
             <button onClick={disable} disabled={busy} className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-dean hover:brightness-110 disabled:opacity-40">
               Turn off
             </button>
@@ -193,7 +193,7 @@ function SecuritySection() {
         </button>
       </div>
 
-      {msg && <p className={`text-sm font-semibold ${msg.ok ? "text-emerald-400" : "text-dean"}`}>{msg.text}</p>}
+      {msg && <p className={`text-sm font-semibold ${msg.ok ? "text-[var(--color-status-done)]" : "text-dean"}`}>{msg.text}</p>}
     </Panel>
   );
 }
@@ -482,7 +482,7 @@ export function Settings() {
           ← Back to my journey
         </button>
         <div className="flex items-center gap-3">
-          {msg && <span className={`text-sm font-semibold ${msg.ok ? "text-emerald-400" : "text-dean"}`}>{msg.text}</span>}
+          {msg && <span className={`text-sm font-semibold ${msg.ok ? "text-[var(--color-status-done)]" : "text-dean"}`}>{msg.text}</span>}
           <button
             onClick={save}
             disabled={saving || !form.username.trim()}
