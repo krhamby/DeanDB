@@ -26,11 +26,10 @@ These came out of the 3-lens PR review (correctness / brand-a11y / data-security
 Critical/Major/most Minor was fixed in the `fix(...)` commits; the items below are deliberate
 deferrals with rationale.
 
-- [ ] **Brand decision: gold reads olive on Paper.** The `legible()` clamp turns the signature gold
-  (`#f5c518`) into a dark mustard (`#755e0c`) on the Paper surface for AA — so the active-tab underline,
-  CTAs, and the wordmark "Dean" are off-hue on the default skin. This is the a11y/brand tradeoff, not a
-  defect. **Your call:** accept it, or define a Paper-specific brand gold that is both on-brand and AA
-  (e.g. a slightly warmer amber tuned to clear 4.5:1 without going olive). Owner: brand (you).
+- [x] **Brand decision: gold reads olive on Paper — ACCEPTED (2026-06-04).** The `legible()` clamp turns
+  the signature gold (`#f5c518`) into a dark amber (`#755e0c`) on the Paper surface for AA — the same Paper
+  gold approved during brainstorming. Keeping it; not a defect. (If we ever want it punchier on Paper, the
+  move is a bespoke Paper-tuned amber that clears 4.5:1 without going olive — deferred, no action now.)
 - [ ] **SW caches opaque CAA responses.** `public/sw.js` can't read the status of a `no-cors`/opaque
   image response, so a transient CAA 404/500 can be cached as a "broken image" until the 300-cap FIFO
   evicts it. Clean fix requires switching CAA `<img>` loads to a CORS fetch so `res.ok` is meaningful —
