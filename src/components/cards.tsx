@@ -106,7 +106,7 @@ export function AlbumCard({
   return (
     <button
       onClick={() => navigate(`${basePath}/album/${artistId}/${album.id}`)}
-      className={`group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1 ${
+      className={`group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1 active:scale-[0.98] ${
         album.excluded ? "opacity-45" : ""
       }`}
     >
@@ -148,7 +148,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
   return (
     <button
       onClick={() => navigate(`${basePath}/artist/${artist.id}`)}
-      className="group flex w-full items-center gap-4 rounded-2xl border border-edge/70 bg-panel/70 p-4 text-left transition-all hover:border-gold/40 hover:bg-panel-2"
+      className="group flex w-full items-center gap-4 rounded-2xl border border-edge/70 bg-panel/70 p-4 text-left transition-all hover:border-gold/40 hover:bg-panel-2 active:scale-[0.99]"
     >
       <div
         className="grid h-16 w-16 shrink-0 place-items-center rounded-full font-display text-2xl font-black text-white shadow-inner"

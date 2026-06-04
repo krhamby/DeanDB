@@ -196,7 +196,7 @@ export function Dashboard({
       {recent.length > 0 && (
         <section>
           <SectionTitle kicker="Fresh off the needle" title="Latest Verdicts" />
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6 stagger-children">
             {recent.map((a) => (
               <button
                 key={a.id}

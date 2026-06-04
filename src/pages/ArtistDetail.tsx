@@ -116,7 +116,7 @@ export function ArtistDetail({
         <p className="mx-2 mt-3 text-sm italic text-fg-muted">“{artist.verdictNote}”</p>
       )}
 
-      <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 stagger-children">
         {albums.map((al) => (
           <AlbumCard key={al.id} album={al} artistId={artist.id} basePath={basePath} />
         ))}

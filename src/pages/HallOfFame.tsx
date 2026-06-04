@@ -36,7 +36,7 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
         {ranked.length === 0 ? (
           <p className="py-8 text-fg-faint">No rated albums yet — the Hall awaits its first inductee.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {ranked.map((a, i) => (
               <button
                 key={a.id}
