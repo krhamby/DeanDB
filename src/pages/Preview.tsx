@@ -18,6 +18,7 @@ import { Feed } from "./Feed";
 import { People } from "./People";
 import { Recommendations } from "./Recommendations";
 import { Discover } from "./Discover";
+import { FeedSkeleton, RecommendationsSkeleton, PeopleSearchSkeleton, JourneySkeleton } from "../components/skeletons";
 
 // The first artist with a completed + rated album is Frank Ocean / Blonde.
 const PREVIEW_ARTIST_ID = "artist-frank-ocean";
@@ -177,6 +178,30 @@ export function Preview() {
       {/* ── Discover (logged-out: prompt panel) ── */}
       <Section label="Discover (prompt panel / logged-out)">
         <Discover />
+      </Section>
+
+      {/* ── Loading skeletons (shown while data resolves on the real pages) ── */}
+      <Section label="Loading skeletons">
+        <div className="space-y-8">
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Journey</div>
+            <JourneySkeleton />
+          </div>
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Feed</div>
+            <FeedSkeleton count={2} />
+          </div>
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Recommendations</div>
+            <RecommendationsSkeleton count={2} />
+          </div>
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">People search</div>
+            <div className="space-y-2">
+              <PeopleSearchSkeleton />
+            </div>
+          </div>
+        </div>
       </Section>
     </div>
   );
