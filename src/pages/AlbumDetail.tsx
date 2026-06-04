@@ -42,6 +42,8 @@ export function AlbumDetail({
   const [loadingRuntime, setLoadingRuntime] = useState(false);
   // Must be declared before any early return to satisfy Rules of Hooks.
   const cardRef = useRef<HTMLDivElement>(null);
+  // Freshly-extracted dominant color for this album (resets per album).
+  const [extractedColor, setExtractedColor] = useState<string | null>(null);
 
   const artist = data.artists.find((a) => a.id === artistId);
   const album = artist?.albums.find((a) => a.id === albumId);
@@ -54,6 +56,20 @@ export function AlbumDetail({
   useEffect(() => {
     setRuntimeOverride(null);
   }, [album?.id]);
+
+  // Reset extracted color on album change so we don't flash the previous album's hue.
+  useEffect(() => { setExtractedColor(null); }, [album?.id]);
+
+  // Lazy extraction: signed-in viewers with art but no stored color trigger the
+  // slim Edge Function best-effort. Falls back to the gradient if it fails.
+  useEffect(() => {
+    if (!user || !album?.coverUrl || album.dominantColor) return;
+    let active = true;
+    void api.extractCover(album.id, album.coverUrl).then((c) => {
+      if (active && c) setExtractedColor(c);
+    });
+    return () => { active = false; };
+  }, [user, album?.id, album?.coverUrl, album?.dominantColor]);
 
   // Fetch a real runtime from MusicBrainz and persist it to the shared catalog so
   // it shows for the owner and every viewer (and stops blocking the 90-min award).
@@ -96,7 +112,7 @@ export function AlbumDetail({
     a.click();
   };
 
-  const albumAccent = legible(album.cover[0], surface);
+  const albumAccent = legible(extractedColor ?? album.dominantColor ?? album.cover[0], surface);
 
   const patchAlbum = (patch: api.UserAlbumPatch) => setAlbum?.(album.id, patch);
   const patchTrack = (trackId: string, patch: { rating?: number | null; favorite?: boolean }) =>
