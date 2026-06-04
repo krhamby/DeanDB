@@ -19,6 +19,8 @@ import { People } from "./People";
 import { Recommendations } from "./Recommendations";
 import { Discover } from "./Discover";
 import { FeedSkeleton, RecommendationsSkeleton, PeopleSearchSkeleton, JourneySkeleton } from "../components/skeletons";
+import { Wordmark } from "../components/Wordmark";
+import { DeanMeter, StatusBadge, SectionTitle } from "../components/ui";
 
 // The first artist with a completed + rated album is Frank Ocean / Blonde.
 const PREVIEW_ARTIST_ID = "artist-frank-ocean";
@@ -93,6 +95,80 @@ export function Preview() {
           </button>
         </div>
       </div>
+
+      {/* ── Brand sheet ── */}
+      <Section label="Brand">
+        <div className="space-y-8">
+          {/* Wordmark */}
+          <div className="space-y-3">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Wordmark</div>
+            <div className="flex flex-wrap items-end gap-6">
+              <Wordmark size="hero" />
+              <Wordmark size="nav" />
+              <Wordmark size="footer" />
+            </div>
+          </div>
+
+          {/* Palette */}
+          <div className="space-y-3">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Palette</div>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+              {([
+                ["Gold", "bg-gold"],
+                ["Dean", "bg-dean"],
+                ["Panel", "bg-panel"],
+                ["Panel 2", "bg-panel-2"],
+                ["Surface", "bg-surface"],
+                ["Edge", "bg-edge"],
+              ] as const).map(([label, cls]) => (
+                <div key={label} className="space-y-1">
+                  <div className={`h-12 rounded-lg border border-edge ${cls}`} />
+                  <div className="text-[11px] text-fg-faint">{label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm font-semibold">
+              <span className="text-fg">Foreground</span>
+              <span className="text-fg-muted">Muted</span>
+              <span className="text-fg-faint">Faint</span>
+              <span className="text-[var(--color-status-done)]">Success</span>
+              <span className="text-[var(--color-status-lib)]">Library</span>
+              <span className="text-dean">Alert</span>
+            </div>
+          </div>
+
+          {/* Type */}
+          <div className="space-y-2">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Type</div>
+            <div className="font-display text-4xl font-black text-fg">Fraunces display</div>
+            <SectionTitle kicker="Editorial kicker" title="Section title" />
+            <p className="max-w-prose text-sm text-fg-muted">
+              Inter body — plain-spoken, a little playful; album-as-art reverence without snobbery.
+            </p>
+          </div>
+
+          {/* Components */}
+          <div className="space-y-3">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-fg-faint">Components</div>
+            <div className="flex flex-wrap items-center gap-5">
+              <DeanMeter value={9.2} size={56} />
+              <StatusBadge status="completed" />
+              <StatusBadge status="listening" />
+              <StatusBadge status="want" />
+              <button className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent">Gold CTA</button>
+            </div>
+            {/* Nav active-tab treatment: gold underline, not a filled box */}
+            <div className="flex items-center gap-1">
+              <span className="relative rounded-lg px-3 py-1.5 text-sm font-semibold text-fg">
+                Journey
+                <span aria-hidden className="absolute inset-x-3 bottom-0.5 h-0.5 rounded-full bg-gold" />
+              </span>
+              <span className="rounded-lg px-3 py-1.5 text-sm font-semibold text-fg-muted">Feed</span>
+              <span className="rounded-lg px-3 py-1.5 text-sm font-semibold text-fg-muted">People</span>
+            </div>
+          </div>
+        </div>
+      </Section>
 
       {/* ── Dashboard ── */}
       <Section label="Dashboard">
