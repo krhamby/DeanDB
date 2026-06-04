@@ -27,7 +27,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
     list.length > 0 && (
       <section className="mb-8">
         <SectionTitle kicker={kicker} title={title} />
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2 stagger-children">
           {list.map((a) => (
             <ArtistCard key={a.id} artist={a} basePath={basePath} />
           ))}
@@ -43,7 +43,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search artists or genres…"
-          className="flex-1 rounded-xl border border-edge bg-panel px-4 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
+          className="flex-1 rounded-xl border border-[var(--color-edge-strong)] bg-panel px-4 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
         />
         <div className="flex gap-1 rounded-xl border border-edge bg-panel p-1">
           {(["progress", "name", "albums"] as Sort[]).map((s) => (
