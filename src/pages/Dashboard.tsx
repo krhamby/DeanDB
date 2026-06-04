@@ -33,16 +33,14 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 }
 
 /** A stencil mountain — the marathon's "climb to the Summit" motif. Used as a
- *  faint backdrop inside the meter/Summit card when nothing is currently spinning:
- *  the silhouette fills to the listener's progress and the peak lights gold once
- *  the Summit is reached. Purely decorative. */
+ *  faint backdrop at the bottom of the meter/Summit card when nothing is currently
+ *  spinning; the silhouette fills (gold) to the listener's progress. Decorative. */
 function SummitMountain({ pct }: { pct: number }) {
   const id = useId();
-  const conquered = pct >= 100;
   const climb = Math.max(0, Math.min(100, pct));
   const fillTop = 104 - (104 - 18) * (climb / 100); // base y=104 → summit y=18
   return (
-    <svg viewBox="0 0 220 110" preserveAspectRatio="none" className="h-full w-full text-fg" aria-hidden>
+    <svg viewBox="0 0 220 110" preserveAspectRatio="xMidYMax meet" className="h-full w-full text-fg" aria-hidden>
       <defs>
         <clipPath id={id}>
           <path d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104 Z" />
@@ -59,7 +57,6 @@ function SummitMountain({ pct }: { pct: number }) {
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <circle cx="138" cy="18" r={conquered ? 5 : 3} fill="var(--color-gold)" />
     </svg>
   );
 }
@@ -135,9 +132,9 @@ export function Dashboard({
         >
           {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
           <div className="flex flex-col gap-6">
-          <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex-1"}`}>
+          <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex flex-1 flex-col justify-center"}`}>
             {nowSpinning.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 opacity-[0.18]" aria-hidden>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 opacity-[0.10]" aria-hidden>
                 <SummitMountain pct={stats.goalPct} />
               </div>
             )}
