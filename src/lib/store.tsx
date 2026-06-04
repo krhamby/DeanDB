@@ -65,6 +65,7 @@ interface AuthValue {
         | "themeAccent"
         | "themeSecondary"
         | "lockOwnTheme"
+        | "skin"
       >
     >,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -266,7 +267,7 @@ export function useThemeControl(): ThemeControl {
 /** Applies the signed-in user's colors globally; an override (e.g. another
  *  person's profile) takes precedence while mounted. */
 function ThemeProvider({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const [override, setOverride] = useState<Theme | null>(null);
   const [skin, setSkinState] = useState<SkinId>(() => {
     if (typeof localStorage !== "undefined") {
@@ -286,10 +287,19 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(active, surface);
   }, [active.accent, active.secondary, surface]);
 
-  const setSkin = useCallback((s: SkinId) => {
-    setSkinState(s);
-    try { localStorage.setItem("deandb.skin", s); } catch { /* ignore */ }
-  }, []);
+  // Adopt the account skin once the profile loads (cross-device sync).
+  useEffect(() => {
+    if (profile?.skin === "paper" || profile?.skin === "midnight") setSkinState(profile.skin);
+  }, [profile?.skin]);
+
+  const setSkin = useCallback(
+    (s: SkinId) => {
+      setSkinState(s);
+      try { localStorage.setItem("deandb.skin", s); } catch { /* ignore */ }
+      if (profile) void updateProfile({ skin: s });
+    },
+    [profile, updateProfile],
+  );
 
   const value = useMemo<ThemeControl>(
     () => ({ setThemeOverride: setOverride, skin, surface, setSkin }),
