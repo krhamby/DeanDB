@@ -820,7 +820,7 @@ export function Editor() {
                   onClick={() => setArtist(artist.id, { logged: !artist.logged })}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
                     artist.logged
-                      ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/40"
+                      ? "bg-violet-500/15 text-[var(--color-status-lib)] ring-1 ring-violet-500/30"
                       : "border border-edge text-fg-muted hover:text-fg"
                   }`}
                   title={

@@ -208,7 +208,7 @@ export function RecommendModal({
                 <select
                   value={toUser}
                   onChange={(e) => setToUser(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-fg"
+                  className="mt-1 w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm text-fg outline-none focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
                 >
                   {people.map((p) => (
                     <option key={p.profile.id} value={p.profile.id}>
@@ -222,7 +222,7 @@ export function RecommendModal({
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 placeholder="Why they need to hear this…"
-                className="w-full rounded-lg border border-edge bg-panel-2 p-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
+                className="w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 p-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
               />
             </>
           )}
