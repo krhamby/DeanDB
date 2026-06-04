@@ -48,6 +48,7 @@ interface ProfileRow {
   theme_accent: string | null;
   theme_secondary: string | null;
   lock_own_theme: boolean;
+  skin: string | null;
 }
 
 function mapProfile(r: ProfileRow): Profile {
@@ -65,11 +66,12 @@ function mapProfile(r: ProfileRow): Profile {
     themeAccent: r.theme_accent,
     themeSecondary: r.theme_secondary,
     lockOwnTheme: r.lock_own_theme,
+    skin: r.skin === "midnight" ? "midnight" : "paper",
   };
 }
 
 const PROFILE_COLS =
-  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme";
+  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme, skin";
 
 // ════════════════════════════════════════════════════════════════
 // Auth
@@ -230,7 +232,7 @@ export async function fetchProfileByUsername(username: string): Promise<Profile 
 
 export async function updateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme">>,
+  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme" | "skin">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.username !== undefined) row.username = patch.username;
@@ -245,6 +247,7 @@ export async function updateProfile(
   if (patch.themeAccent !== undefined) row.theme_accent = patch.themeAccent;
   if (patch.themeSecondary !== undefined) row.theme_secondary = patch.themeSecondary;
   if (patch.lockOwnTheme !== undefined) row.lock_own_theme = patch.lockOwnTheme;
+  if (patch.skin !== undefined) row.skin = patch.skin;
   const { error } = await requireClient().from("profiles").update(row).eq("id", id);
   if (error) {
     return {
@@ -314,6 +317,7 @@ interface UserAlbumRow {
     year: number | null;
     cover: string[] | null;
     cover_url: string | null;
+    dominant_color: string | null;
     mbid: string | null;
     runtime_min: number;
     tracks: { id: string; position: number; title: string }[];
@@ -345,7 +349,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       .from("user_albums")
       .select(
         "status, rating, review, minutes, date_listened, favorite, excluded, " +
-          "album:catalog_albums!inner ( id, artist_id, title, year, cover, cover_url, mbid, runtime_min, " +
+          "album:catalog_albums!inner ( id, artist_id, title, year, cover, cover_url, dominant_color, mbid, runtime_min, " +
           "tracks:catalog_tracks ( id, position, title ) )",
       )
       .eq("user_id", profile.id),
@@ -411,6 +415,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       year: cat.year,
       cover: tuple(cat.cover),
       coverUrl: cat.cover_url ?? undefined,
+      dominantColor: cat.dominant_color ?? null,
       mbid: cat.mbid ?? undefined,
       excluded: ur.excluded,
       status: ur.status,
@@ -1104,6 +1109,25 @@ export async function albumAggregate(albumId: string): Promise<AlbumAggregate> {
     avgRating: row?.avg_rating != null ? Number(row.avg_rating) : null,
     listenerCount: row?.listener_count != null ? Number(row.listener_count) : 0,
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// Cover color extraction (extract-cover Edge Function)
+// ════════════════════════════════════════════════════════════════
+
+/** Best-effort: ask the slim `extract-cover` Edge Function for an album's dominant
+ *  cover color. Returns the hex, or null on any failure (caller keeps the gradient).
+ *  No image is uploaded -- Cover Art Archive keeps hosting the artwork. */
+export async function extractCover(albumId: string, coverUrl: string): Promise<string | null> {
+  try {
+    const { data, error } = await requireClient().functions.invoke("extract-cover", {
+      body: { albumId, coverUrl },
+    });
+    if (error || !data || typeof data.dominant_color !== "string") return null;
+    return data.dominant_color;
+  } catch {
+    return null;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
