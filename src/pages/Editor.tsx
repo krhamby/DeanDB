@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
-import { fmtHours, pickGradient } from "../lib/format";
-import { computeStats } from "../lib/stats";
+import { fmtHours, gradient, pickGradient } from "../lib/format";
+import { artistProgress, computeStats } from "../lib/stats";
 import * as api from "../lib/api";
 import {
   fetchTracklist,
@@ -10,7 +10,7 @@ import {
   lookupArtist,
   refreshArtistMeta,
 } from "../lib/musicbrainz";
-import { DeanMeter, LoggedBadge, Panel, Select, SectionTitle, Score10, scoreColor } from "../components/ui";
+import { DeanMeter, LoggedBadge, Panel, ProgressBar, Select, SectionTitle, Score10, StatusBadge, scoreColor } from "../components/ui";
 import { Menu } from "../components/Menu";
 import { Cover } from "../components/cards";
 import { Avatar } from "../components/social";
@@ -796,12 +796,24 @@ export function Editor() {
         {shownArtists.map((artist: Artist) => (
           <Panel key={artist.id} className="p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="font-display text-lg font-black text-fg">{artist.name}</span>
-                {artist.logged && <LoggedBadge />}
-                <span className="text-xs text-fg-faint">
-                  {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
-                </span>
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl font-display text-lg font-black text-white shadow-inner"
+                  style={{ background: gradient(artist.color) }}
+                  aria-hidden
+                >
+                  {artist.name.slice(0, 1)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-display text-lg font-black text-fg">{artist.name}</span>
+                    {artist.logged && <LoggedBadge />}
+                    <span className="text-xs text-fg-faint">
+                      {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
+                    </span>
+                  </div>
+                  <ProgressBar pct={artistProgress(artist) * 100} className="mt-2 max-w-xs" />
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                 <button
@@ -921,11 +933,9 @@ export function Editor() {
                     {al.excluded && <span className="shrink-0 text-xs text-dean" title="Excluded">🚫</span>}
                     {al.favorite && <span className="shrink-0 text-xs" title="Favorite">⭐</span>}
                     <span className="hidden shrink-0 text-xs text-fg-faint sm:inline">{al.tracks.length} trk</span>
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      title={al.status}
-                      style={{ background: al.status === "completed" ? "#34d399" : al.status === "listening" ? "#f5c518" : "#52525b" }}
-                    />
+                    <span className="hidden shrink-0 sm:inline">
+                      <StatusBadge status={al.status} />
+                    </span>
                     <span className="w-9 shrink-0 text-right font-display text-sm font-black tabular-nums" style={{ color: scoreColor(al.rating) }}>
                       {al.rating != null ? al.rating.toFixed(1) : "—"}
                     </span>
@@ -979,7 +989,7 @@ export function Editor() {
                             className="h-6 w-32 cursor-pointer accent-gold"
                             title={`${data.listener.meterName} Meter — overall album score`}
                           />
-                          <span className="w-8 text-right text-xs font-bold text-gold">{al.rating != null ? al.rating.toFixed(1) : "—"}</span>
+                          <span className="font-display text-2xl font-black text-gold">{al.rating != null ? al.rating.toFixed(1) : "—"}</span>
                         </div>
                       </div>
 
