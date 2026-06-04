@@ -12,6 +12,13 @@ export function fmtMinutes(min: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+/** A 0–10 score for display: a perfect 10 shows as "10" (the scale's ceiling —
+ *  there's no 10.x and no finer granularity); every other score keeps its single
+ *  decimal (9.8, 9.0). Callers handle the null/unrated "—" case themselves. */
+export function fmtScore(value: number): string {
+  return value === 10 ? "10" : value.toFixed(1);
+}
+
 export function fmtDate(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso + "T00:00:00");

@@ -108,7 +108,7 @@ interface ReleaseBrowse {
   releases?: Array<{
     id: string;
     "track-count"?: number;
-    media?: Array<{ tracks?: Array<{ title: string; position: number; length?: number }> }>;
+    media?: Array<{ format?: string; tracks?: Array<{ title: string; position: number; length?: number }> }>;
   }>;
 }
 
@@ -129,11 +129,22 @@ export async function fetchTracklist(releaseGroupMbid: string): Promise<Tracklis
   );
   const releases = json.releases ?? [];
   if (releases.length === 0) return { titles: [], runtimeMin: 0 };
-  // Prefer the release with the most tracks (usually the standard edition,
-  // and avoids picking a single/promo that happens to share the group).
-  const best = releases.reduce((a, b) =>
-    (b["track-count"] ?? 0) > (a["track-count"] ?? 0) ? b : a,
-  );
+  // A release-group can include box-set / "collection" releases that bundle
+  // several physical media (e.g. 2×CD + DVD + vinyl + cassette). The old
+  // "most tracks wins" rule picked those and concatenated every medium → a
+  // 70-track album full of repeats. Prefer the DIGITAL ("online") release — a
+  // single "Digital Media" edition carries the canonical tracklist and never
+  // bundles formats — and otherwise fall back to the release with the FEWEST
+  // media (a standard single edition; ties broken by track count). Box sets
+  // always lose; a genuine multi-disc album still reads all its discs below.
+  const digital = releases.filter((r) => (r.media ?? []).some((m) => m.format === "Digital Media"));
+  const pool = digital.length ? digital : releases;
+  const best = pool.reduce((a, b) => {
+    const am = a.media?.length ?? 99;
+    const bm = b.media?.length ?? 99;
+    if (am !== bm) return bm < am ? b : a;
+    return (b["track-count"] ?? 0) > (a["track-count"] ?? 0) ? b : a;
+  });
   const titles: string[] = [];
   let ms = 0;
   for (const m of best.media ?? []) {
