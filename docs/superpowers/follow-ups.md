@@ -22,6 +22,11 @@ phases they came from; parked here so they aren't lost.
 
 ## Minor / polish
 
+- [ ] **Error-text contrast on light (`text-dean` on panels).** `text-dean` (`#ff5a3c`) is used for inline error
+  messages (Settings save/validation, etc.) and is ~3:1 on the Paper panel — below AA for normal-size text. The
+  a11y pass left the brand red as-is; revisit with a surface-aware error token (mirror `--color-status-done`,
+  e.g. a darker dean on Paper / brighter on Midnight) if we want errors to clear AA everywhere. (Success text was
+  fixed to `--color-status-done` on 2026-06-03.)
 - [ ] **Live badge-unlock toasts:** when `useMyJourney` detects a newly unlocked achievement, surface a transient neon toast (portal + the existing `detectAndRecord` diff). Deferred from Phase 2d (needs global toast state).
 
 - [ ] **Per-album `--color-gold-soft`** is currently set equal to the album accent on the scoped detail-page
