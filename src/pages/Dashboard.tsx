@@ -38,22 +38,24 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 function SummitMountain({ pct }: { pct: number }) {
   const id = useId();
   const climb = Math.max(0, Math.min(100, pct));
-  const fillTop = 104 - (104 - 18) * (climb / 100); // base y=104 → summit y=18
+  const fillTop = 86 - (86 - 22) * (climb / 100); // base y=86 → ~summit y=22
+  // Wide viewBox + w-full (intrinsic height) → spans the full card width at proper
+  // proportions, anchored to the card's bottom edge.
   return (
-    <svg viewBox="0 0 220 110" preserveAspectRatio="xMidYMax meet" className="h-full w-full text-fg" aria-hidden>
+    <svg viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet" className="block w-full text-fg" aria-hidden>
       <defs>
         <clipPath id={id}>
-          <path d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104 Z" />
+          <path d="M0 86 L52 44 L92 62 L150 24 L198 56 L262 30 L320 58 L400 86 Z" />
         </clipPath>
       </defs>
       <g clipPath={`url(#${id})`}>
-        <rect x="0" y={fillTop} width="220" height="110" fill="var(--color-gold)" />
+        <rect x="0" y={fillTop} width="400" height="90" fill="var(--color-gold)" />
       </g>
       <path
-        d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104"
+        d="M0 86 L52 44 L92 62 L150 24 L198 56 L262 30 L320 58 L400 86"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.5"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
@@ -134,7 +136,7 @@ export function Dashboard({
           <div className="flex flex-col gap-6">
           <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex flex-1 flex-col justify-center"}`}>
             {nowSpinning.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 opacity-[0.10]" aria-hidden>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 opacity-[0.12]" aria-hidden>
                 <SummitMountain pct={stats.goalPct} />
               </div>
             )}
