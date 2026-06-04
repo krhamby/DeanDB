@@ -68,7 +68,7 @@ export function Preview() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-12 px-4 py-10">
+    <div className="mx-auto max-w-6xl space-y-12 px-4 py-10">
       {/* ── Top bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-edge/60 bg-panel p-4">
         <div>
@@ -170,9 +170,14 @@ export function Preview() {
         </div>
       </Section>
 
-      {/* ── Dashboard ── */}
-      <Section label="Dashboard">
+      {/* ── Dashboard (owner) ── */}
+      <Section label="Dashboard (owner)">
         <Dashboard data={sampleJourney} basePath="/__preview" canEdit />
+      </Section>
+
+      {/* ── Dashboard (read-only viewer — no Wheel; trio must stay even) ── */}
+      <Section label="Dashboard (read-only viewer)">
+        <Dashboard data={sampleJourney} basePath="/__preview-viewer" />
       </Section>
 
       {/* ── Dashboard — Summit reached ── */}
