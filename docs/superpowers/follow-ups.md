@@ -26,6 +26,11 @@ These came out of the 3-lens PR review (correctness / brand-a11y / data-security
 Critical/Major/most Minor was fixed in the `fix(...)` commits; the items below are deliberate
 deferrals with rationale.
 
+> **Plan (agreed 2026-06-04):** ship the current PR first — get the redesign + Brand v1 merged and
+> running — *then* revisit the three open items below (SW opaque caching, server-side `extract-cover`
+> URL re-validation, decorative panel-badge tints). They're parked on purpose, not forgotten; ask any
+> time and this is the canonical list.
+
 - [x] **Brand decision: gold reads olive on Paper — ACCEPTED (2026-06-04).** The `legible()` clamp turns
   the signature gold (`#f5c518`) into a dark amber (`#755e0c`) on the Paper surface for AA — the same Paper
   gold approved during brainstorming. Keeping it; not a defect. (If we ever want it punchier on Paper, the
