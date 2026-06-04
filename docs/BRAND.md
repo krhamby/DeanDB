@@ -75,7 +75,9 @@ skin. Every token is redefined per `[data-skin]` so token-driven utilities reski
    destructive/alert = `text-dean`. (No `text-emerald-*` / `text-red-*` in app code.)
 3. **Exceptions, intentional:** Hall-of-Fame podium uses literal gold/silver/bronze (`gold`/`zinc`/
    `amber`) as *medal* metaphors; the share card (`ShareCard.tsx`) uses a fixed bright palette because
-   it's an exported image, not a themed surface.
+   it's an exported image, not a themed surface; and `StatusBadge`/`LoggedBadge` **`onMedia`** variants
+   use fixed bright colors (e.g. `emerald-200`, `violet-200`) because they sit over dark cover/hero
+   scrims — the same reason on-media text is fixed `text-white/*` rather than a skin token.
 
 ---
 
