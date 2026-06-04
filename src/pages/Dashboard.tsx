@@ -31,50 +31,35 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-/** A stencil mountain — the marathon's "climb to the Summit" motif. Fills the
- *  hero's left slot when nothing is currently spinning: the silhouette fills to
- *  the listener's progress, and the peak lights up gold once the Summit is won. */
+/** A stencil mountain — the marathon's "climb to the Summit" motif. Used as a
+ *  faint backdrop inside the meter/Summit card when nothing is currently spinning:
+ *  the silhouette fills to the listener's progress and the peak lights gold once
+ *  the Summit is reached. Purely decorative. */
 function SummitMountain({ pct }: { pct: number }) {
   const id = useId();
   const conquered = pct >= 100;
   const climb = Math.max(0, Math.min(100, pct));
   const fillTop = 104 - (104 - 18) * (climb / 100); // base y=104 → summit y=18
   return (
-    <div className="flex h-full flex-col">
-      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
-        {conquered ? "The Summit" : "The climb"}
-      </div>
-      <div className="relative mt-3 flex-1">
-        <svg
-          viewBox="0 0 220 110"
-          preserveAspectRatio="xMidYMax meet"
-          className="h-full w-full text-edge-strong"
-          style={{ minHeight: 96 }}
-          aria-hidden
-        >
-          <defs>
-            <clipPath id={id}>
-              <path d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104 Z" />
-            </clipPath>
-          </defs>
-          <g clipPath={`url(#${id})`}>
-            <rect x="0" y={fillTop} width="220" height="110" fill="var(--color-gold)" opacity="0.16" />
-          </g>
-          <path
-            d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          <circle cx="138" cy="18" r={conquered ? 5 : 3} fill={conquered ? "var(--color-gold)" : "currentColor"} />
-        </svg>
-      </div>
-      <div className="mt-2 text-xs text-fg-faint">
-        {conquered ? "Conquered." : `${climb.toFixed(0)}% to the Summit`}
-      </div>
-    </div>
+    <svg viewBox="0 0 220 110" preserveAspectRatio="none" className="h-full w-full text-fg" aria-hidden>
+      <defs>
+        <clipPath id={id}>
+          <path d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104 Z" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${id})`}>
+        <rect x="0" y={fillTop} width="220" height="110" fill="var(--color-gold)" />
+      </g>
+      <path
+        d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx="138" cy="18" r={conquered ? 5 : 3} fill="var(--color-gold)" />
+    </svg>
   );
 }
 
@@ -149,7 +134,13 @@ export function Dashboard({
         >
           {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
           <div className="flex flex-col gap-6">
-          <Panel className="overflow-hidden p-6 sm:p-7">
+          <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex-1"}`}>
+            {nowSpinning.length === 0 && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 opacity-[0.18]" aria-hidden>
+                <SummitMountain pct={stats.goalPct} />
+              </div>
+            )}
+            <div className="relative">
             {stats.goalPct >= 100 ? (
               <div
                 className="animate-pop relative overflow-hidden rounded-xl border border-gold/50 bg-gradient-to-r from-gold/20 via-dean/10 to-transparent p-6 text-center"
@@ -203,9 +194,10 @@ export function Dashboard({
                 </div>
               </>
             )}
+            </div>
           </Panel>
 
-          {nowSpinning.length > 0 ? (
+          {nowSpinning.length > 0 && (
             <Panel className="flex-1 p-5">
               <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
                 On the turntable
@@ -226,10 +218,6 @@ export function Dashboard({
                   </button>
                 ))}
               </div>
-            </Panel>
-          ) : (
-            <Panel className="flex-1 p-5">
-              <SummitMountain pct={stats.goalPct} />
             </Panel>
           )}
           </div>

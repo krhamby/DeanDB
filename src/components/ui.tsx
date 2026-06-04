@@ -40,14 +40,18 @@ export function DeanMeter({
         // A high-score glow that fades cleanly as a circle (a drop-shadow on the
         // SVG circle clips to its square viewport — box-shadow on the round wrapper
         // doesn't).
-        boxShadow:
-          value != null && value >= 9
-            ? `0 0 16px -3px ${color}, inset 0 0 10px -4px ${color}`
-            : undefined,
+        boxShadow: value != null && value >= 9 ? `0 0 15px -3px ${color}` : undefined,
       }}
       title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
-      <svg width={size} height={size} className="-rotate-90">
+      {value != null && value >= 9 && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{ background: `radial-gradient(circle, ${color} 0%, transparent 72%)`, opacity: 0.35 }}
+        />
+      )}
+      <svg width={size} height={size} className="relative -rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--color-edge)" strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
