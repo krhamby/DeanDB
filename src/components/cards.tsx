@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useMeterName } from "../lib/store";
@@ -19,6 +20,32 @@ export function Cover({
   size?: "xs" | "sm" | "md" | "lg";
 }) {
   const dim = size === "lg" ? 220 : size === "sm" ? 96 : size === "xs" ? 44 : 150;
+  const [imgState, setImgState] = useState<"loading" | "loaded" | "error">("loading");
+  // Cached images (the common case once the cover service-worker cache is warm)
+  // can finish loading before React attaches onLoad, which would otherwise strand
+  // them at opacity-0. A callback ref catches the already-complete case on mount.
+  const imgRef = useCallback((node: HTMLImageElement | null) => {
+    if (node?.complete) setImgState(node.naturalWidth > 0 ? "loaded" : "error");
+  }, []);
+
+  // Real art fades in over the album's own gradient. While it loads, a shimmer
+  // sweep plays over the gradient as a tasteful placeholder; on error the gradient
+  // simply shows through. (.animate-shimmer + .rm-no-transition are reduced-motion gated.)
+  const imgClass =
+    `rm-no-transition h-full w-full object-cover transition-opacity duration-500 ${
+      imgState === "loaded" ? "opacity-100" : "opacity-0"
+    }`;
+  const shimmer =
+    coverUrl && imgState === "loading" ? (
+      <div
+        aria-hidden
+        className="animate-shimmer pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.22) 50%, transparent 60%)",
+        }}
+      />
+    ) : null;
 
   // Compact thumbnail (e.g. an editor row): real art when present, else a clean
   // gradient swatch. The vinyl + title overlay would be illegible this small.
@@ -30,15 +57,16 @@ export function Cover({
       >
         {coverUrl && (
           <img
+            ref={imgRef}
             src={coverUrl}
             alt={title}
             loading="lazy"
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
+            onLoad={() => setImgState("loaded")}
+            onError={() => setImgState("error")}
+            className={imgClass}
           />
         )}
+        {shimmer}
       </div>
     );
   }
@@ -52,15 +80,15 @@ export function Cover({
         style={{ background: gradient(colors), width: dim, height: dim }}
       >
         <img
+          ref={imgRef}
           src={coverUrl}
           alt={title}
           loading="lazy"
-          className="h-full w-full object-cover"
-          onError={(e) => {
-            // If the art 404s, hide the <img> and let the gradient show through.
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
+          onLoad={() => setImgState("loaded")}
+          onError={() => setImgState("error")}
+          className={imgClass}
         />
+        {shimmer}
       </div>
     );
   }
