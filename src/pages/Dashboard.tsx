@@ -38,21 +38,21 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 function SummitMountain({ pct }: { pct: number }) {
   const id = useId();
   const climb = Math.max(0, Math.min(100, pct));
-  const fillTop = 86 - (86 - 22) * (climb / 100); // base y=86 → ~summit y=22
+  const fillTop = 86 - (86 - 20) * (climb / 100); // base y=86 → ~summit y=20
   // Wide viewBox + w-full (intrinsic height) → spans the full card width at proper
   // proportions, anchored to the card's bottom edge.
   return (
     <svg viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet" className="block w-full text-fg" aria-hidden>
       <defs>
         <clipPath id={id}>
-          <path d="M0 86 L52 44 L92 62 L150 24 L198 56 L262 30 L320 58 L400 86 Z" />
+          <path d="M0 86 L70 46 L120 64 L200 20 L280 64 L330 46 L400 86 Z" />
         </clipPath>
       </defs>
       <g clipPath={`url(#${id})`}>
         <rect x="0" y={fillTop} width="400" height="90" fill="var(--color-gold)" />
       </g>
       <path
-        d="M0 86 L52 44 L92 62 L150 24 L198 56 L262 30 L320 58 L400 86"
+        d="M0 86 L70 46 L120 64 L200 20 L280 64 L330 46 L400 86"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
