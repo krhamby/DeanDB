@@ -1,6 +1,7 @@
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
-import { useMyJourney } from "../lib/store";
+import { useMyJourney, useThemeControl } from "../lib/store";
+import { legible, darken, lighten, pickOnAccent, SKIN_SURFACE } from "../lib/themes";
 import { fmtHours } from "../lib/format";
 import { useCountUp } from "../lib/useCountUp";
 import { navigate } from "../lib/router";
@@ -47,6 +48,7 @@ export function Dashboard({
   // Secret-achievement masking is keyed on whether the VIEWER (not this profile's
   // owner) has unlocked it — so secrets stay hidden on others' profiles too.
   const { myUnlockedAchievementIds } = useMyJourney();
+  const { surface } = useThemeControl();
 
   const albums = flattenAlbums(data);
   // "Now spinning" is a marathon concept — logged Library artists aren't queued.
@@ -57,10 +59,24 @@ export function Dashboard({
     .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
     .slice(0, 6);
 
+  // Hero "featured record" — freshest verdict, else what's currently spinning.
+  // Drives the hero's SCOPED accent (cover-derived, gold-only like AlbumDetail).
+  // (Intentionally NO lazy extractCover here — out of scope.)
+  const featured = recent[0] ?? nowSpinning[0] ?? null;
+  const heroAccent = featured ? legible(featured.dominantColor ?? featured.cover[0], surface) : null;
+  const heroStyle = heroAccent
+    ? ({
+        ["--color-gold" as string]: heroAccent,
+        ["--color-gold-soft" as string]:
+          surface === SKIN_SURFACE.paper ? darken(heroAccent, 0.12) : lighten(heroAccent, 0.55),
+        ["--color-on-accent" as string]: pickOnAccent(heroAccent),
+      } as React.CSSProperties)
+    : undefined;
+
   return (
     <div className="space-y-12">
       {/* ── Hero / marathon meter ── */}
-      <section className="animate-pop">
+      <section className="animate-pop" style={heroStyle}>
         <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-gold/80">
           {data.season}
         </div>
@@ -69,61 +85,88 @@ export function Dashboard({
         </h1>
         <p className="mt-2 max-w-2xl text-fg-muted">{data.listener.tagline}</p>
 
-        <Panel className="mt-6 overflow-hidden p-6 sm:p-7">
-          {stats.goalPct >= 100 ? (
-            <div
-              className="animate-pop relative overflow-hidden rounded-xl border border-gold/50 bg-gradient-to-r from-gold/20 via-dean/10 to-transparent p-6 text-center"
-              style={{ boxShadow: "0 0 32px -6px color-mix(in srgb, var(--color-gold) 50%, transparent)" }}
-            >
-              <div className="font-display text-[11px] uppercase tracking-[0.3em] text-gold">
-                The Summit — conquered 👑
+        <div
+          className={`mt-6 grid gap-6 ${
+            featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-stretch" : ""
+          }`}
+        >
+          {/* LEFT — the marathon meter (or Summit) */}
+          <Panel className="overflow-hidden p-6 sm:p-7">
+            {stats.goalPct >= 100 ? (
+              <div
+                className="animate-pop relative overflow-hidden rounded-xl border border-gold/50 bg-gradient-to-r from-gold/20 via-dean/10 to-transparent p-6 text-center"
+                style={{ boxShadow: "0 0 32px -6px color-mix(in srgb, var(--color-gold) 50%, transparent)" }}
+              >
+                <div className="font-display text-[11px] uppercase tracking-[0.3em] text-gold">
+                  The Summit — conquered 👑
+                </div>
+                <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
+                  🏔️ {fmtHours(animatedHours)}
+                </div>
+                <div className="mt-2 text-sm text-fg-muted">
+                  Every hour of the marathon, complete. The whole discography, conquered.
+                </div>
               </div>
-              <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
-                🏔️ {fmtHours(animatedHours)}
-              </div>
-              <div className="mt-2 text-sm text-fg-muted">
-                Every hour of the marathon, complete. The whole discography, conquered.
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-end justify-between gap-4">
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
+                      Total time logged
+                    </div>
+                    <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
+                      {fmtHours(animatedHours)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-display text-3xl font-black leading-none text-fg">
+                      {animatedPct.toFixed(1)}%
+                    </div>
+                    <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
+                  </div>
+                </div>
+                <div className="relative mt-5">
+                  <div className="relative h-4 w-full overflow-hidden rounded-full bg-fg/10">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
+                      style={{
+                        width: `${Math.max(2, Math.min(100, stats.goalPct))}%`,
+                        boxShadow: "0 0 16px color-mix(in srgb, var(--color-gold) 55%, transparent)",
+                      }}
+                    />
+                    {[25, 50, 75].map((m) => (
+                      <span key={m} className="absolute top-0 h-full w-px bg-fg/20" style={{ left: `${m}%` }} />
+                    ))}
+                  </div>
+                  <div className="mt-2 flex justify-between text-xs text-fg-faint">
+                    <span>0h</span>
+                    <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </Panel>
+
+          {/* RIGHT — the hero's companion "featured record" card */}
+          {featured && (
+            <Panel className="p-0">
+              <button
+                onClick={() => navigate(`${basePath}/album/${featured.artistId}/${featured.id}`)}
+                className="group flex h-full w-full flex-col items-center gap-3 rounded-2xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-6 text-center transition-transform hover:-translate-y-0.5"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-fg-faint">
+                  Featured · latest verdict
+                </div>
+                <Cover colors={featured.cover} title={featured.title} coverUrl={featured.coverUrl} size="md" />
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
-                    Total time logged
-                  </div>
-                  <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
-                    {fmtHours(animatedHours)}
-                  </div>
+                  <div className="font-display text-lg font-black leading-tight text-fg">{featured.title}</div>
+                  <div className="text-sm text-fg-muted">{featured.artistName}</div>
                 </div>
-                <div className="text-right">
-                  <div className="font-display text-3xl font-black leading-none text-fg">
-                    {animatedPct.toFixed(1)}%
-                  </div>
-                  <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
-                </div>
-              </div>
-              <div className="relative mt-5">
-                <div className="relative h-4 w-full overflow-hidden rounded-full bg-fg/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
-                    style={{
-                      width: `${Math.max(2, Math.min(100, stats.goalPct))}%`,
-                      boxShadow: "0 0 16px color-mix(in srgb, var(--color-gold) 55%, transparent)",
-                    }}
-                  />
-                  {[25, 50, 75].map((m) => (
-                    <span key={m} className="absolute top-0 h-full w-px bg-fg/20" style={{ left: `${m}%` }} />
-                  ))}
-                </div>
-                <div className="mt-2 flex justify-between text-xs text-fg-faint">
-                  <span>0h</span>
-                  <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
-                </div>
-              </div>
-            </>
+                <DeanMeter value={featured.rating} size={56} />
+              </button>
+            </Panel>
           )}
-        </Panel>
+        </div>
       </section>
 
       {data.artists.length === 0 ? (
