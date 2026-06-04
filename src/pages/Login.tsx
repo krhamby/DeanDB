@@ -356,7 +356,7 @@ export function Login() {
         )}
 
         {error && <p className="text-center text-sm font-semibold text-dean">{error}</p>}
-        {info && <p className="text-center text-sm text-emerald-400">{info}</p>}
+        {info && <p className="text-center text-sm text-[var(--color-status-done)]">{info}</p>}
       </Panel>
     </div>
   );

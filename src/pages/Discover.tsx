@@ -204,7 +204,7 @@ export function Discover() {
                   {add$.status === "added" ? (
                     <button
                       onClick={() => add$.artistId && navigate(`/artist/${add$.artistId}`)}
-                      className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300"
+                      className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-[var(--color-status-done)] hover:opacity-80"
                     >
                       ✓ Added — view in journey →
                     </button>

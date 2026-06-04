@@ -689,7 +689,7 @@ export function Editor() {
         {bulkLog.length > 0 && (
           <div className="max-h-56 space-y-0.5 overflow-auto rounded-lg border border-edge bg-panel-2/60 p-3 font-mono text-xs text-fg-muted">
             {bulkLog.map((l, i) => (
-              <div key={i} className={l.includes("✓") ? "text-emerald-400" : l.includes("✗") ? "text-dean" : ""}>
+              <div key={i} className={l.includes("✓") ? "text-[var(--color-status-done)]" : l.includes("✗") ? "text-dean" : ""}>
                 {l}
               </div>
             ))}

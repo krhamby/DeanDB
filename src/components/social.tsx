@@ -196,7 +196,7 @@ export function RecommendModal({
         <div onClick={(e) => e.stopPropagation()} className="space-y-4">
           <h3 className="font-display text-lg font-black text-fg">Recommend “{label}”</h3>
           {sent ? (
-            <p className="text-sm font-semibold text-emerald-400">Sent! 🎉</p>
+            <p className="text-sm font-semibold text-[var(--color-status-done)]">Sent! 🎉</p>
           ) : people.length === 0 ? (
             <p className="text-sm text-fg-muted">
               Follow some people first — you can recommend to anyone you follow.
