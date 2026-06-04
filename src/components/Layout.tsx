@@ -5,6 +5,7 @@ import { computeStats, flattenAlbums } from "../lib/stats";
 import { fmtHours } from "../lib/format";
 import { unreadRecommendationCount } from "../lib/api";
 import { Avatar } from "./social";
+import { Wordmark } from "./Wordmark";
 
 /** One header destination. Items live in the nav bar when there's room and
  *  overflow into the profile menu (lowest priority first) when there isn't.
@@ -70,11 +71,8 @@ function useOverflowNav(itemCount: number, active: boolean) {
 
 function Logo() {
   return (
-    <button onClick={() => navigate("/")} className="flex shrink-0 items-center gap-1">
-      <span className="grid h-9 place-items-center rounded-md bg-gold px-1.5 font-display text-xl font-black leading-none text-on-accent shadow-[0_2px_0_rgba(0,0,0,0.4)]">
-        Dean
-      </span>
-      <span className="font-display text-xl font-black tracking-tight text-fg">DB</span>
+    <button onClick={() => navigate("/")} className="flex shrink-0 items-center" aria-label="DeanDB home">
+      <Wordmark size="nav" />
     </button>
   );
 }
@@ -123,7 +121,7 @@ function NavButton({
       onClick={() => navigate(path)}
       aria-current={isActive ? "page" : undefined}
       className={`relative shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50 sm:px-3 ${
-        isActive ? "bg-gold text-on-accent" : "text-fg-muted hover:bg-fg/5 hover:text-fg"
+        isActive ? "text-fg" : "text-fg-muted hover:text-fg"
       }`}
     >
       {label}
@@ -132,6 +130,9 @@ function NavButton({
           {badge}
         </span>
       ) : null}
+      {isActive && (
+        <span aria-hidden className="absolute inset-x-2.5 bottom-0.5 h-0.5 rounded-full bg-gold sm:inset-x-3" />
+      )}
     </button>
   );
 }
@@ -354,7 +355,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       <footer className="mt-16 border-t border-edge/60 py-8 text-center text-xs text-fg-faint">
         <p>
-          <span className="font-display font-black text-fg-muted">DeanDB</span> · track your discography
+          <Wordmark size="footer" /> · track your discography
           marathon, share it with friends. Keep spinning. 🎧
         </p>
         <p className="mt-1 text-fg-faint">© 2026 Kevin Hamby · All rights reserved.</p>
