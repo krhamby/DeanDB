@@ -125,7 +125,7 @@ export function AlbumDetail({
       {/* Hero */}
       <div className="relative overflow-hidden rounded-3xl">
         <div className="absolute inset-0" style={{ background: gradient(album.cover) }} />
-        <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
         <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-end">
           <Cover colors={album.cover} title={album.title} coverUrl={album.coverUrl} size="lg" />
           <div className="flex-1">

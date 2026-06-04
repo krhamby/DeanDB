@@ -54,7 +54,7 @@ export function ArtistDetail({
         className="relative overflow-hidden rounded-3xl p-8"
         style={{ background: gradient(artist.color) }}
       >
-        <div className="absolute inset-0 bg-black/35" />
+        <div className="absolute inset-0 bg-black/45" />
         <div className="relative">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
             <span>{artist.genre} · {artist.country}</span>

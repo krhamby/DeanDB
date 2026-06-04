@@ -17,7 +17,7 @@ export function Avatar({
     return (
       <img
         src={profile.avatarUrl}
-        alt={profile.displayName}
+        alt={profile.displayName ?? profile.username}
         className="shrink-0 rounded-full object-cover"
         style={{ width: size, height: size }}
       />
@@ -25,6 +25,7 @@ export function Avatar({
   }
   return (
     <div
+      aria-hidden
       className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-gold/80 to-dean/70 font-display font-black text-black"
       style={{ width: size, height: size, fontSize: size * 0.45 }}
     >
