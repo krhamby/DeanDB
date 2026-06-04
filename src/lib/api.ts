@@ -217,16 +217,20 @@ export async function challengeTotp(
 // ════════════════════════════════════════════════════════════════
 
 export async function fetchProfileById(id: string): Promise<Profile | null> {
-  const { data } = await requireClient().from("profiles").select(PROFILE_COLS).eq("id", id).maybeSingle();
+  const { data, error } = await requireClient().from("profiles").select(PROFILE_COLS).eq("id", id).maybeSingle();
+  // A real query error (vs. genuine not-found) shouldn't masquerade as "no profile";
+  // surface it so schema drift is visible rather than silently appearing logged-out.
+  if (error) console.error("fetchProfileById:", error.message);
   return data ? mapProfile(data as ProfileRow) : null;
 }
 
 export async function fetchProfileByUsername(username: string): Promise<Profile | null> {
-  const { data } = await requireClient()
+  const { data, error } = await requireClient()
     .from("profiles")
     .select(PROFILE_COLS)
     .eq("username", username)
     .maybeSingle();
+  if (error) console.error("fetchProfileByUsername:", error.message);
   return data ? mapProfile(data as ProfileRow) : null;
 }
 
@@ -355,6 +359,12 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       .eq("user_id", profile.id),
     c.from("user_tracks").select("track_id, rating, favorite").eq("user_id", profile.id),
   ]);
+
+  // Fail loudly on a real query error (e.g. a missing column after schema drift)
+  // instead of silently returning an empty journey — which would wipe the user's
+  // albums/stats/achievements with no signal. The caller surfaces the load failure.
+  const loadErr = artistsRes.error ?? albumsRes.error ?? tracksRes.error;
+  if (loadErr) throw new Error(`fetchJourney: ${loadErr.message}`);
 
   const userArtists = (artistsRes.data ?? []) as unknown as UserArtistRow[];
   const userAlbums = (albumsRes.data ?? []) as unknown as UserAlbumRow[];
@@ -1118,7 +1128,28 @@ export async function albumAggregate(albumId: string): Promise<AlbumAggregate> {
 /** Best-effort: ask the slim `extract-cover` Edge Function for an album's dominant
  *  cover color. Returns the hex, or null on any failure (caller keeps the gradient).
  *  No image is uploaded -- Cover Art Archive keeps hosting the artwork. */
+/** Cover hosts the extract-cover function is allowed to fetch server-side. The
+ *  catalog `cover_url` is world-writable via the upsert RPC, so a poisoned value
+ *  must never reach the function — guard it client-side too (defense in depth;
+ *  the function should re-validate). Prevents SSRF to internal/metadata hosts. */
+function isAllowedCoverHost(coverUrl: string): boolean {
+  try {
+    const u = new URL(coverUrl);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    const host = u.hostname.toLowerCase();
+    return (
+      host === "coverartarchive.org" ||
+      host.endsWith(".coverartarchive.org") ||
+      host === "archive.org" ||
+      host.endsWith(".archive.org")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function extractCover(albumId: string, coverUrl: string): Promise<string | null> {
+  if (!isAllowedCoverHost(coverUrl)) return null;
   try {
     const { data, error } = await requireClient().functions.invoke("extract-cover", {
       body: { albumId, coverUrl },
