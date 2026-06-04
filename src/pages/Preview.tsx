@@ -3,9 +3,10 @@
 // This file is imported by App.tsx behind an `import.meta.env.DEV` guard
 // so it is tree-shaken out of production builds.
 
-import { useThemeControl } from "../lib/store";
+import { useThemeControl, MockJourneyProvider } from "../lib/store";
 import { sampleJourney } from "../lib/__fixtures__/sampleJourney";
 import { Dashboard } from "./Dashboard";
+import { Editor } from "./Editor";
 import type { DeanDBData } from "../types";
 import { NextSpinner } from "../components/NextSpinner";
 import { VerdictCard } from "../components/ShareCard";
@@ -145,6 +146,13 @@ export function Preview() {
       {/* ── Onboarding (empty journey) ── */}
       <Section label="Onboarding (empty journey)">
         <Onboarding />
+      </Section>
+
+      {/* ── Editor (mission control) ── */}
+      <Section label="Editor (mission control)">
+        <MockJourneyProvider data={sampleJourney}>
+          <Editor />
+        </MockJourneyProvider>
       </Section>
     </div>
   );

@@ -528,6 +528,23 @@ export function useMyJourney(): MyJourneyValue {
   return ctx;
 }
 
+/** DEV-ONLY: supply a fixed journey so auth-gated editors render in the preview harness. */
+export function MockJourneyProvider({ data, children }: { data: DeanDBData; children: ReactNode }) {
+  const noop = () => {};
+  const value: MyJourneyValue = {
+    data,
+    loading: false,
+    userId: "preview-user",
+    myUnlockedAchievementIds: new Set<string>(),
+    reload: async () => data,
+    patchLocal: noop,
+    setAlbum: noop,
+    setTrack: noop,
+    setArtist: noop,
+  };
+  return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;
+}
+
 // ════════════════════════════════════════════════════════════════
 // Viewing any user's journey (read-only, RLS-gated)
 // ════════════════════════════════════════════════════════════════
