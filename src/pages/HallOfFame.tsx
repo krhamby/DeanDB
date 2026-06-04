@@ -29,6 +29,13 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
           ? "border-amber-700/50 bg-gradient-to-r from-amber-700/10 to-transparent"
           : "border-edge/70 bg-panel/70";
 
+  const podium = ranked.slice(0, 3);
+  const rest = ranked.slice(3);
+
+  // #1 dominates: it spans both columns on its own row, then #2/#3 flank below.
+  // On mobile everything stacks single-column with #1 first.
+  const podiumSpan = (i: number) => (i === 0 ? "sm:col-span-2" : "");
+
   return (
     <div className="space-y-12">
       <div>
@@ -36,24 +43,60 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
         {ranked.length === 0 ? (
           <p className="py-8 text-fg-faint">No rated albums yet — the Hall awaits its first inductee.</p>
         ) : (
-          <div className="space-y-2 stagger-children">
-            {ranked.map((a, i) => (
-              <button
-                key={a.id}
-                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${rankClass(i)}`}
-              >
-                <span className="w-10 text-center font-display text-xl font-black text-gold">{medal(i)}</span>
-                <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-display text-lg font-black text-fg">{a.title}</div>
-                  <div className="text-sm text-fg-muted">
-                    {a.artistName} · {a.year}
+          <div className="space-y-6">
+            {/* The podium — an art-forward medal stand for the top 3. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 stagger-children">
+              {podium.map((a, i) => (
+                <button
+                  key={a.id}
+                  onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
+                  className={`animate-pop group flex h-full flex-col items-center gap-3 rounded-3xl border p-5 text-center transition-all hover:-translate-y-1 ${rankClass(i)} ${podiumSpan(i)}`}
+                >
+                  <span className="font-display text-3xl font-black text-gold">{medal(i)}</span>
+                  <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size={i === 0 ? "lg" : "md"} />
+                  <div className="min-w-0 w-full">
+                    <div className={`truncate font-display font-black text-fg ${i === 0 ? "text-2xl" : "text-xl"}`}>
+                      {a.title}
+                    </div>
+                    <div className="truncate text-sm text-fg-muted">
+                      {a.artistName} · {a.year}
+                    </div>
                   </div>
+                  <DeanMeter value={a.rating} size={i === 0 ? 84 : 64} />
+                </button>
+              ))}
+            </div>
+
+            {/* The rest — the existing compact ranked rows, continuing the numbering. */}
+            {rest.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="px-1 font-display text-sm font-bold uppercase tracking-wide text-fg-faint">
+                  The rest of the Hall
+                </h3>
+                <div className="space-y-2 stagger-children">
+                  {rest.map((a, i) => {
+                    const rank = i + 3;
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
+                        className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${rankClass(rank)}`}
+                      >
+                        <span className="w-10 text-center font-display text-xl font-black text-gold">{medal(rank)}</span>
+                        <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-display text-lg font-black text-fg">{a.title}</div>
+                          <div className="text-sm text-fg-muted">
+                            {a.artistName} · {a.year}
+                          </div>
+                        </div>
+                        <DeanMeter value={a.rating} size={56} />
+                      </button>
+                    );
+                  })}
                 </div>
-                <DeanMeter value={a.rating} size={56} />
-              </button>
-            ))}
+              </div>
+            )}
           </div>
         )}
       </div>
