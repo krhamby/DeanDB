@@ -128,4 +128,8 @@ export function applyTheme(t: Theme, surface: string = SKIN_SURFACE.midnight): v
   root.setProperty("--color-dean", secondary);
   const onAccent = pickOnAccent(accent);
   root.setProperty("--color-on-accent", onAccent);
+  // Text on a `bg-dean` fill (e.g. the unread-count badge). The dean accent is
+  // clamped per-skin (dark on Paper, bright on Midnight), so the legible text
+  // color flips — pick it the same way as on-accent.
+  root.setProperty("--color-on-dean", pickOnAccent(secondary));
 }

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -279,11 +280,14 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   const surface = SKIN_SURFACE[skin];
   const active = override ?? resolveTheme(profile);
 
-  // Reflect the skin on <html> and feed the surface to the accent clamp.
-  useEffect(() => {
+  // Reflect the skin on <html> and feed the surface to the accent clamp. Both run
+  // in a layout effect so the clamped accent tokens (and the skin's token block)
+  // are committed BEFORE the browser's first paint — otherwise the raw @theme gold
+  // (#f5c518 on white = 1.6:1) flashes for a frame on Paper.
+  useLayoutEffect(() => {
     document.documentElement.dataset.skin = skin;
   }, [skin]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyTheme(active, surface);
   }, [active.accent, active.secondary, surface]);
 

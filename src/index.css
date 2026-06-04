@@ -10,6 +10,7 @@
   --color-gold-soft: #ffe082;
   --color-dean: #ff5a3c;
   --color-on-accent: #000000;
+  --color-on-dean: #000000; /* text on a bg-dean fill; applyTheme picks per-skin */
   --color-fg: #241c14;        /* primary text (Paper default) */
   --color-fg-muted: #6f6353;  /* secondary text */
   --color-fg-faint: #736756;   /* darkened for AA on Paper (was #8a7c68) */

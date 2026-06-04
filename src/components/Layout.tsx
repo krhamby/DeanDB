@@ -126,7 +126,7 @@ function NavButton({
     >
       {label}
       {badge ? (
-        <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-black">
+        <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-on-dean">
           {badge}
         </span>
       ) : null}
@@ -250,7 +250,7 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
               >
                 <span>{it.label}</span>
                 {it.badge ? (
-                  <span className="grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-black">
+                  <span className="grid h-4 min-w-4 place-items-center rounded-full bg-dean px-1 text-[10px] font-bold text-on-dean">
                     {it.badge}
                   </span>
                 ) : null}
