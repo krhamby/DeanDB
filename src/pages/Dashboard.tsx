@@ -2,10 +2,11 @@ import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
 import { useMyJourney } from "../lib/store";
 import { fmtHours } from "../lib/format";
+import { useCountUp } from "../lib/useCountUp";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/cards";
-import { DeanMeter, Panel, ProgressBar, SectionTitle } from "../components/ui";
-import { EmptyState } from "../components/EmptyState";
+import { DeanMeter, Panel, SectionTitle } from "../components/ui";
+import { Onboarding } from "./Onboarding";
 import { NextSpinner } from "../components/NextSpinner";
 import type { DeanDBData } from "../types";
 
@@ -16,13 +17,13 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <Panel className="overflow-hidden p-4">
       <div
-        className={`font-display font-black leading-tight text-white break-words ${
+        className={`font-display font-black leading-tight text-fg break-words ${
           long ? "text-xl" : "text-3xl"
         }`}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-fg-faint">{label}</div>
       {sub && <div className="mt-1 truncate text-xs text-gold">{sub}</div>}
     </Panel>
   );
@@ -39,6 +40,8 @@ export function Dashboard({
   canEdit?: boolean;
 }) {
   const stats = computeStats(data);
+  const animatedHours = useCountUp(stats.hoursListened);
+  const animatedPct = useCountUp(stats.goalPct);
   const achievements = computeAchievements(data, stats);
   const unlocked = achievements.filter((a) => a.unlocked);
   // Secret-achievement masking is keyed on whether the VIEWER (not this profile's
@@ -61,43 +64,73 @@ export function Dashboard({
         <div className="text-[11px] font-bold uppercase tracking-[0.25em] text-gold/80">
           {data.season}
         </div>
-        <h1 className="mt-1 font-display text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl">
+        <h1 className="mt-1 font-display text-4xl font-black leading-tight tracking-tight text-fg sm:text-5xl">
           {data.listener.meterName}&apos;s Discography Marathon
         </h1>
-        <p className="mt-2 max-w-2xl text-zinc-400">{data.listener.tagline}</p>
+        <p className="mt-2 max-w-2xl text-fg-muted">{data.listener.tagline}</p>
 
-        <Panel className="mt-6 p-6">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Total time logged
+        <Panel className="mt-6 overflow-hidden p-6 sm:p-7">
+          {stats.goalPct >= 100 ? (
+            <div
+              className="animate-pop relative overflow-hidden rounded-xl border border-gold/50 bg-gradient-to-r from-gold/20 via-dean/10 to-transparent p-6 text-center"
+              style={{ boxShadow: "0 0 32px -6px color-mix(in srgb, var(--color-gold) 50%, transparent)" }}
+            >
+              <div className="font-display text-[11px] uppercase tracking-[0.3em] text-gold">
+                The Summit — conquered 👑
               </div>
-              <div className="font-display text-5xl font-black text-gold">
-                {fmtHours(stats.hoursListened)}
+              <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
+                🏔️ {fmtHours(animatedHours)}
+              </div>
+              <div className="mt-2 text-sm text-fg-muted">
+                Every hour of the marathon, complete. The whole discography, conquered.
               </div>
             </div>
-            <div className="text-right">
-              <div className="font-display text-2xl font-black text-white">
-                {stats.goalPct.toFixed(1)}%
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
+                    Total time logged
+                  </div>
+                  <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
+                    {fmtHours(animatedHours)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-display text-3xl font-black leading-none text-fg">
+                    {animatedPct.toFixed(1)}%
+                  </div>
+                  <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
+                </div>
               </div>
-              <div className="text-xs text-zinc-500">of {fmtHours(stats.totalRuntimeHours)} total runtime</div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <ProgressBar pct={stats.goalPct} className="h-3" />
-            <div className="mt-2 flex justify-between text-xs text-zinc-600">
-              <span>0h</span>
-              <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
-            </div>
-          </div>
+              <div className="relative mt-5">
+                <div className="relative h-4 w-full overflow-hidden rounded-full bg-fg/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
+                    style={{
+                      width: `${Math.max(2, Math.min(100, stats.goalPct))}%`,
+                      boxShadow: "0 0 16px color-mix(in srgb, var(--color-gold) 55%, transparent)",
+                    }}
+                  />
+                  {[25, 50, 75].map((m) => (
+                    <span key={m} className="absolute top-0 h-full w-px bg-fg/20" style={{ left: `${m}%` }} />
+                  ))}
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-fg-faint">
+                  <span>0h</span>
+                  <span>{fmtHours(stats.totalRuntimeHours)} — The Summit 👑</span>
+                </div>
+              </div>
+            </>
+          )}
         </Panel>
       </section>
 
       {data.artists.length === 0 ? (
         canEdit ? (
-          <EmptyState />
+          <Onboarding />
         ) : (
-          <Panel className="px-6 py-16 text-center text-zinc-400">
+          <Panel className="px-6 py-16 text-center text-fg-muted">
             {data.listener.meterName} hasn&apos;t added any artists yet. 🎙️
           </Panel>
         )
@@ -108,7 +141,7 @@ export function Dashboard({
             (stats.marathonArtistsTotal > 0 ? (
               <NextSpinner artists={data.artists} basePath={basePath} />
             ) : (
-              <Panel className="px-6 py-10 text-center text-zinc-400">
+              <Panel className="px-6 py-10 text-center text-fg-muted">
                 <div className="mb-2 text-4xl">📚</div>
                 Everything here is in the Library — no marathon artists yet. Start one in the{" "}
                 <button onClick={() => navigate("/editor")} className="text-gold hover:underline">
@@ -150,8 +183,8 @@ export function Dashboard({
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
                 <div className="text-left">
                   <div className="text-xs font-bold uppercase tracking-wide text-gold">▶ Live</div>
-                  <div className="font-display text-lg font-black text-white">{a.title}</div>
-                  <div className="text-sm text-zinc-400">{a.artistName}</div>
+                  <div className="font-display text-lg font-black text-fg">{a.title}</div>
+                  <div className="text-sm text-fg-muted">{a.artistName}</div>
                 </div>
               </button>
             ))}
@@ -163,7 +196,7 @@ export function Dashboard({
       {recent.length > 0 && (
         <section>
           <SectionTitle kicker="Fresh off the needle" title="Latest Verdicts" />
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6 stagger-children">
             {recent.map((a) => (
               <button
                 key={a.id}
@@ -196,7 +229,7 @@ export function Dashboard({
               >
                 <span className="text-3xl">{secret ? "❓" : a.unlocked ? a.emoji : "🔒"}</span>
                 <div>
-                  <div className="font-display font-black text-white">
+                  <div className="font-display font-black text-fg">
                     {secret ? "Secret Achievement" : a.title}
                     {a.hidden && !secret && (
                       <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide text-gold">
@@ -204,7 +237,7 @@ export function Dashboard({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-fg-faint">
                     {secret ? "Keep listening to reveal this one…" : a.desc}
                   </div>
                   {!a.unlocked && !a.hidden && a.progress && (

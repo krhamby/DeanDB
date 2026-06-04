@@ -1,6 +1,8 @@
 import { artistProgress } from "../lib/stats";
 import { gradient } from "../lib/format";
 import { navigate, profilePath } from "../lib/router";
+import { useThemeControl } from "../lib/store";
+import { legible, pickOnAccent } from "../lib/themes";
 import { AlbumCard } from "../components/cards";
 import { Avatar } from "../components/social";
 import { DeanMeter, LoggedBadge, Panel, ProgressBar } from "../components/ui";
@@ -15,12 +17,13 @@ export function ArtistDetail({
   artistId: string;
   basePath?: string;
 }) {
+  const { surface } = useThemeControl();
   const artist = data.artists.find((a) => a.id === artistId);
 
   if (!artist) {
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-400">Artist not found.</p>
+        <p className="text-fg-muted">Artist not found.</p>
         <button onClick={() => navigate(`${basePath}/artists`)} className="mt-4 text-gold hover:underline">
           ← Back to artists
         </button>
@@ -28,6 +31,7 @@ export function ArtistDetail({
     );
   }
 
+  const artistAccent = legible(artist.color[0], surface);
   const tracked = artist.albums.filter((a) => !a.excluded);
   const completed = tracked.filter((a) => a.status === "completed").length;
   const pct = artistProgress(artist) * 100;
@@ -35,8 +39,14 @@ export function ArtistDetail({
   const albums = [...artist.albums].sort((a, b) => order[a.status] - order[b.status]);
 
   return (
-    <div>
-      <button onClick={() => navigate(`${basePath}/artists`)} className="mb-4 text-sm text-zinc-500 hover:text-gold">
+    <div
+      style={{
+        ["--color-gold" as string]: artistAccent,
+        ["--color-gold-soft" as string]: artistAccent,
+        ["--color-on-accent" as string]: pickOnAccent(artistAccent),
+      }}
+    >
+      <button onClick={() => navigate(`${basePath}/artists`)} className="mb-4 text-sm text-fg-faint hover:text-gold">
         ← All artists
       </button>
 
@@ -44,11 +54,11 @@ export function ArtistDetail({
         className="relative overflow-hidden rounded-3xl p-8"
         style={{ background: gradient(artist.color) }}
       >
-        <div className="absolute inset-0 bg-black/35" />
+        <div className="absolute inset-0 bg-black/45" />
         <div className="relative">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
             <span>{artist.genre} · {artist.country}</span>
-            {artist.logged && <LoggedBadge />}
+            {artist.logged && <LoggedBadge onMedia />}
           </div>
           <h1 className="font-display text-5xl font-black tracking-tight text-white drop-shadow">
             {artist.name}
@@ -83,30 +93,30 @@ export function ArtistDetail({
       <Panel className="-mt-6 mx-2 flex items-center gap-6 p-5">
         <div>
           <div className="font-display text-3xl font-black text-gold">{Math.round(pct)}%</div>
-          <div className="text-xs text-zinc-500">discography</div>
+          <div className="text-xs text-fg-faint">discography</div>
         </div>
         <div className="flex-1">
           <div className="mb-1.5 flex justify-between text-sm">
-            <span className="text-zinc-400">
+            <span className="text-fg-muted">
               {completed} of {tracked.length} albums completed
             </span>
-            <span className="text-zinc-500">{tracked.length} tracked</span>
+            <span className="text-fg-faint">{tracked.length} tracked</span>
           </div>
           <ProgressBar pct={pct} className="h-2.5" />
         </div>
         {artist.verdict != null && (
           <div className="flex flex-col items-center gap-1 border-l border-edge/60 pl-6">
             <DeanMeter value={artist.verdict} size={52} />
-            <div className="text-xs text-zinc-500">verdict</div>
+            <div className="text-xs text-fg-faint">verdict</div>
           </div>
         )}
       </Panel>
 
       {artist.verdict != null && artist.verdictNote && (
-        <p className="mx-2 mt-3 text-sm italic text-zinc-400">“{artist.verdictNote}”</p>
+        <p className="mx-2 mt-3 text-sm italic text-fg-muted">“{artist.verdictNote}”</p>
       )}
 
-      <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4">
+      <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 stagger-children">
         {albums.map((al) => (
           <AlbumCard key={al.id} album={al} artistId={artist.id} basePath={basePath} />
         ))}

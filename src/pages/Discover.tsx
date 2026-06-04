@@ -131,7 +131,7 @@ export function Discover() {
       <SectionTitle kicker="Discover" title="Find your next artist" />
 
       <Panel className="space-y-3 p-5">
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-fg-muted">
           Describe a vibe, a mood, or an artist you love — get real artists to explore, each
           checked against MusicBrainz and one click from your journey.
         </p>
@@ -143,14 +143,14 @@ export function Discover() {
           }}
           rows={3}
           placeholder="e.g. moody 70s prog rock with long instrumental passages"
-          className="w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
+          className="w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
         />
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
             <button
               key={ex}
               onClick={() => setPrompt(ex)}
-              className="rounded-full border border-edge px-3 py-1 text-xs text-zinc-400 hover:border-gold/50 hover:text-white"
+              className="rounded-full border border-edge px-3 py-1 text-xs text-fg-muted hover:border-gold/50 hover:text-fg"
             >
               {ex}
             </button>
@@ -160,28 +160,28 @@ export function Discover() {
           <button
             onClick={run}
             disabled={busy || !prompt.trim()}
-            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
           >
             {busy ? "✨ Consulting MusicBrainz…" : "✨ Suggest artists"}
           </button>
-          {busy && <span className="text-xs text-zinc-500">This takes a few seconds — checking each artist.</span>}
+          {busy && <span className="text-xs text-fg-faint">This takes a few seconds — checking each artist.</span>}
           {error && <span className="text-xs text-dean">{error}</span>}
         </div>
       </Panel>
 
       {suggestions && suggestions.length === 0 && !busy && (
-        <p className="py-6 text-center text-sm text-zinc-500">
+        <p className="py-6 text-center text-sm text-fg-faint">
           No matches this time — try describing the vibe a little differently.
         </p>
       )}
 
       {suggestions && suggestions.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 stagger-children">
           {suggestions.map((s) => {
             const key = s.mbid ?? s.name;
             const add$ = adds[key] ?? { status: "idle" as AddStatus };
             return (
-              <Panel key={key} className="flex flex-col gap-3 p-4">
+              <Panel key={key} className="flex flex-col gap-3 p-4 transition hover:-translate-y-0.5 hover:border-gold/30">
                 <div className="flex items-start gap-3">
                   <div
                     className="grid h-12 w-12 shrink-0 place-items-center rounded-lg font-display text-xl font-black text-white/90 shadow-inner"
@@ -191,20 +191,20 @@ export function Discover() {
                     {s.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-base font-black leading-tight text-white">{s.name}</div>
+                    <div className="font-display text-base font-black leading-tight text-fg">{s.name}</div>
                     {s.genre && (
-                      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-fg-faint">
                         {s.genre}
                       </div>
                     )}
                   </div>
                 </div>
-                <p className="text-sm leading-relaxed text-zinc-400">{s.reason}</p>
+                <p className="text-sm leading-relaxed text-fg-muted">{s.reason}</p>
                 <div className="mt-auto flex items-center gap-3 pt-1">
                   {add$.status === "added" ? (
                     <button
                       onClick={() => add$.artistId && navigate(`/artist/${add$.artistId}`)}
-                      className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-emerald-400 hover:text-emerald-300"
+                      className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-[var(--color-status-done)] hover:opacity-80"
                     >
                       ✓ Added — view in journey →
                     </button>
@@ -212,7 +212,7 @@ export function Discover() {
                     <button
                       onClick={() => add(s)}
                       disabled={add$.status === "adding"}
-                      className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-black hover:brightness-110 disabled:opacity-40"
+                      className="rounded-lg bg-gold px-3 py-1.5 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
                     >
                       {add$.status === "adding" ? (
                         <span>
@@ -225,7 +225,7 @@ export function Discover() {
                     </button>
                   )}
                   {add$.msg && (
-                    <span className={`text-xs ${add$.status === "error" ? "text-dean" : "text-zinc-500"}`}>
+                    <span className={`text-xs ${add$.status === "error" ? "text-dean" : "text-fg-faint"}`}>
                       {add$.msg}
                     </span>
                   )}

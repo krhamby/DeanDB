@@ -3,11 +3,12 @@ import { useAuth } from "../lib/store";
 import { navigate } from "../lib/router";
 import * as api from "../lib/api";
 import { Panel } from "../components/ui";
+import { Wordmark } from "../components/Wordmark";
 
 type Mode = "signin" | "signup" | "forgot" | "mfa" | "setpw" | "confirm";
 
 const inputCls =
-  "w-full rounded-xl border border-edge bg-panel-2 px-4 py-2.5 text-white outline-none placeholder:text-zinc-600 focus:border-gold/50";
+  "w-full rounded-xl border border-[var(--color-edge-strong)] bg-panel-2 px-4 py-2.5 text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold";
 
 export function Login() {
   const { session, mfaPending, passwordRecovery, signIn, signUp, verifyMfa, requestPasswordReset, updatePassword } =
@@ -54,7 +55,7 @@ export function Login() {
   if (session && !mfaPending && !passwordRecovery) {
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-300">You&apos;re signed in. 🎧</p>
+        <p className="text-fg-muted">You&apos;re signed in. 🎧</p>
         <button onClick={() => navigate("/me")} className="mt-4 text-gold hover:underline">
           Go to my journey →
         </button>
@@ -161,21 +162,35 @@ export function Login() {
               ? "Confirm your email"
               : "Sign in to DeanDB";
 
+  const subtitle =
+    mode === "signup"
+      ? "Start your discography marathon."
+      : mode === "forgot"
+        ? "We'll email a link to set a new password."
+        : mode === "mfa"
+          ? "One more step to keep your journey yours."
+          : mode === "setpw"
+            ? "Choose a password for your account."
+            : mode === "confirm"
+              ? "Almost there."
+              : "Pick up where you left off.";
+
   return (
     <div className="mx-auto max-w-md py-12">
       <Panel className="space-y-4 p-8">
         <div className="text-center">
-          <div className="text-5xl">🎧</div>
-          <h1 className="mt-2 font-display text-2xl font-black text-white">{title}</h1>
+          <Wordmark size="hero" />
+          <h1 className="mt-5 font-display text-2xl font-black text-fg">{title}</h1>
+          <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>
         </div>
 
         {mode === "confirm" ? (
-          <p className="text-center text-sm text-zinc-300">
+          <p className="text-center text-sm text-fg-muted">
             Check <span className="text-gold">{email}</span> to confirm your account, then come back and sign in.
           </p>
         ) : mode === "mfa" ? (
           <>
-            <p className="text-center text-sm text-zinc-400">Enter the 6-digit code from your authenticator app.</p>
+            <p className="text-center text-sm text-fg-muted">Enter the 6-digit code from your authenticator app.</p>
             <input
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -191,7 +206,7 @@ export function Login() {
             <button
               onClick={doVerifyMfa}
               disabled={busy || code.length < 6}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Verifying…" : "Verify"}
             </button>
@@ -205,6 +220,7 @@ export function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="New password"
+              aria-label="New password"
               className={inputCls}
             />
             <input
@@ -214,19 +230,20 @@ export function Login() {
               onChange={(e) => setConfirm(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doSetPw()}
               placeholder="Confirm password"
+              aria-label="Confirm new password"
               className={inputCls}
             />
             <button
               onClick={doSetPw}
               disabled={busy}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Saving…" : "Set password"}
             </button>
           </>
         ) : mode === "forgot" ? (
           <>
-            <p className="text-center text-sm text-zinc-400">
+            <p className="text-center text-sm text-fg-muted">
               Enter your email and we&apos;ll send a link to set a new password.
             </p>
             <input
@@ -236,12 +253,13 @@ export function Login() {
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && doForgot()}
               placeholder="you@example.com"
+              aria-label="Email"
               className={inputCls}
             />
             <button
               onClick={doForgot}
               disabled={busy || !email.trim()}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Sending…" : "Send reset link"}
             </button>
@@ -250,7 +268,7 @@ export function Login() {
                 reset();
                 setMode("signin");
               }}
-              className="block w-full text-center text-sm text-zinc-400 hover:text-white"
+              className="block w-full text-center text-sm text-fg-muted hover:text-fg"
             >
               ← Back to sign in
             </button>
@@ -264,6 +282,7 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              aria-label="Email"
               className={inputCls}
             />
             <input
@@ -273,6 +292,7 @@ export function Login() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (mode === "signup" ? doSignUp() : doSignIn())}
               placeholder="Password"
+              aria-label="Password"
               className={inputCls}
             />
             {mode === "signup" && (
@@ -283,13 +303,14 @@ export function Login() {
                 onChange={(e) => setConfirm(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && doSignUp()}
                 placeholder="Confirm password"
+                aria-label="Confirm password"
                 className={inputCls}
               />
             )}
             <button
               onClick={mode === "signup" ? doSignUp : doSignIn}
               disabled={busy || !email.trim() || !password}
-              className="w-full rounded-xl bg-gold px-5 py-2.5 font-bold text-black hover:brightness-110 disabled:opacity-40"
+              className="w-full min-h-11 rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
             >
               {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
             </button>
@@ -310,14 +331,14 @@ export function Login() {
                     reset();
                     setMode("forgot");
                   }}
-                  className="text-zinc-400 hover:text-white"
+                  className="text-fg-muted hover:text-fg"
                 >
                   Forgot password?
                 </button>
               )}
             </div>
             {mode === "signin" && (
-              <p className="text-center text-xs text-zinc-500">
+              <p className="text-center text-xs text-fg-faint">
                 Used a magic link before?{" "}
                 <button
                   onClick={() => {
@@ -335,7 +356,7 @@ export function Login() {
         )}
 
         {error && <p className="text-center text-sm font-semibold text-dean">{error}</p>}
-        {info && <p className="text-center text-sm text-emerald-400">{info}</p>}
+        {info && <p className="text-center text-sm text-[var(--color-status-done)]">{info}</p>}
       </Panel>
     </div>
   );

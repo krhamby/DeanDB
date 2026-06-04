@@ -4,6 +4,7 @@ import { gradient } from "../lib/format";
 import { marathonArtists } from "../lib/stats";
 import { navigate } from "../lib/router";
 import { Panel } from "./ui";
+import { tick, landChime, haptic, prefersReducedMotion } from "../lib/sfx";
 
 // Picking your next artist is a DELIBERATE act, not an automatic one: the wheel
 // sits idle until you spin, and the spin lands on a RANDOM artist among every
@@ -82,6 +83,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
   const [picked, setPicked] = useState<Artist | null>(null);
   const timer = useRef<number | null>(null);
   const raf = useRef<number | null>(null);
+  const tickTimers = useRef<number[]>([]);
 
   // Whenever the eligible set changes (edits, reload), return to a fresh idle reel.
   useEffect(() => {
@@ -96,6 +98,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
     () => () => {
       if (timer.current) window.clearTimeout(timer.current);
       if (raf.current) cancelAnimationFrame(raf.current);
+      tickTimers.current.forEach((id) => window.clearTimeout(id));
     },
     [],
   );
@@ -114,6 +117,15 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
     setPicked(null);
     setSpinning(true);
     setReel(strip);
+    // Decelerating "tick-tick-tick" across the spin (ease-out, like a slowing reel).
+    tickTimers.current.forEach((id) => window.clearTimeout(id));
+    tickTimers.current = [];
+    const TICKS = 22;
+    for (let i = 1; i <= TICKS; i++) {
+      const frac = i / TICKS;
+      const at = SPIN_MS * (1 - Math.pow(1 - frac, 2)); // ease-out: dense → sparse
+      tickTimers.current.push(window.setTimeout(() => tick(0.05), at));
+    }
     // Jump to the start with NO transition, then animate to the target next frame.
     setAnimate(false);
     setCenter(2);
@@ -127,6 +139,8 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
       setSpinning(false);
       setAnimate(false);
       setPicked(target);
+      landChime();
+      haptic([14, 40, 22]);
     }, SPIN_MS);
   };
 
@@ -150,7 +164,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
               style={{
                 transform: `translateX(${translate}px)`,
                 transition: animate ? `transform ${SPIN_MS}ms cubic-bezier(0.16, 1, 0.2, 1)` : "none",
-                filter: spinning ? "blur(0.6px)" : "none",
+                filter: spinning && !prefersReducedMotion() ? "blur(0.6px)" : "none",
               }}
             >
               {reel.map((a, i) => (
@@ -163,14 +177,17 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
         {/* Result / prompt */}
         {picked ? (
           <div className="flex animate-pop flex-col items-center gap-3">
-            <div className="text-center">
+            <div className="text-center animate-wheel-reveal">
               <div className="text-xs font-semibold uppercase tracking-wide text-gold">🎉 Up next</div>
-              <div className="font-display text-2xl font-black text-white">{picked.name}</div>
+              <div className="font-display text-2xl font-black text-fg">{picked.name}</div>
+              <div className="mt-1 text-xs text-fg-muted">
+                {picked.genre} · {picked.catalogSize} album{picked.catalogSize === 1 ? "" : "s"} to conquer
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => navigate(`${basePath}/artist/${picked.id}`)}
-                className="rounded-xl bg-gold px-5 py-2.5 font-bold text-black transition hover:brightness-110"
+                className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110"
               >
                 Start {picked.name} →
               </button>
@@ -184,7 +201,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-fg-muted">
               {spinning
                 ? "Finding your next artist…"
                 : `${eligible.length} artist${eligible.length === 1 ? "" : "s"} waiting — let the wheel choose one at random.`}
@@ -192,7 +209,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
             <button
               onClick={spin}
               disabled={spinning}
-              className="rounded-xl bg-gold px-6 py-2.5 font-bold text-black transition hover:brightness-110 disabled:opacity-50"
+              className="rounded-xl bg-gold px-6 py-2.5 font-bold text-on-accent transition hover:brightness-110 disabled:opacity-50"
             >
               {spinning ? "🎡 Spinning…" : "🎲 Spin for my next artist"}
             </button>
@@ -200,14 +217,14 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
         )}
 
         {inProgress.length > 0 && (
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-fg-faint">
             In progress:{" "}
             {inProgress.slice(0, 3).map((a, i) => (
               <span key={a.id}>
                 {i > 0 && ", "}
                 <button
                   onClick={() => navigate(`${basePath}/artist/${a.id}`)}
-                  className="font-semibold text-zinc-300 hover:text-gold"
+                  className="font-semibold text-fg-muted hover:text-gold"
                 >
                   {a.name}
                 </button>

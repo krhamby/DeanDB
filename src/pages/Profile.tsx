@@ -5,6 +5,7 @@ import { resolveTheme } from "../lib/themes";
 import { Avatar, FollowButton } from "../components/social";
 import { JourneyNav } from "../components/JourneyNav";
 import { Panel } from "../components/ui";
+import { JourneySkeleton } from "../components/skeletons";
 import { Dashboard } from "./Dashboard";
 import { Artists } from "./Artists";
 import { ArtistDetail } from "./ArtistDetail";
@@ -35,12 +36,12 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
   }, [themed, accent, secondary, setThemeOverride]);
 
   if (view.loading) {
-    return <div className="py-16 text-center text-zinc-500">Loading…</div>;
+    return <JourneySkeleton />;
   }
 
   if (view.notFound || !owner) {
     return (
-      <Panel className="mx-auto max-w-md px-6 py-16 text-center text-zinc-400">
+      <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
         <div className="mb-3 text-5xl">🤷</div>
         No journey found at <span className="text-gold">@{username}</span>.
       </Panel>
@@ -51,8 +52,8 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
     <Panel className="mb-6 flex flex-wrap items-center gap-4 p-5">
       <Avatar profile={owner} size={64} />
       <div className="min-w-0 flex-1">
-        <h1 className="font-display text-2xl font-black text-white">{owner.displayName}</h1>
-        <div className="text-sm text-zinc-500">
+        <h1 className="font-display text-2xl font-black text-fg">{owner.displayName}</h1>
+        <div className="text-sm text-fg-faint">
           @{owner.username}
           {owner.visibility === "private" && " · 🔒 private"}
         </div>
@@ -65,9 +66,9 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
     return (
       <div className="mx-auto max-w-2xl">
         {Header}
-        <Panel className="px-6 py-16 text-center text-zinc-400">
+        <Panel className="px-6 py-16 text-center text-fg-muted">
           <div className="mb-3 text-5xl">🔒</div>
-          <p className="font-display text-lg font-black text-white">This journey is private</p>
+          <p className="font-display text-lg font-black text-fg">This journey is private</p>
           <p className="mt-1 text-sm">Follow {owner.displayName} and wait for them to accept to see their marathon.</p>
         </Panel>
       </div>

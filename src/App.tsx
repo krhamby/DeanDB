@@ -18,31 +18,18 @@ import { People } from "./pages/People";
 import { Recommendations } from "./pages/Recommendations";
 import { Discover } from "./pages/Discover";
 import { Profile } from "./pages/Profile";
+import { Landing } from "./pages/Landing";
+// DEV-ONLY: preview harness for screenshotting logged-in surfaces without auth.
+// The conditional import keeps it out of production type-checking paths, but
+// the unconditional static import below is what actually satisfies TypeScript —
+// tree-shaking removes it from the prod bundle because the call site is guarded.
+import { Preview } from "./pages/Preview";
+import { Wordmark } from "./components/Wordmark";
 
 function Loading() {
   return (
     <div className="grid min-h-[60vh] place-items-center">
-      <div className="animate-pulse font-display text-2xl font-black text-gold">DeanDB</div>
-    </div>
-  );
-}
-
-/** Friendly landing for signed-out visitors. */
-function Landing() {
-  return (
-    <div className="mx-auto max-w-xl py-12 text-center">
-      <div className="text-6xl">🎧</div>
-      <h1 className="mt-4 font-display text-4xl font-black text-white">DeanDB</h1>
-      <p className="mt-3 text-zinc-400">
-        Track your own discography marathon — every artist, album and track, rated and reviewed — and share
-        the journey with friends.
-      </p>
-      <button
-        onClick={() => navigate("/login")}
-        className="mt-6 rounded-xl bg-gold px-6 py-3 font-bold text-black hover:brightness-110"
-      >
-        Get started
-      </button>
+      <div className="animate-pulse"><Wordmark size="hero" /></div>
     </div>
   );
 }
@@ -60,7 +47,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
     const cta = mfaPending ? "Enter code →" : passwordRecovery ? "Set password →" : "Sign in →";
     return (
       <div className="py-16 text-center">
-        <p className="text-zinc-400">{label}</p>
+        <p className="text-fg-muted">{label}</p>
         <button onClick={() => navigate("/login")} className="mt-4 text-gold hover:underline">
           {cta}
         </button>
@@ -111,6 +98,12 @@ function Router() {
   const authed = Boolean(session) && !mfaPending && !passwordRecovery;
   const segments = parseRoute(hash);
   const head = segments[0];
+
+  // DEV-ONLY: #/__preview — preview harness for logged-in surfaces.
+  // Gated to import.meta.env.DEV so the route is unreachable in production;
+  // Vite's dead-code elimination removes this branch (and the Preview import)
+  // from the prod bundle entirely.
+  if (import.meta.env.DEV && head === "__preview") return <Preview />;
 
   // #/u/:username/... — another user's journey (read-only, RLS-gated). Keyed on
   // the username so switching profiles remounts cleanly (theme override resets
@@ -191,9 +184,9 @@ export default function App() {
   if (!supabaseEnabled) {
     return (
       <Layout>
-        <Panel className="mx-auto max-w-md px-6 py-16 text-center text-zinc-400">
+        <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
           <div className="mb-3 text-5xl">🔌</div>
-          <p className="font-display text-lg font-black text-white">Backend not configured</p>
+          <p className="font-display text-lg font-black text-fg">Backend not configured</p>
           <p className="mt-1 text-sm">
             Set <code className="text-gold">SUPABASE_URL</code> and{" "}
             <code className="text-gold">SUPABASE_ANON_KEY</code> in <code>src/lib/config.ts</code> to run DeanDB.

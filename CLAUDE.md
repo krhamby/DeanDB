@@ -39,8 +39,11 @@ into it, and all display pages + `stats.ts` consume that shape.
 | Backend   | Supabase: Auth (email + password, TOTP MFA), Postgres with **Row Level Security**, RPCs, a feed view |
 | External  | MusicBrainz + Cover Art Archive (free, no API key) for art/discographies |
 
-There is **no test runner, no ESLint, no Prettier**. The type checker is the gate
-— keep `npm run typecheck` / `npm run build` green.
+There is **no ESLint or Prettier**. **Vitest** covers pure functions only
+(`npm run test` — e.g. the theme contrast math, `useCountUp`, the Wheel `sfx`
+guards); the **type checker is the primary gate** — keep `npm run typecheck` /
+`npm run build` green. For UI/visual work, verify in the `#/__preview` dev-only
+harness (renders logged-in surfaces with sample data; toggle Paper/Midnight).
 
 ## Commands
 

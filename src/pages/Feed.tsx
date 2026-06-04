@@ -4,6 +4,7 @@ import { fmtDate } from "../lib/format";
 import { ACHIEVEMENT_CATALOG, shouldMaskSecret } from "../lib/achievements";
 import { Cover } from "../components/cards";
 import { DeanMeter, LoggedBadge, Panel, SectionTitle, StatusBadge } from "../components/ui";
+import { FeedSkeleton } from "../components/skeletons";
 import type { AlbumFeedItem } from "../types";
 
 /** How to phrase the activity, e.g. "logged an old favorite" vs "rated". */
@@ -24,9 +25,9 @@ export function Feed() {
     <div className="mx-auto max-w-2xl space-y-4">
       <SectionTitle kicker="From people you follow" title="Activity Feed" />
       {loading ? (
-        <p className="py-12 text-center text-zinc-500">Loading…</p>
+        <FeedSkeleton />
       ) : items.length === 0 ? (
-        <Panel className="px-6 py-16 text-center text-zinc-400">
+        <Panel className="px-6 py-16 text-center text-fg-muted">
           Your feed is quiet. Find friends on{" "}
           <button onClick={() => navigate("/people")} className="text-gold hover:underline">
             People
@@ -34,7 +35,8 @@ export function Feed() {
           and follow them to see their listening here.
         </Panel>
       ) : (
-        items.map((it) => {
+        <div className="space-y-4 stagger-children">
+        {items.map((it) => {
           if (it.kind === "achievement") {
             const meta = ACHIEVEMENT_CATALOG[it.achievementId];
             if (!meta) return null; // unknown/retired id — skip
@@ -47,7 +49,7 @@ export function Feed() {
                   {masked ? "❓" : meta.emoji}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-fg-faint">
                     <button
                       onClick={() => navigate(profilePath(it.username))}
                       className="font-semibold text-gold hover:underline"
@@ -56,7 +58,7 @@ export function Feed() {
                     </button>{" "}
                     unlocked an achievement
                   </div>
-                  <div className="mt-0.5 font-display text-base font-black leading-tight text-white sm:text-lg">
+                  <div className="mt-0.5 font-display text-base font-black leading-tight text-fg sm:text-lg">
                     {masked ? "Secret Achievement" : meta.title}
                     {meta.hidden && !masked && (
                       <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide text-gold">
@@ -64,7 +66,7 @@ export function Feed() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 text-sm text-zinc-400">
+                  <div className="mt-1 text-sm text-fg-muted">
                     {masked ? "Keep listening to reveal this one…" : meta.desc}
                     {" · "}
                     {fmtDate(it.unlockedAt.slice(0, 10))}
@@ -74,12 +76,12 @@ export function Feed() {
             );
           }
           return (
-            <Panel key={it.userAlbumId} className="flex items-center gap-3 p-3">
+            <Panel key={it.userAlbumId} className="flex items-center gap-3 p-3 transition hover:border-gold/30">
               <div className="shrink-0">
                 <Cover colors={it.cover} title={it.albumTitle} coverUrl={it.coverUrl ?? undefined} size="sm" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-fg-faint">
                   <button
                     onClick={() => navigate(profilePath(it.username))}
                     className="font-semibold text-gold hover:underline"
@@ -90,25 +92,26 @@ export function Feed() {
                 </div>
                 <button
                   onClick={() => navigate(`${profilePath(it.username)}/album/${it.artistId}/${it.albumId}`)}
-                  className="block text-left font-display text-base font-black leading-tight text-white line-clamp-2 hover:text-gold sm:text-lg"
+                  className="block text-left font-display text-base font-black leading-tight text-fg line-clamp-2 hover:text-gold sm:text-lg"
                 >
                   {it.albumTitle}
                   {it.favorite && <span title="Favorite" className="ml-1">⭐</span>}
                 </button>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-400">
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
                   {it.logged ? <LoggedBadge /> : <StatusBadge status={it.status} />}
                   <span className="min-w-0 truncate">
                     {it.artistName} · {fmtDate(it.updatedAt.slice(0, 10))}
                   </span>
                 </div>
-                {it.review && <p className="mt-1 line-clamp-2 text-sm text-zinc-500">“{it.review}”</p>}
+                {it.review && <p className="mt-1 line-clamp-2 text-sm text-fg-faint">“{it.review}”</p>}
               </div>
               {/* Rating sits at the card's right edge, vertically centered — the
                   narrow max-w-2xl column keeps it close to the content (no big gap). */}
               {it.rating != null && <DeanMeter value={it.rating} size={48} name={it.displayName} />}
             </Panel>
           );
-        })
+        })}
+        </div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { useRecommendations } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
 import { Panel, SectionTitle } from "../components/ui";
+import { RecommendationsSkeleton } from "../components/skeletons";
 
 export function Recommendations() {
   const { inbox, loading, markRead } = useRecommendations();
@@ -17,24 +18,25 @@ export function Recommendations() {
     <div className="space-y-4">
       <SectionTitle kicker="Sent your way" title="Recommendations" />
       {loading ? (
-        <p className="py-12 text-center text-zinc-500">Loading…</p>
+        <RecommendationsSkeleton />
       ) : inbox.length === 0 ? (
-        <Panel className="px-6 py-16 text-center text-zinc-400">
+        <Panel className="px-6 py-16 text-center text-fg-muted">
           No recommendations yet. When a friend recommends an album, it lands here. ✉
         </Panel>
       ) : (
-        inbox.map((r) => (
+        <div className="space-y-4 stagger-children">
+        {inbox.map((r) => (
           <Panel key={r.id} className={`p-4 ${r.readAt ? "" : "border-gold/40"}`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm text-zinc-400">
+              <span className="text-sm text-fg-muted">
                 <button onClick={() => navigate(profilePath(r.fromUsername))} className="font-semibold text-gold hover:underline">
                   {r.fromDisplayName}
                 </button>{" "}
                 recommends
               </span>
-              <span className="text-xs text-zinc-600">{fmtDate(r.createdAt.slice(0, 10))}</span>
+              <span className="text-xs text-fg-faint">{fmtDate(r.createdAt.slice(0, 10))}</span>
             </div>
-            <div className="mt-1 font-display text-lg font-black text-white">
+            <div className="mt-1 font-display text-lg font-black text-fg">
               {r.albumTitle ? (
                 <button
                   onClick={() => navigate(`${profilePath(r.fromUsername)}/album/${r.artistId}/${r.albumId}`)}
@@ -47,11 +49,12 @@ export function Recommendations() {
                   {r.artistName}
                 </button>
               )}
-              <span className="ml-2 text-sm font-normal text-zinc-500">{r.artistName}</span>
+              <span className="ml-2 text-sm font-normal text-fg-faint">{r.artistName}</span>
             </div>
-            {r.note && <p className="mt-1 text-sm text-zinc-300">“{r.note}”</p>}
+            {r.note && <p className="mt-1 text-sm text-fg-muted">“{r.note}”</p>}
           </Panel>
-        ))
+        ))}
+        </div>
       )}
     </div>
   );

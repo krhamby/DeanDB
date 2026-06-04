@@ -22,6 +22,8 @@ export interface Album {
   cover: [string, string];
   /** Real cover art URL (e.g. from the Cover Art Archive). Falls back to the gradient. */
   coverUrl?: string;
+  /** Dominant color extracted from the cover art (per-album accent source). null = not yet extracted. */
+  dominantColor?: string | null;
   /** MusicBrainz release-group id, if matched, for re-fetching art/metadata. */
   mbid?: string;
   /** Excluded albums are kept for reference but don't count toward the marathon. */
@@ -119,6 +121,8 @@ export interface Profile {
   /** Accessibility: when true, only ever apply this user's OWN theme — other
    *  users' profile accent themes are not painted while they browse. */
   lockOwnTheme?: boolean;
+  /** Active skin, synced across the account. Defaults to "paper". */
+  skin?: "paper" | "midnight";
 }
 
 /** A person surfaced by search, with my relationship to them. */

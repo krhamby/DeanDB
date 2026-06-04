@@ -19,27 +19,35 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
 
   const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`);
 
+  // Gold / silver / bronze accents for the podium; subtle edge for the rest.
+  const rankClass = (i: number) =>
+    i === 0
+      ? "border-gold/60 bg-gradient-to-r from-gold/15 to-transparent"
+      : i === 1
+        ? "border-zinc-400/50 bg-gradient-to-r from-zinc-400/10 to-transparent"
+        : i === 2
+          ? "border-amber-700/50 bg-gradient-to-r from-amber-700/10 to-transparent"
+          : "border-edge/70 bg-panel/70";
+
   return (
     <div className="space-y-12">
       <div>
         <SectionTitle kicker="The greatest of all time (so far)" title={`${data.listener.meterName}'s Hall of Fame`} />
         {ranked.length === 0 ? (
-          <p className="py-8 text-zinc-500">No rated albums yet — the Hall awaits its first inductee.</p>
+          <p className="py-8 text-fg-faint">No rated albums yet — the Hall awaits its first inductee.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {ranked.map((a, i) => (
               <button
                 key={a.id}
                 onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${
-                  i < 3 ? "border-gold/40 bg-gradient-to-r from-gold/10 to-transparent" : "border-edge/70 bg-panel/70"
-                }`}
+                className={`flex w-full items-center gap-4 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 ${rankClass(i)}`}
               >
                 <span className="w-10 text-center font-display text-xl font-black text-gold">{medal(i)}</span>
                 <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-display text-lg font-black text-white">{a.title}</div>
-                  <div className="text-sm text-zinc-400">
+                  <div className="truncate font-display text-lg font-black text-fg">{a.title}</div>
+                  <div className="text-sm text-fg-muted">
                     {a.artistName} · {a.year}
                   </div>
                 </div>
@@ -58,8 +66,8 @@ export function HallOfFame({ data, basePath = "" }: { data: DeanDBData; basePath
               <Panel key={i} className="flex items-center gap-3 p-3">
                 <span className="text-xl">⭐</span>
                 <div className="min-w-0">
-                  <div className="truncate font-semibold text-white">{t.track}</div>
-                  <div className="truncate text-xs text-zinc-500">
+                  <div className="truncate font-semibold text-fg">{t.track}</div>
+                  <div className="truncate text-xs text-fg-faint">
                     {t.artist} — {t.album}
                   </div>
                 </div>

@@ -17,7 +17,7 @@ export function Avatar({
     return (
       <img
         src={profile.avatarUrl}
-        alt={profile.displayName}
+        alt={profile.displayName ?? profile.username}
         className="shrink-0 rounded-full object-cover"
         style={{ width: size, height: size }}
       />
@@ -25,6 +25,7 @@ export function Avatar({
   }
   return (
     <div
+      aria-hidden
       className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-gold/80 to-dean/70 font-display font-black text-black"
       style={{ width: size, height: size, fontSize: size * 0.45 }}
     >
@@ -72,8 +73,8 @@ export function PersonRow({
       >
         <Avatar profile={person.profile} />
         <div className="min-w-0">
-          <div className="truncate font-display font-black text-white">{person.profile.displayName}</div>
-          <div className="truncate text-xs text-zinc-500">
+          <div className="truncate font-display font-black text-fg">{person.profile.displayName}</div>
+          <div className="truncate text-xs text-fg-faint">
             @{person.profile.username}
             {person.profile.visibility === "private" && " · 🔒 private"}
             {person.followsMe && " · follows you"}
@@ -86,10 +87,10 @@ export function PersonRow({
           disabled={busy}
           className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
             status === "accepted"
-              ? "border border-edge text-zinc-400 hover:text-dean"
+              ? "border border-edge text-fg-muted hover:text-dean"
               : status === "pending"
-                ? "border border-edge text-zinc-500"
-                : "bg-gold text-black hover:brightness-110"
+                ? "border border-edge text-fg-faint"
+                : "bg-gold text-on-accent hover:brightness-110"
           }`}
         >
           {status === "accepted" ? "Following" : status === "pending" ? "Requested" : "Follow"}
@@ -137,10 +138,10 @@ export function FollowButton({
       disabled={busy}
       className={`rounded-xl px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
         status === "accepted"
-          ? "border border-edge text-zinc-300 hover:text-dean"
+          ? "border border-edge text-fg-muted hover:text-dean"
           : status === "pending"
-            ? "border border-edge text-zinc-500"
-            : "bg-gold text-black hover:brightness-110"
+            ? "border border-edge text-fg-faint"
+            : "bg-gold text-on-accent hover:brightness-110"
       }`}
     >
       {status === "accepted" ? "✓ Following" : status === "pending" ? "Requested" : "+ Follow"}
@@ -193,21 +194,21 @@ export function RecommendModal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
       <Panel className="w-full max-w-md space-y-4 p-6" >
         <div onClick={(e) => e.stopPropagation()} className="space-y-4">
-          <h3 className="font-display text-lg font-black text-white">Recommend “{label}”</h3>
+          <h3 className="font-display text-lg font-black text-fg">Recommend “{label}”</h3>
           {sent ? (
-            <p className="text-sm font-semibold text-emerald-400">Sent! 🎉</p>
+            <p className="text-sm font-semibold text-[var(--color-status-done)]">Sent! 🎉</p>
           ) : people.length === 0 ? (
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-fg-muted">
               Follow some people first — you can recommend to anyone you follow.
             </p>
           ) : (
             <>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-fg-faint">
                 To
                 <select
                   value={toUser}
                   onChange={(e) => setToUser(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm text-white"
+                  className="mt-1 w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm text-fg outline-none focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
                 >
                   {people.map((p) => (
                     <option key={p.profile.id} value={p.profile.id}>
@@ -221,19 +222,19 @@ export function RecommendModal({
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 placeholder="Why they need to hear this…"
-                className="w-full rounded-lg border border-edge bg-panel-2 p-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-gold/50"
+                className="w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 p-3 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
               />
             </>
           )}
           <div className="flex justify-end gap-2">
-            <button onClick={onClose} className="rounded-lg border border-edge px-3 py-1.5 text-sm text-zinc-400 hover:text-white">
+            <button onClick={onClose} className="rounded-lg border border-edge px-3 py-1.5 text-sm text-fg-muted hover:text-fg">
               Close
             </button>
             {!sent && people.length > 0 && (
               <button
                 onClick={send}
                 disabled={sending || !toUser}
-                className="rounded-lg bg-gold px-4 py-1.5 text-sm font-bold text-black hover:brightness-110 disabled:opacity-50"
+                className="rounded-lg bg-gold px-4 py-1.5 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-50"
               >
                 {sending ? "Sending…" : "Send"}
               </button>

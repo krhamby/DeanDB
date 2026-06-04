@@ -59,15 +59,24 @@ export function lighten(hex: string, amt: number): string {
   return `#${to2(r)}${to2(g)}${to2(b)}`;
 }
 
-// ── Contrast (WCAG 2.x relative luminance) ──────────────────────
-// The accent is used BOTH as a fill behind black text (`bg-gold text-black`)
-// and as text on the dark UI surface (`text-gold`). Guaranteeing the accent
-// clears 4.5:1 against the dark surface satisfies both at once: a colour that
-// light reads on the panel, and a colour that light keeps black text legible
-// on top of it. So one clamp legibly bounds every accent the user can pick.
+/** Mix a hex color toward black by `amt` (0–1). */
+export function darken(hex: string, amt: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  const mix = (c: number) => Math.round(c * (1 - amt));
+  const to2 = (c: number) => mix(c).toString(16).padStart(2, "0");
+  return `#${to2(r)}${to2(g)}${to2(b)}`;
+}
 
-/** The darkest large surface accents sit on/in (the `panel` token). */
-export const SURFACE = "#15151a";
+// ── Contrast (WCAG 2.x relative luminance) ──────────────────────
+// The accent is used BOTH as a fill behind text (`bg-gold text-on-accent`)
+// and as text on the UI surface (`text-gold`). Guaranteeing the accent
+// clears 4.5:1 against the surface satisfies both at once. `--color-on-accent`
+// is chosen (black/white) by whichever has more contrast against the clamped
+// accent, so any user-chosen color keeps fills legible on both skins.
+
+/** The base surface each skin sits on (drives the contrast clamp direction). */
+export const SKIN_SURFACE = { midnight: "#15151a", paper: "#f1e8d8" } as const;
+export type SkinId = keyof typeof SKIN_SURFACE;
 
 function channelLuminance(c: number): number {
   const s = c / 255;
@@ -87,26 +96,40 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 /**
- * Lighten a colour just enough to clear `min`:1 contrast against the dark
- * surface, preserving its hue. Already-legible colours (every preset, the
- * default gold/red) pass through untouched; only too-dark custom picks move.
+ * Nudge a colour just enough to clear `min`:1 contrast against `surface`,
+ * preserving hue. On a dark surface we lighten; on a light surface we darken.
+ * Already-legible colours pass through untouched.
  */
-export function legible(hex: string, min = 4.5): string {
+export function legible(hex: string, surface: string = SKIN_SURFACE.midnight, min = 4.5): string {
   let c = isHexColor(hex) ? hex : DEFAULT_THEME.accent;
-  for (let i = 0; i < 24 && contrastRatio(c, SURFACE) < min; i++) c = lighten(c, 0.1);
+  const surfaceIsDark = relativeLuminance(surface) < 0.5;
+  for (let i = 0; i < 24 && contrastRatio(c, surface) < min; i++) {
+    c = surfaceIsDark ? lighten(c, 0.1) : darken(c, 0.1);
+  }
   return c;
+}
+
+/** Black or white — whichever is more legible as text on top of `accent`. */
+export function pickOnAccent(accent: string): string {
+  return contrastRatio(accent, "#000000") >= contrastRatio(accent, "#ffffff") ? "#000000" : "#ffffff";
 }
 
 /** Write a theme onto the document root, overriding the @theme CSS variables.
  *  Non-hex inputs fall back to the defaults, and every colour is clamped to a
  *  legible luminance before reaching the CSS sink, so no user choice can make
  *  accent text or accent buttons unreadable. */
-export function applyTheme(t: Theme): void {
+export function applyTheme(t: Theme, surface: string = SKIN_SURFACE.midnight): void {
   if (typeof document === "undefined") return;
-  const accent = legible(isHexColor(t.accent) ? t.accent : DEFAULT_THEME.accent);
-  const secondary = legible(isHexColor(t.secondary) ? t.secondary : DEFAULT_THEME.secondary);
+  const accent = legible(isHexColor(t.accent) ? t.accent : DEFAULT_THEME.accent, surface);
+  const secondary = legible(isHexColor(t.secondary) ? t.secondary : DEFAULT_THEME.secondary, surface);
   const root = document.documentElement.style;
   root.setProperty("--color-gold", accent);
-  root.setProperty("--color-gold-soft", lighten(accent, 0.55));
+  root.setProperty("--color-gold-soft", surface === SKIN_SURFACE.paper ? darken(accent, 0.12) : lighten(accent, 0.55));
   root.setProperty("--color-dean", secondary);
+  const onAccent = pickOnAccent(accent);
+  root.setProperty("--color-on-accent", onAccent);
+  // Text on a `bg-dean` fill (e.g. the unread-count badge). The dean accent is
+  // clamped per-skin (dark on Paper, bright on Midnight), so the legible text
+  // color flips — pick it the same way as on-accent.
+  root.setProperty("--color-on-dean", pickOnAccent(secondary));
 }

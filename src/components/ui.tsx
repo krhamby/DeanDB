@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import type { AlbumStatus } from "../types";
-import { useMeterName } from "../lib/store";
+import { useMeterName, useThemeControl } from "../lib/store";
+import { legible } from "../lib/themes";
 
-/** Shared 0–10 color ramp used by the Dean Meter and per-song scores. */
-export function scoreColor(value: number | null): string {
-  if (value == null) return "#3a3a45";
-  if (value >= 9) return "#f5c518";
-  if (value >= 7) return "#7ee081";
-  if (value >= 5) return "#ffb84d";
-  return "#ff5a3c";
+/** 0-10 color ramp. Pass `surface` to clamp legible for the active skin (UI);
+ *  omit it to get the bright base colors (e.g. the fixed-palette share card). */
+export function scoreColor(value: number | null, surface?: string): string {
+  if (value == null) return "var(--color-fg-faint)";
+  const base = value >= 9 ? "#f5c518" : value >= 7 ? "#7ee081" : value >= 5 ? "#ffb84d" : "#ff5a3c";
+  return surface ? legible(base, surface) : base;
 }
 
 // ── The Dean Meter ──────────────────────────────────────────────
@@ -24,12 +24,13 @@ export function DeanMeter({
   name?: string;
 }) {
   const ctxName = useMeterName();
+  const { surface } = useThemeControl();
   const label = name ?? ctxName;
   const pct = value == null ? 0 : value / 10;
   const stroke = 5;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const color = scoreColor(value);
+  const color = scoreColor(value, surface);
   return (
     <div
       className="relative grid place-items-center shrink-0"
@@ -37,7 +38,7 @@ export function DeanMeter({
       title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#26262e" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--color-edge)" strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -48,7 +49,11 @@ export function DeanMeter({
           strokeDasharray={c}
           strokeDashoffset={c * (1 - pct)}
           strokeLinecap="round"
-          style={{ transition: "stroke-dashoffset 0.6s ease" }}
+          className="rm-no-transition"
+          style={{
+            transition: "stroke-dashoffset 0.6s ease",
+            filter: value != null && value >= 9 ? `drop-shadow(0 0 5px ${color})` : "none",
+          }}
         />
       </svg>
       <div className="absolute flex flex-col items-center leading-none">
@@ -73,7 +78,8 @@ export function Score10({
   value: number | null;
   onChange?: (v: number | null) => void;
 }) {
-  const color = scoreColor(value);
+  const { surface } = useThemeControl();
+  const color = scoreColor(value, surface);
   if (!onChange) {
     return (
       <span className="font-display text-base font-black tabular-nums sm:text-sm" style={{ color }}>
@@ -95,35 +101,59 @@ export function Score10({
           onChange(v === "" ? null : Math.max(0, Math.min(10, Number(v))));
         }}
         // Roomy tap target on phones; trims back down on ≥sm screens.
-        className="h-10 w-16 rounded-md border border-edge bg-panel-2 px-2 text-right text-base font-bold tabular-nums outline-none focus:border-gold/50 sm:h-8 sm:w-14 sm:text-sm"
+        className="h-11 w-16 rounded-md border border-[var(--color-edge-strong)] bg-panel-2 px-2 text-right text-base font-bold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-gold sm:h-9 sm:w-14 sm:text-sm"
         style={{ color }}
         aria-label="Song score out of 10"
       />
-      <span className="text-xs text-zinc-600">/10</span>
+      <span className="text-xs text-fg-faint">/10</span>
     </span>
   );
 }
 
-const STATUS_META: Record<AlbumStatus, { label: string; cls: string }> = {
-  completed: { label: "✓ Completed", cls: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
-  listening: { label: "▶ Now Spinning", cls: "bg-gold/15 text-gold-soft ring-gold/30" },
-  want: { label: "☆ On the List", cls: "bg-white/5 text-zinc-400 ring-white/10" },
+// Each status has two looks: `cls` for badges on a panel/surface (skin-aware —
+// dark text on Paper, light on Midnight), and `onMediaCls` for badges layered
+// over a dark cover-art hero (always light text, both skins).
+const STATUS_META: Record<AlbumStatus, { label: string; cls: string; onMediaCls: string }> = {
+  completed: {
+    label: "✓ Completed",
+    cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30",
+    onMediaCls: "bg-emerald-500/20 text-emerald-200 ring-emerald-400/30",
+  },
+  listening: {
+    label: "▶ Now Spinning",
+    cls: "bg-gold/15 text-gold-soft ring-gold/30",
+    onMediaCls: "bg-white/15 text-[#ffe082] ring-white/25",
+  },
+  want: {
+    label: "☆ On the List",
+    cls: "bg-fg/10 text-fg ring-fg/10",
+    onMediaCls: "bg-white/15 text-zinc-100 ring-white/25",
+  },
 };
 
-export function StatusBadge({ status }: { status: AlbumStatus }) {
+export function StatusBadge({ status, onMedia = false }: { status: AlbumStatus; onMedia?: boolean }) {
   const m = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${m.cls}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+        onMedia ? m.onMediaCls : m.cls
+      }`}
+    >
       {m.label}
     </span>
   );
 }
 
-/** Marks an artist as an already-heard "Library" pick rather than a marathon one. */
-export function LoggedBadge({ className = "" }: { className?: string }) {
+/** Marks an artist as an already-heard "Library" pick rather than a marathon one.
+ *  Pass `onMedia` when it sits over a dark cover-art hero. */
+export function LoggedBadge({ className = "", onMedia = false }: { className?: string; onMedia?: boolean }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-violet-300 ring-1 ring-violet-500/30 ${className}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+        onMedia
+          ? "bg-violet-500/25 text-violet-200 ring-violet-400/30"
+          : "bg-violet-500/15 text-[var(--color-status-lib)] ring-violet-500/30"
+      } ${className}`}
       title="Already listened — kept for ratings & Hall of Fame, but out of the marathon"
     >
       📚 Library
@@ -133,7 +163,7 @@ export function LoggedBadge({ className = "" }: { className?: string }) {
 
 export function ProgressBar({ pct, className = "" }: { pct: number; className?: string }) {
   return (
-    <div className={`h-2 w-full overflow-hidden rounded-full bg-white/8 ${className}`}>
+    <div className={`h-2 w-full overflow-hidden rounded-full bg-fg/10 ${className}`}>
       <div
         className="h-full rounded-full bg-gradient-to-r from-dean via-gold to-gold-soft transition-[width] duration-700"
         style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
@@ -166,7 +196,7 @@ export function SectionTitle({ kicker, title }: { kicker?: string; title: string
           {kicker}
         </div>
       )}
-      <h2 className="font-display text-2xl font-black tracking-tight text-white">{title}</h2>
+      <h2 className="font-display text-2xl font-black tracking-tight text-fg">{title}</h2>
     </div>
   );
 }
@@ -198,13 +228,13 @@ export function Select({
         onChange={(e) => onChange(e.target.value)}
         title={title}
         aria-label={ariaLabel ?? title}
-        className="w-full cursor-pointer appearance-none rounded-lg border border-edge bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-zinc-200 outline-none transition-colors hover:border-gold/40 focus:border-gold/50"
+        className="w-full cursor-pointer appearance-none rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 py-2 pl-3 pr-8 text-xs font-semibold text-fg outline-none transition-colors hover:border-gold/40 focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
       >
         {children}
       </select>
       <span
         aria-hidden
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500"
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-fg-faint"
       >
         ▾
       </span>

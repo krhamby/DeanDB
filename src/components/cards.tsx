@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useMeterName } from "../lib/store";
@@ -19,6 +20,33 @@ export function Cover({
   size?: "xs" | "sm" | "md" | "lg";
 }) {
   const dim = size === "lg" ? 220 : size === "sm" ? 96 : size === "xs" ? 44 : 150;
+  const [imgState, setImgState] = useState<"loading" | "loaded" | "error">("loading");
+  useEffect(() => setImgState("loading"), [coverUrl]);
+  // Cached images (the common case once the cover service-worker cache is warm)
+  // can finish loading before React attaches onLoad, which would otherwise strand
+  // them at opacity-0. A callback ref catches the already-complete case on mount.
+  const imgRef = useCallback((node: HTMLImageElement | null) => {
+    if (node?.complete) setImgState(node.naturalWidth > 0 ? "loaded" : "error");
+  }, []);
+
+  // Real art fades in over the album's own gradient. While it loads, a shimmer
+  // sweep plays over the gradient as a tasteful placeholder; on error the gradient
+  // simply shows through. (.animate-shimmer + .rm-no-transition are reduced-motion gated.)
+  const imgClass =
+    `rm-no-transition h-full w-full object-cover transition-opacity duration-500 ${
+      imgState === "loaded" ? "opacity-100" : "opacity-0"
+    }`;
+  const shimmer =
+    coverUrl && imgState === "loading" ? (
+      <div
+        aria-hidden
+        className="animate-shimmer pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.22) 50%, transparent 60%)",
+        }}
+      />
+    ) : null;
 
   // Compact thumbnail (e.g. an editor row): real art when present, else a clean
   // gradient swatch. The vinyl + title overlay would be illegible this small.
@@ -30,15 +58,16 @@ export function Cover({
       >
         {coverUrl && (
           <img
+            ref={imgRef}
             src={coverUrl}
             alt={title}
             loading="lazy"
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
+            onLoad={() => setImgState("loaded")}
+            onError={() => setImgState("error")}
+            className={imgClass}
           />
         )}
+        {shimmer}
       </div>
     );
   }
@@ -52,15 +81,15 @@ export function Cover({
         style={{ background: gradient(colors), width: dim, height: dim }}
       >
         <img
+          ref={imgRef}
           src={coverUrl}
           alt={title}
           loading="lazy"
-          className="h-full w-full object-cover"
-          onError={(e) => {
-            // If the art 404s, hide the <img> and let the gradient show through.
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
+          onLoad={() => setImgState("loaded")}
+          onError={() => setImgState("error")}
+          className={imgClass}
         />
+        {shimmer}
       </div>
     );
   }
@@ -106,7 +135,7 @@ export function AlbumCard({
   return (
     <button
       onClick={() => navigate(`${basePath}/album/${artistId}/${album.id}`)}
-      className={`group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1 ${
+      className={`group flex flex-col gap-2 text-left transition-transform hover:-translate-y-1 active:scale-[0.98] ${
         album.excluded ? "opacity-45" : ""
       }`}
     >
@@ -130,8 +159,8 @@ export function AlbumCard({
       </div>
       <div className="px-0.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-semibold text-white">{album.title}</span>
-          <span className="shrink-0 text-xs text-zinc-500">{album.year ?? ""}</span>
+          <span className="truncate text-sm font-semibold text-fg">{album.title}</span>
+          <span className="shrink-0 text-xs text-fg-faint">{album.year ?? ""}</span>
         </div>
         <div className="mt-1">
           <StatusBadge status={album.status} />
@@ -148,7 +177,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
   return (
     <button
       onClick={() => navigate(`${basePath}/artist/${artist.id}`)}
-      className="group flex w-full items-center gap-4 rounded-2xl border border-edge/70 bg-panel/70 p-4 text-left transition-all hover:border-gold/40 hover:bg-panel-2"
+      className="group flex w-full items-center gap-4 rounded-2xl border border-edge/70 bg-panel/70 p-4 text-left transition-all hover:border-gold/40 hover:bg-panel-2 active:scale-[0.99]"
     >
       <div
         className="grid h-16 w-16 shrink-0 place-items-center rounded-full font-display text-2xl font-black text-white shadow-inner"
@@ -159,7 +188,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate font-display text-lg font-black text-white">{artist.name}</span>
+            <span className="truncate font-display text-lg font-black text-fg">{artist.name}</span>
             {artist.logged && <LoggedBadge />}
           </span>
           <span className="flex shrink-0 items-center gap-2">
@@ -171,7 +200,7 @@ export function ArtistCard({ artist, basePath = "" }: { artist: Artist; basePath
             <span className="text-xs font-semibold text-gold">{Math.round(pct)}%</span>
           </span>
         </div>
-        <div className="mb-2 text-xs text-zinc-500">
+        <div className="mb-2 text-xs text-fg-faint">
           {artist.genre} · {completed}/{tracked.length} albums
         </div>
         <ProgressBar pct={pct} />

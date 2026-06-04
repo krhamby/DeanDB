@@ -39,8 +39,8 @@ export function JourneyNav({ basePath = "" }: { basePath?: string }) {
             key={t.key}
             href={href}
             aria-current={isActive ? "page" : undefined}
-            className={`relative rounded-t-md px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
-              isActive ? "text-gold" : "text-zinc-400 hover:text-white"
+            className={`relative rounded-t-md px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/50 ${
+              isActive ? "text-fg" : "text-fg-muted hover:text-fg"
             }`}
           >
             {t.label}

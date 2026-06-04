@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,7 +13,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import type { Artist, DeanDBData, FeedItem, PersonResult, Profile, Recommendation } from "../types";
 import { supabase, supabaseEnabled } from "./supabase";
 import { firstWord } from "./format";
-import { applyTheme, resolveTheme, type Theme } from "./themes";
+import { applyTheme, resolveTheme, SKIN_SURFACE, type SkinId, type Theme } from "./themes";
 import * as api from "./api";
 import { computeAchievements, computeStats } from "./stats";
 
@@ -65,6 +66,7 @@ interface AuthValue {
         | "themeAccent"
         | "themeSecondary"
         | "lockOwnTheme"
+        | "skin"
       >
     >,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -245,11 +247,19 @@ export function useAuth(): AuthValue {
 // ════════════════════════════════════════════════════════════════
 
 interface ThemeControl {
-  /** Override the active accent theme (viewing someone's profile, or previewing). Pass null to clear. */
   setThemeOverride: (t: Theme | null) => void;
+  skin: SkinId;
+  /** Active skin's base surface hex (for per-surface accent legibility). */
+  surface: string;
+  setSkin: (s: SkinId) => void;
 }
 
-const ThemeContext = createContext<ThemeControl>({ setThemeOverride: () => {} });
+const ThemeContext = createContext<ThemeControl>({
+  setThemeOverride: () => {},
+  skin: "paper",
+  surface: SKIN_SURFACE.paper,
+  setSkin: () => {},
+});
 
 export function useThemeControl(): ThemeControl {
   return useContext(ThemeContext);
@@ -258,13 +268,47 @@ export function useThemeControl(): ThemeControl {
 /** Applies the signed-in user's colors globally; an override (e.g. another
  *  person's profile) takes precedence while mounted. */
 function ThemeProvider({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
+  const { profile, updateProfile } = useAuth();
   const [override, setOverride] = useState<Theme | null>(null);
+  const [skin, setSkinState] = useState<SkinId>(() => {
+    if (typeof localStorage !== "undefined") {
+      const s = localStorage.getItem("deandb.skin");
+      if (s === "paper" || s === "midnight") return s;
+    }
+    return "paper"; // Paper is the authored default
+  });
+  const surface = SKIN_SURFACE[skin];
   const active = override ?? resolveTheme(profile);
+
+  // Reflect the skin on <html> and feed the surface to the accent clamp. Both run
+  // in a layout effect so the clamped accent tokens (and the skin's token block)
+  // are committed BEFORE the browser's first paint — otherwise the raw @theme gold
+  // (#f5c518 on white = 1.6:1) flashes for a frame on Paper.
+  useLayoutEffect(() => {
+    document.documentElement.dataset.skin = skin;
+  }, [skin]);
+  useLayoutEffect(() => {
+    applyTheme(active, surface);
+  }, [active.accent, active.secondary, surface]);
+
+  // Adopt the account skin once the profile loads (cross-device sync).
   useEffect(() => {
-    applyTheme(active);
-  }, [active.accent, active.secondary]);
-  const value = useMemo<ThemeControl>(() => ({ setThemeOverride: setOverride }), []);
+    if (profile?.skin === "paper" || profile?.skin === "midnight") setSkinState(profile.skin);
+  }, [profile?.skin]);
+
+  const setSkin = useCallback(
+    (s: SkinId) => {
+      setSkinState(s);
+      try { localStorage.setItem("deandb.skin", s); } catch { /* ignore */ }
+      if (profile) void updateProfile({ skin: s });
+    },
+    [profile, updateProfile],
+  );
+
+  const value = useMemo<ThemeControl>(
+    () => ({ setThemeOverride: setOverride, skin, surface, setSkin }),
+    [skin, surface, setSkin],
+  );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -486,6 +530,23 @@ export function useMyJourney(): MyJourneyValue {
   const ctx = useContext(MyJourneyContext);
   if (!ctx) throw new Error("useMyJourney must be used within <AuthProvider>");
   return ctx;
+}
+
+/** DEV-ONLY: supply a fixed journey so auth-gated editors render in the preview harness. */
+export function MockJourneyProvider({ data, children }: { data: DeanDBData; children: ReactNode }) {
+  const noop = () => {};
+  const value: MyJourneyValue = {
+    data,
+    loading: false,
+    userId: "preview-user",
+    myUnlockedAchievementIds: new Set<string>(),
+    reload: async () => data,
+    patchLocal: noop,
+    setAlbum: noop,
+    setTrack: noop,
+    setArtist: noop,
+  };
+  return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;
 }
 
 // ════════════════════════════════════════════════════════════════

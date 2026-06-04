@@ -48,6 +48,7 @@ interface ProfileRow {
   theme_accent: string | null;
   theme_secondary: string | null;
   lock_own_theme: boolean;
+  skin: string | null;
 }
 
 function mapProfile(r: ProfileRow): Profile {
@@ -65,11 +66,12 @@ function mapProfile(r: ProfileRow): Profile {
     themeAccent: r.theme_accent,
     themeSecondary: r.theme_secondary,
     lockOwnTheme: r.lock_own_theme,
+    skin: r.skin === "midnight" ? "midnight" : "paper",
   };
 }
 
 const PROFILE_COLS =
-  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme";
+  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme, skin";
 
 // ════════════════════════════════════════════════════════════════
 // Auth
@@ -215,22 +217,26 @@ export async function challengeTotp(
 // ════════════════════════════════════════════════════════════════
 
 export async function fetchProfileById(id: string): Promise<Profile | null> {
-  const { data } = await requireClient().from("profiles").select(PROFILE_COLS).eq("id", id).maybeSingle();
+  const { data, error } = await requireClient().from("profiles").select(PROFILE_COLS).eq("id", id).maybeSingle();
+  // A real query error (vs. genuine not-found) shouldn't masquerade as "no profile";
+  // surface it so schema drift is visible rather than silently appearing logged-out.
+  if (error) console.error("fetchProfileById:", error.message);
   return data ? mapProfile(data as ProfileRow) : null;
 }
 
 export async function fetchProfileByUsername(username: string): Promise<Profile | null> {
-  const { data } = await requireClient()
+  const { data, error } = await requireClient()
     .from("profiles")
     .select(PROFILE_COLS)
     .eq("username", username)
     .maybeSingle();
+  if (error) console.error("fetchProfileByUsername:", error.message);
   return data ? mapProfile(data as ProfileRow) : null;
 }
 
 export async function updateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme">>,
+  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme" | "skin">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.username !== undefined) row.username = patch.username;
@@ -245,6 +251,7 @@ export async function updateProfile(
   if (patch.themeAccent !== undefined) row.theme_accent = patch.themeAccent;
   if (patch.themeSecondary !== undefined) row.theme_secondary = patch.themeSecondary;
   if (patch.lockOwnTheme !== undefined) row.lock_own_theme = patch.lockOwnTheme;
+  if (patch.skin !== undefined) row.skin = patch.skin;
   const { error } = await requireClient().from("profiles").update(row).eq("id", id);
   if (error) {
     return {
@@ -314,6 +321,7 @@ interface UserAlbumRow {
     year: number | null;
     cover: string[] | null;
     cover_url: string | null;
+    dominant_color: string | null;
     mbid: string | null;
     runtime_min: number;
     tracks: { id: string; position: number; title: string }[];
@@ -345,12 +353,18 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       .from("user_albums")
       .select(
         "status, rating, review, minutes, date_listened, favorite, excluded, " +
-          "album:catalog_albums!inner ( id, artist_id, title, year, cover, cover_url, mbid, runtime_min, " +
+          "album:catalog_albums!inner ( id, artist_id, title, year, cover, cover_url, dominant_color, mbid, runtime_min, " +
           "tracks:catalog_tracks ( id, position, title ) )",
       )
       .eq("user_id", profile.id),
     c.from("user_tracks").select("track_id, rating, favorite").eq("user_id", profile.id),
   ]);
+
+  // Fail loudly on a real query error (e.g. a missing column after schema drift)
+  // instead of silently returning an empty journey — which would wipe the user's
+  // albums/stats/achievements with no signal. The caller surfaces the load failure.
+  const loadErr = artistsRes.error ?? albumsRes.error ?? tracksRes.error;
+  if (loadErr) throw new Error(`fetchJourney: ${loadErr.message}`);
 
   const userArtists = (artistsRes.data ?? []) as unknown as UserArtistRow[];
   const userAlbums = (albumsRes.data ?? []) as unknown as UserAlbumRow[];
@@ -411,6 +425,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       year: cat.year,
       cover: tuple(cat.cover),
       coverUrl: cat.cover_url ?? undefined,
+      dominantColor: cat.dominant_color ?? null,
       mbid: cat.mbid ?? undefined,
       excluded: ur.excluded,
       status: ur.status,
@@ -1104,6 +1119,46 @@ export async function albumAggregate(albumId: string): Promise<AlbumAggregate> {
     avgRating: row?.avg_rating != null ? Number(row.avg_rating) : null,
     listenerCount: row?.listener_count != null ? Number(row.listener_count) : 0,
   };
+}
+
+// ════════════════════════════════════════════════════════════════
+// Cover color extraction (extract-cover Edge Function)
+// ════════════════════════════════════════════════════════════════
+
+/** Best-effort: ask the slim `extract-cover` Edge Function for an album's dominant
+ *  cover color. Returns the hex, or null on any failure (caller keeps the gradient).
+ *  No image is uploaded -- Cover Art Archive keeps hosting the artwork. */
+/** Cover hosts the extract-cover function is allowed to fetch server-side. The
+ *  catalog `cover_url` is world-writable via the upsert RPC, so a poisoned value
+ *  must never reach the function — guard it client-side too (defense in depth;
+ *  the function should re-validate). Prevents SSRF to internal/metadata hosts. */
+function isAllowedCoverHost(coverUrl: string): boolean {
+  try {
+    const u = new URL(coverUrl);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    const host = u.hostname.toLowerCase();
+    return (
+      host === "coverartarchive.org" ||
+      host.endsWith(".coverartarchive.org") ||
+      host === "archive.org" ||
+      host.endsWith(".archive.org")
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function extractCover(albumId: string, coverUrl: string): Promise<string | null> {
+  if (!isAllowedCoverHost(coverUrl)) return null;
+  try {
+    const { data, error } = await requireClient().functions.invoke("extract-cover", {
+      body: { albumId, coverUrl },
+    });
+    if (error || !data || typeof data.dominant_color !== "string") return null;
+    return data.dominant_color;
+  } catch {
+    return null;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
