@@ -84,6 +84,13 @@ the detail page accent matches the real artwork → repeat loads are instant (SW
 
 ---
 
+> ## ⏸️ PHASE 5 — PARKED for later (user decision, 2026-06-03)
+> All of Phase 5 below (**5a Stripe Pro**, **5b OG link-unfurl previews**, **5c Spotify sync**) is
+> intentionally deferred. Stripe and Spotify "will come later"; 5b (unfurls) only pays off once
+> link-sharing is a real growth lever (the **downloadable** share card already covers manual sharing,
+> and a future move to Cloudflare/Vercel could inject per-route OG tags more cleanly). The steps are
+> kept here, ready to pick up. Near-term infra work is **4b** and **4c** above.
+
 ## 5a · DeanDB Pro (Stripe)  *(Stripe account + 1 Edge Function + migration)*
 
 Core stays free; Pro sells skins/cosmetics, advanced stats, etc. (pricing: explore one-time **and**
