@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
 import { useMyJourney, useThemeControl } from "../lib/store";
@@ -58,6 +59,15 @@ export function Dashboard({
     .filter((a) => a.status === "completed" && a.rating != null)
     .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
     .slice(0, 6);
+  // Hall-of-Fame preview — top scores (mirrors HallOfFame.tsx; rating-sorted, not date).
+  const top3 = [...albums]
+    .filter((a) => a.rating != null)
+    .sort((a, b) => (b.rating as number) - (a.rating as number))
+    .slice(0, 3);
+
+  // Disclosure: the closing trio shows a compact Achievements card; this reveals
+  // the full grid (with masking intact) below the trio.
+  const [showAllAch, setShowAllAch] = useState(false);
 
   // Hero "featured record" — freshest verdict, else what's currently spinning.
   // Drives the hero's SCOPED accent (cover-derived, gold-only like AlbumDetail).
@@ -212,29 +222,6 @@ export function Dashboard({
         <StatCard label="Top genre" value={stats.topGenre ?? "—"} />
       </section>
 
-      {/* ── Now spinning ── */}
-      {nowSpinning.length > 0 && (
-        <section>
-          <SectionTitle kicker="On the turntable" title="Now Spinning" />
-          <div className="flex flex-wrap gap-5">
-            {nowSpinning.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
-                className="group flex items-center gap-4 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 to-transparent p-3 pr-6 transition-transform hover:-translate-y-0.5"
-              >
-                <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="sm" />
-                <div className="text-left">
-                  <div className="text-xs font-bold uppercase tracking-wide text-gold">▶ Live</div>
-                  <div className="font-display text-lg font-black text-fg">{a.title}</div>
-                  <div className="text-sm text-fg-muted">{a.artistName}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* ── Recent verdicts ── */}
       {recent.length > 0 && (
         <section>
@@ -254,44 +241,162 @@ export function Dashboard({
         </section>
       )}
 
-      {/* ── Achievements ── */}
-      <section>
-        <SectionTitle
-          kicker={`${unlocked.length} / ${achievements.length} unlocked`}
-          title="Achievements"
-        />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {achievements.map((a) => {
-            const secret = shouldMaskSecret(a, myUnlockedAchievementIds.has(a.id));
-            return (
-              <Panel
-                key={a.id}
-                className={`flex items-center gap-3 p-4 transition-opacity ${
-                  a.unlocked ? "" : "opacity-50 grayscale"
-                } ${a.hidden && a.unlocked ? "border-gold/50" : ""}`}
-              >
-                <span className="text-3xl">{secret ? "❓" : a.unlocked ? a.emoji : "🔒"}</span>
-                <div>
-                  <div className="font-display font-black text-fg">
-                    {secret ? "Secret Achievement" : a.title}
-                    {a.hidden && !secret && (
-                      <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide text-gold">
-                        ★ secret
-                      </span>
+      {/* ── Closing trio: Achievements · Hall of Fame · Now-Spinning/Season ──
+          A balanced three-across row (single column on mobile). Identical for
+          owner and read-only viewer — no canEdit branch. */}
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch stagger-children">
+        {/* Card A — Achievements (compact) */}
+        <Panel className="flex h-full flex-col p-5">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+              Achievements
+            </span>
+            <span className="text-xs font-semibold text-gold">
+              {unlocked.length} / {achievements.length}
+            </span>
+          </div>
+          <div className="mt-4 flex-1 space-y-2.5">
+            {unlocked.length === 0 ? (
+              <p className="text-sm text-fg-faint">No achievements unlocked yet — keep listening.</p>
+            ) : (
+              unlocked.slice(0, 4).map((a) => {
+                const secret = shouldMaskSecret(a, myUnlockedAchievementIds.has(a.id));
+                return (
+                  <div key={a.id} className="flex items-center gap-3">
+                    <span className="text-2xl">{secret ? "❓" : a.emoji}</span>
+                    <span className="truncate font-display text-sm font-black text-fg">
+                      {secret ? "Secret Achievement" : a.title}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <button
+            onClick={() => setShowAllAch((v) => !v)}
+            className="mt-4 self-start text-xs font-semibold text-gold hover:underline"
+          >
+            {showAllAch ? "Hide all ↑" : "View all →"}
+          </button>
+        </Panel>
+
+        {/* Card B — Hall of Fame (preview) */}
+        <Panel className="flex h-full flex-col p-5">
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+            Hall of Fame
+          </span>
+          <div className="mt-4 flex-1 space-y-2.5">
+            {top3.length === 0 ? (
+              <p className="text-sm text-fg-faint">No inductees yet.</p>
+            ) : (
+              top3.map((a, i) => (
+                <button
+                  key={a.id}
+                  onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
+                  className="group flex w-full items-center gap-3 text-left transition-transform hover:-translate-y-0.5"
+                >
+                  <span className="w-6 shrink-0 text-center text-lg">
+                    {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                  </span>
+                  <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="xs" />
+                  <span className="min-w-0 flex-1 truncate font-display text-sm font-black text-fg">
+                    {a.title}
+                  </span>
+                  <DeanMeter value={a.rating} size={36} />
+                </button>
+              ))
+            )}
+          </div>
+          <button
+            onClick={() => navigate(`${basePath}/hall-of-fame`)}
+            className="mt-4 self-start text-xs font-semibold text-gold hover:underline"
+          >
+            See the Hall of Fame →
+          </button>
+        </Panel>
+
+        {/* Card C — Now Spinning / Season */}
+        <Panel className="flex h-full flex-col p-5">
+          {nowSpinning.length > 0 ? (
+            <>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+                Now Spinning
+              </span>
+              <div className="mt-4 flex-1 space-y-3">
+                {nowSpinning.slice(0, 2).map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => navigate(`${basePath}/album/${a.artistId}/${a.id}`)}
+                    className="group flex w-full items-center gap-3 text-left transition-transform hover:-translate-y-0.5"
+                  >
+                    <Cover colors={a.cover} title={a.title} coverUrl={a.coverUrl} size="xs" />
+                    <div className="min-w-0">
+                      <div className="truncate font-display text-sm font-black text-fg">{a.title}</div>
+                      <div className="truncate text-xs text-fg-muted">{a.artistName}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+                This Season
+              </span>
+              <div className="mt-4 flex-1 space-y-1">
+                <div className="font-display text-lg font-black leading-tight text-fg">
+                  {data.season}
+                </div>
+                <div className="text-sm text-fg-muted">{fmtHours(stats.hoursListened)} logged</div>
+                <div className="text-xs font-semibold text-gold">
+                  {stats.goalPct.toFixed(0)}% to the Summit
+                </div>
+              </div>
+            </>
+          )}
+        </Panel>
+      </div>
+
+      {/* ── Full achievements (disclosure) — masking preserved verbatim ── */}
+      {showAllAch && (
+        <section>
+          <SectionTitle
+            kicker={`${unlocked.length} / ${achievements.length} unlocked`}
+            title="Achievements"
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {achievements.map((a) => {
+              const secret = shouldMaskSecret(a, myUnlockedAchievementIds.has(a.id));
+              return (
+                <Panel
+                  key={a.id}
+                  className={`flex items-center gap-3 p-4 transition-opacity ${
+                    a.unlocked ? "" : "opacity-50 grayscale"
+                  } ${a.hidden && a.unlocked ? "border-gold/50" : ""}`}
+                >
+                  <span className="text-3xl">{secret ? "❓" : a.unlocked ? a.emoji : "🔒"}</span>
+                  <div>
+                    <div className="font-display font-black text-fg">
+                      {secret ? "Secret Achievement" : a.title}
+                      {a.hidden && !secret && (
+                        <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide text-gold">
+                          ★ secret
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-fg-faint">
+                      {secret ? "Keep listening to reveal this one…" : a.desc}
+                    </div>
+                    {!a.unlocked && !a.hidden && a.progress && (
+                      <div className="mt-0.5 text-xs font-semibold text-gold">{a.progress}</div>
                     )}
                   </div>
-                  <div className="text-xs text-fg-faint">
-                    {secret ? "Keep listening to reveal this one…" : a.desc}
-                  </div>
-                  {!a.unlocked && !a.hidden && a.progress && (
-                    <div className="mt-0.5 text-xs font-semibold text-gold">{a.progress}</div>
-                  )}
-                </div>
-              </Panel>
-            );
-          })}
-        </div>
-      </section>
+                </Panel>
+              );
+            })}
+          </div>
+        </section>
+      )}
         </>
       )}
     </div>
