@@ -1,3 +1,4 @@
+import { Mic, Sparkles } from "lucide-react";
 import { navigate } from "../lib/router";
 import { Panel } from "./ui";
 
@@ -5,7 +6,7 @@ import { Panel } from "./ui";
 export function EmptyState() {
   return (
     <Panel className="flex flex-col items-center gap-4 px-6 py-16 text-center">
-      <div className="text-6xl">🎙️</div>
+      <Mic className="h-14 w-14 text-fg-muted" aria-hidden />
       <h2 className="font-display text-2xl font-black text-fg">
         The marathon hasn&apos;t started yet
       </h2>
@@ -17,9 +18,9 @@ export function EmptyState() {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => navigate("/discover")}
-          className="rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-gold px-5 py-2.5 font-bold text-on-accent transition hover:brightness-110"
         >
-          ✨ Find artists to start with →
+          <Sparkles className="h-4 w-4" aria-hidden /> Find artists to start with →
         </button>
         <button
           onClick={() => navigate("/editor")}

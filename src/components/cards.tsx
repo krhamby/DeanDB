@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Ban, Star } from "lucide-react";
 import { gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useMeterName } from "../lib/store";
@@ -142,13 +143,13 @@ export function AlbumCard({
       <div className="relative">
         <Cover colors={album.cover} title={album.title} coverUrl={album.coverUrl} />
         {album.excluded && (
-          <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-black/70 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-dean">
-            🚫 Excluded
+          <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 inline-flex items-center justify-center gap-1 bg-black/70 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-dean">
+            <Ban className="h-4 w-4" aria-hidden /> Excluded
           </span>
         )}
         {album.favorite && (
-          <span className="absolute left-2 top-2 text-lg drop-shadow" title={`${meterName}'s favorite`}>
-            ⭐
+          <span className="absolute left-2 top-2 drop-shadow" title={`${meterName}'s favorite`}>
+            <Star className="h-4 w-4 fill-current text-gold" aria-label="Favorite" />
           </span>
         )}
         {album.rating != null && (

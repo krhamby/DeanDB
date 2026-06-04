@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Dices, Loader2 } from "lucide-react";
 import type { Artist } from "../types";
 import { gradient } from "../lib/format";
 import { marathonArtists } from "../lib/stats";
@@ -178,7 +179,7 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
         {picked ? (
           <div className="flex animate-pop flex-col items-center gap-3">
             <div className="text-center animate-wheel-reveal">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gold">🎉 Up next</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-gold">Up next</div>
               <div className="font-display text-2xl font-black text-fg">{picked.name}</div>
               <div className="mt-1 text-xs text-fg-muted">
                 {picked.genre} · {picked.catalogSize} album{picked.catalogSize === 1 ? "" : "s"} to conquer
@@ -193,9 +194,9 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
               </button>
               <button
                 onClick={spin}
-                className="rounded-xl border border-gold/40 px-5 py-2.5 font-semibold text-gold transition hover:bg-gold/10"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gold/40 px-5 py-2.5 font-semibold text-gold transition hover:bg-gold/10"
               >
-                🎲 Spin again
+                <Dices className="h-4 w-4" aria-hidden /> Spin again
               </button>
             </div>
           </div>
@@ -209,9 +210,17 @@ export function NextSpinner({ artists, basePath = "" }: { artists: Artist[]; bas
             <button
               onClick={spin}
               disabled={spinning}
-              className="rounded-xl bg-gold px-6 py-2.5 font-bold text-on-accent transition hover:brightness-110 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-6 py-2.5 font-bold text-on-accent transition hover:brightness-110 disabled:opacity-50"
             >
-              {spinning ? "🎡 Spinning…" : "🎲 Spin for my next artist"}
+              {spinning ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Spinning…
+                </>
+              ) : (
+                <>
+                  <Dices className="h-4 w-4" aria-hidden /> Spin for my next artist
+                </>
+              )}
             </button>
           </div>
         )}

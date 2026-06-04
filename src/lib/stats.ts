@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import type { Album, Artist, DeanDBData } from "../types";
 import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_ORDER } from "./achievements";
 
@@ -159,7 +160,7 @@ export function computeStats(data: DeanDBData): Stats {
 // ── Achievements ────────────────────────────────────────────────
 export interface Achievement {
   id: string;
-  emoji: string;
+  Icon: LucideIcon;
   title: string;
   desc: string;
   unlocked: boolean;
@@ -229,7 +230,7 @@ export function computeAchievements(data: DeanDBData, stats: Stats): Achievement
       id === "perfect-ten" ? `Award a 10.0 on the ${data.listener.meterName} Meter.` : meta.desc;
     return {
       id,
-      emoji: meta.emoji,
+      Icon: meta.Icon,
       title: meta.title,
       desc,
       hidden: meta.hidden,

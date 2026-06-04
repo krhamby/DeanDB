@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Headphones } from "lucide-react";
 import { useAuth } from "../lib/store";
 import { navigate } from "../lib/router";
 import * as api from "../lib/api";
@@ -55,7 +56,7 @@ export function Login() {
   if (session && !mfaPending && !passwordRecovery) {
     return (
       <div className="py-16 text-center">
-        <p className="text-fg-muted">You&apos;re signed in. 🎧</p>
+        <p className="inline-flex items-center gap-1.5 text-fg-muted">You&apos;re signed in. <Headphones className="h-4 w-4" aria-hidden /></p>
         <button onClick={() => navigate("/me")} className="mt-4 text-gold hover:underline">
           Go to my journey →
         </button>

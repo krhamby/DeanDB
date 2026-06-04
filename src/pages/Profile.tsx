@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Lock, SearchX } from "lucide-react";
 import { profilePath } from "../lib/router";
 import { MeterNameProvider, useAuth, useJourney, useThemeControl } from "../lib/store";
 import { resolveTheme } from "../lib/themes";
@@ -42,7 +43,7 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
   if (view.notFound || !owner) {
     return (
       <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
-        <div className="mb-3 text-5xl">🤷</div>
+        <div className="mb-3 flex justify-center"><SearchX className="h-12 w-12 text-fg-muted" aria-hidden /></div>
         No journey found at <span className="text-gold">@{username}</span>.
       </Panel>
     );
@@ -55,7 +56,9 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
         <h1 className="font-display text-2xl font-black text-fg">{owner.displayName}</h1>
         <div className="text-sm text-fg-faint">
           @{owner.username}
-          {owner.visibility === "private" && " · 🔒 private"}
+          {owner.visibility === "private" && (
+            <span className="inline-flex items-center gap-1"> · <Lock className="h-3 w-3" aria-hidden /> private</span>
+          )}
         </div>
       </div>
       <FollowButton target={owner} initialStatus={view.relationship?.followStatus ?? null} onChanged={view.reloadRelationship} />
@@ -67,7 +70,7 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
       <div className="mx-auto max-w-2xl">
         {Header}
         <Panel className="px-6 py-16 text-center text-fg-muted">
-          <div className="mb-3 text-5xl">🔒</div>
+          <div className="mb-3 flex justify-center"><Lock className="h-12 w-12 text-fg-muted" aria-hidden /></div>
           <p className="font-display text-lg font-black text-fg">This journey is private</p>
           <p className="mt-1 text-sm">Follow {owner.displayName} and wait for them to accept to see their marathon.</p>
         </Panel>

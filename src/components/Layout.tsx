@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Headphones } from "lucide-react";
 import { navigate, useHashRoute } from "../lib/router";
 import { useAuth, useMyJourney } from "../lib/store";
 import { computeStats, flattenAlbums } from "../lib/stats";
@@ -354,9 +355,10 @@ export function Layout({ children }: { children: ReactNode }) {
       <main key={route} className="mx-auto max-w-6xl px-4 py-8 animate-fade-in">{children}</main>
 
       <footer className="mt-16 border-t border-edge/60 py-8 text-center text-xs text-fg-faint">
-        <p>
+        <p className="inline-flex flex-wrap items-center justify-center gap-1.5">
           <Wordmark size="footer" /> · track your discography
-          marathon, share it with friends. Keep spinning. 🎧
+          marathon, share it with friends. Keep spinning.
+          <Headphones className="h-4 w-4" aria-hidden />
         </p>
         <p className="mt-1 text-fg-faint">© 2026 Kevin Hamby · All rights reserved.</p>
       </footer>

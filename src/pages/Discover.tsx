@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Check, Sparkles } from "lucide-react";
 import { useMyJourney } from "../lib/store";
 import { navigate } from "../lib/router";
 import * as api from "../lib/api";
@@ -160,9 +161,10 @@ export function Discover() {
           <button
             onClick={run}
             disabled={busy || !prompt.trim()}
-            className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110 disabled:opacity-40"
           >
-            {busy ? "✨ Consulting MusicBrainz…" : "✨ Suggest artists"}
+            <Sparkles className="h-4 w-4" aria-hidden />
+            {busy ? "Consulting MusicBrainz…" : "Suggest artists"}
           </button>
           {busy && <span className="text-xs text-fg-faint">This takes a few seconds — checking each artist.</span>}
           {error && <span className="text-xs text-dean">{error}</span>}
@@ -204,9 +206,9 @@ export function Discover() {
                   {add$.status === "added" ? (
                     <button
                       onClick={() => add$.artistId && navigate(`/artist/${add$.artistId}`)}
-                      className="rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-[var(--color-status-done)] hover:opacity-80"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-[var(--color-status-done)] hover:opacity-80"
                     >
-                      ✓ Added — view in journey →
+                      <Check className="h-4 w-4" aria-hidden /> Added — view in journey →
                     </button>
                   ) : (
                     <button

@@ -1,3 +1,4 @@
+import { HelpCircle, Star } from "lucide-react";
 import { useFeed, useMyJourney } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { fmtDate } from "../lib/format";
@@ -43,10 +44,15 @@ export function Feed() {
             // Masked unless the VIEWER has unlocked this secret themselves (global
             // rule). Reveals everywhere once you've earned it; teases until then.
             const masked = shouldMaskSecret(meta, myUnlockedAchievementIds.has(it.achievementId));
+            const Icon = meta.Icon;
             return (
               <Panel key={it.achievementRowId} className="flex items-center gap-3 p-3 sm:gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-panel-2 text-3xl sm:h-16 sm:w-16">
-                  {masked ? "❓" : meta.emoji}
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-panel-2 sm:h-16 sm:w-16">
+                  {masked ? (
+                    <HelpCircle className="h-7 w-7 text-fg-faint" aria-hidden />
+                  ) : (
+                    <Icon className="h-7 w-7 text-gold" aria-hidden />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-fg-faint">
@@ -95,7 +101,9 @@ export function Feed() {
                   className="block text-left font-display text-base font-black leading-tight text-fg line-clamp-2 hover:text-gold sm:text-lg"
                 >
                   {it.albumTitle}
-                  {it.favorite && <span title="Favorite" className="ml-1">⭐</span>}
+                  {it.favorite && (
+                    <Star className="ml-1 inline h-4 w-4 fill-current text-gold align-text-bottom" aria-label="Favorite" />
+                  )}
                 </button>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
                   {it.logged ? <LoggedBadge /> : <StatusBadge status={it.status} />}

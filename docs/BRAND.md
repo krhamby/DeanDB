@@ -93,6 +93,24 @@ skin. Every token is redefined per `[data-skin]` so token-driven utilities reski
 
 ---
 
+## 4b. Iconography
+
+**Sleek monoline (stencil) icons — no emoji in the UI.** Icons come from **lucide-react**
+(consistent outline set), render via `currentColor` so they inherit the surrounding token color
+(gold/fg/etc.), and always carry a11y (`aria-hidden` beside text; `aria-label` when icon-only).
+
+- **Why:** native emoji are colorful and "appy" — they fought the editorial Sleeve aesthetic. Stencil
+  line icons match Fraunces/Inter and the rationed-neon palette.
+- **Colored exceptions (rationed neon / semantics):** Hall-of-Fame **medals** stay gold/silver/bronze
+  (`Medal`), achievement icons render in **gold**, and the DeanMeter keeps its score-color ring.
+- **Sizing:** inline `h-3.5–h-4`, list `h-5`, hero/empty-state `h-10–h-14`.
+- **Deliberately NOT iconified:** typographic marks (`→ ← —`), the ticker `★`/`●` (marquee text), and
+  the Editor import **log** `✓`/`✗` (terminal-style status text).
+- **Judgment-call mappings worth a glance** (swap if you disagree): Wheel → `Disc3`, Marathon →
+  `Footprints`, verdict → `SlidersVertical`, cover → `Image`, achievements per concept (Headphones,
+  Disc3, Swords, Globe, Trophy, Flame, Zap, Crown, Timer, BadgeCheck, Clock, Stamp, Gem, ThumbsDown,
+  PenLine).
+
 ## 5. Voice
 
 Plain-spoken, a little playful, album-as-art reverence **without** snobbery. Talk like a friend who

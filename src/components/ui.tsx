@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Bookmark, Check, ChevronDown, Library, Play, type LucideIcon } from "lucide-react";
 import type { AlbumStatus } from "../types";
 import { useMeterName, useThemeControl } from "../lib/store";
 import { legible } from "../lib/themes";
@@ -33,11 +34,25 @@ export function DeanMeter({
   const color = scoreColor(value, surface);
   return (
     <div
-      className="relative grid place-items-center shrink-0"
-      style={{ width: size, height: size }}
+      className="relative grid place-items-center shrink-0 rounded-full"
+      style={{
+        width: size,
+        height: size,
+        // A high-score glow that fades cleanly as a circle (a drop-shadow on the
+        // SVG circle clips to its square viewport — box-shadow on the round wrapper
+        // doesn't).
+        boxShadow: value != null && value >= 9 ? `0 0 15px -3px ${color}` : undefined,
+      }}
       title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
-      <svg width={size} height={size} className="-rotate-90">
+      {value != null && value >= 9 && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{ background: `radial-gradient(circle, ${color} 0%, transparent 72%)`, opacity: 0.35 }}
+        />
+      )}
+      <svg width={size} height={size} className="relative -rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--color-edge)" strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
@@ -50,10 +65,7 @@ export function DeanMeter({
           strokeDashoffset={c * (1 - pct)}
           strokeLinecap="round"
           className="rm-no-transition"
-          style={{
-            transition: "stroke-dashoffset 0.6s ease",
-            filter: value != null && value >= 9 ? `drop-shadow(0 0 5px ${color})` : "none",
-          }}
+          style={{ transition: "stroke-dashoffset 0.6s ease" }}
         />
       </svg>
       <div className="absolute flex flex-col items-center leading-none">
@@ -113,19 +125,22 @@ export function Score10({
 // Each status has two looks: `cls` for badges on a panel/surface (skin-aware —
 // dark text on Paper, light on Midnight), and `onMediaCls` for badges layered
 // over a dark cover-art hero (always light text, both skins).
-const STATUS_META: Record<AlbumStatus, { label: string; cls: string; onMediaCls: string }> = {
+const STATUS_META: Record<AlbumStatus, { label: string; Icon: LucideIcon; cls: string; onMediaCls: string }> = {
   completed: {
-    label: "✓ Completed",
+    label: "Completed",
+    Icon: Check,
     cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30",
     onMediaCls: "bg-emerald-500/20 text-emerald-200 ring-emerald-400/30",
   },
   listening: {
-    label: "▶ Now Spinning",
+    label: "Now Spinning",
+    Icon: Play,
     cls: "bg-gold/15 text-gold-soft ring-gold/30",
     onMediaCls: "bg-white/15 text-[#ffe082] ring-white/25",
   },
   want: {
-    label: "☆ On the List",
+    label: "On the List",
+    Icon: Bookmark,
     cls: "bg-fg/10 text-fg ring-fg/10",
     onMediaCls: "bg-white/15 text-zinc-100 ring-white/25",
   },
@@ -133,12 +148,14 @@ const STATUS_META: Record<AlbumStatus, { label: string; cls: string; onMediaCls:
 
 export function StatusBadge({ status, onMedia = false }: { status: AlbumStatus; onMedia?: boolean }) {
   const m = STATUS_META[status];
+  const Icon = m.Icon;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
         onMedia ? m.onMediaCls : m.cls
       }`}
     >
+      <Icon className="h-3.5 w-3.5" aria-hidden />
       {m.label}
     </span>
   );
@@ -149,14 +166,15 @@ export function StatusBadge({ status, onMedia = false }: { status: AlbumStatus; 
 export function LoggedBadge({ className = "", onMedia = false }: { className?: string; onMedia?: boolean }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
         onMedia
           ? "bg-violet-500/25 text-violet-200 ring-violet-400/30"
           : "bg-violet-500/15 text-[var(--color-status-lib)] ring-violet-500/30"
       } ${className}`}
       title="Already listened — kept for ratings & Hall of Fame, but out of the marathon"
     >
-      📚 Library
+      <Library className="h-3.5 w-3.5" aria-hidden />
+      Library
     </span>
   );
 }
@@ -181,7 +199,7 @@ export function Panel({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-edge/70 bg-panel/80 backdrop-blur-sm ${className}`}
+      className={`sleeve-panel rounded-2xl border border-edge/70 bg-panel/80 backdrop-blur-sm ${className}`}
     >
       {children}
     </div>
@@ -232,12 +250,10 @@ export function Select({
       >
         {children}
       </select>
-      <span
+      <ChevronDown
         aria-hidden
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-fg-faint"
-      >
-        ▾
-      </span>
+        className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-faint"
+      />
     </div>
   );
 }
