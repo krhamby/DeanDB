@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { computeAchievements, computeStats, flattenAlbums } from "../lib/stats";
 import { shouldMaskSecret } from "../lib/achievements";
 import { useMyJourney, useThemeControl } from "../lib/store";
@@ -28,6 +28,53 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
       <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-fg-faint">{label}</div>
       {sub && <div className="mt-1 truncate text-xs text-gold">{sub}</div>}
     </Panel>
+  );
+}
+
+/** A stencil mountain — the marathon's "climb to the Summit" motif. Fills the
+ *  hero's left slot when nothing is currently spinning: the silhouette fills to
+ *  the listener's progress, and the peak lights up gold once the Summit is won. */
+function SummitMountain({ pct }: { pct: number }) {
+  const id = useId();
+  const conquered = pct >= 100;
+  const climb = Math.max(0, Math.min(100, pct));
+  const fillTop = 104 - (104 - 18) * (climb / 100); // base y=104 → summit y=18
+  return (
+    <div className="flex h-full flex-col">
+      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
+        {conquered ? "The Summit" : "The climb"}
+      </div>
+      <div className="relative mt-3 flex-1">
+        <svg
+          viewBox="0 0 220 110"
+          preserveAspectRatio="xMidYMax meet"
+          className="h-full w-full text-edge-strong"
+          style={{ minHeight: 96 }}
+          aria-hidden
+        >
+          <defs>
+            <clipPath id={id}>
+              <path d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104 Z" />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${id})`}>
+            <rect x="0" y={fillTop} width="220" height="110" fill="var(--color-gold)" opacity="0.16" />
+          </g>
+          <path
+            d="M0 104 L64 36 L98 64 L138 18 L176 58 L220 104"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <circle cx="138" cy="18" r={conquered ? 5 : 3} fill={conquered ? "var(--color-gold)" : "currentColor"} />
+        </svg>
+      </div>
+      <div className="mt-2 text-xs text-fg-faint">
+        {conquered ? "Conquered." : `${climb.toFixed(0)}% to the Summit`}
+      </div>
+    </div>
   );
 }
 
@@ -97,7 +144,7 @@ export function Dashboard({
 
         <div
           className={`mt-6 grid gap-6 ${
-            featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start" : ""
+            featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-stretch" : ""
           }`}
         >
           {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
@@ -112,7 +159,7 @@ export function Dashboard({
                   The Summit — conquered 👑
                 </div>
                 <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
-                  🏔️ {fmtHours(animatedHours)}
+                  {fmtHours(animatedHours)}
                 </div>
                 <div className="mt-2 text-sm text-fg-muted">
                   Every hour of the marathon, complete. The whole discography, conquered.
@@ -158,8 +205,8 @@ export function Dashboard({
             )}
           </Panel>
 
-          {nowSpinning.length > 0 && (
-            <Panel className="p-5">
+          {nowSpinning.length > 0 ? (
+            <Panel className="flex-1 p-5">
               <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-fg-faint">
                 On the turntable
               </div>
@@ -180,6 +227,10 @@ export function Dashboard({
                 ))}
               </div>
             </Panel>
+          ) : (
+            <Panel className="flex-1 p-5">
+              <SummitMountain pct={stats.goalPct} />
+            </Panel>
           )}
           </div>
 
@@ -188,7 +239,7 @@ export function Dashboard({
             <Panel className="p-0">
               <button
                 onClick={() => navigate(`${basePath}/album/${featured.artistId}/${featured.id}`)}
-                className="group flex h-full w-full flex-col items-center gap-3 rounded-2xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-6 text-center transition-transform hover:-translate-y-0.5"
+                className="group flex h-full w-full flex-col items-center justify-center gap-3 rounded-2xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-6 text-center transition-transform hover:-translate-y-0.5"
               >
                 <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-fg-faint">
                   Featured · latest verdict

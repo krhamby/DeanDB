@@ -40,7 +40,10 @@ export function DeanMeter({
         // A high-score glow that fades cleanly as a circle (a drop-shadow on the
         // SVG circle clips to its square viewport — box-shadow on the round wrapper
         // doesn't).
-        boxShadow: value != null && value >= 9 ? `0 0 14px -2px ${color}` : undefined,
+        boxShadow:
+          value != null && value >= 9
+            ? `0 0 16px -3px ${color}, inset 0 0 10px -4px ${color}`
+            : undefined,
       }}
       title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
     >
