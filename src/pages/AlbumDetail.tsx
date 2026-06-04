@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Globe, Mail, Pencil, Star } from "lucide-react";
-import { fmtDate, fmtMinutes, gradient } from "../lib/format";
+import { fmtDate, fmtMinutes, fmtScore, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useAuth, useThemeControl } from "../lib/store";
 import { darken, legible, lighten, pickOnAccent, SKIN_SURFACE } from "../lib/themes";
@@ -285,7 +285,7 @@ export function AlbumDetail({
                   {data.listener.meterName} Meter
                 </label>
                 <span className="font-display text-3xl font-black leading-none text-gold">
-                  {album.rating?.toFixed(1) ?? "—"}
+                  {album.rating != null ? fmtScore(album.rating) : "—"}
                 </span>
               </div>
               <input

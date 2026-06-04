@@ -141,7 +141,10 @@ function SecuritySection() {
             <p className="text-sm text-fg-muted">Scan this in your authenticator app, then enter the 6-digit code.</p>
             {enroll.qrCode && (
               <img
-                src={`data:image/svg+xml;utf-8,${encodeURIComponent(enroll.qrCode)}`}
+                // Supabase returns qr_code as a ready-to-use `data:image/svg+xml`
+                // URI — render it as-is. Re-encoding it produced a double-encoded
+                // src that silently failed to load, so the QR never appeared.
+                src={enroll.qrCode}
                 alt="TOTP QR code"
                 className="h-40 w-40 rounded bg-white p-2"
               />

@@ -1067,7 +1067,20 @@ export async function sendRecommendation(
   subject: { albumId?: string; artistId?: string },
   note: string,
 ): Promise<void> {
-  const { error } = await requireClient().from("recommendations").insert({
+  const c = requireClient();
+  // Dedupe: a repeat recommendation of the same subject from the same sender to
+  // the same recipient replaces the older one (newest shown, older removed —
+  // the ticket's requested behavior). The `recs delete` RLS policy lets the
+  // sender remove their own rows.
+  const subjectCol = subject.albumId ? "album_id" : "artist_id";
+  const subjectId = subject.albumId ?? subject.artistId ?? "";
+  await c
+    .from("recommendations")
+    .delete()
+    .eq("from_user", fromUser)
+    .eq("to_user", toUser)
+    .eq(subjectCol, subjectId);
+  const { error } = await c.from("recommendations").insert({
     from_user: fromUser,
     to_user: toUser,
     album_id: subject.albumId ?? null,
@@ -1077,13 +1090,46 @@ export async function sendRecommendation(
   if (error) throw error;
 }
 
+/** Flat row shape returned by the `list_inbox` RPC (sender public identity +
+ *  resolved album/artist), used instead of a PostgREST embed because
+ *  recommendations.from_user is an FK to auth.users, not profiles. */
+interface InboxRow {
+  id: string;
+  from_user: string;
+  from_username: string | null;
+  from_display_name: string | null;
+  from_avatar_url: string | null;
+  album_id: string | null;
+  artist_id: string | null;
+  note: string;
+  created_at: string;
+  read_at: string | null;
+  album_title: string | null;
+  artist_name: string | null;
+}
+
 export async function listInbox(userId: string): Promise<Recommendation[]> {
-  const { data } = await requireClient()
-    .from("recommendations")
-    .select(REC_COLS)
-    .eq("to_user", userId)
-    .order("created_at", { ascending: false });
-  return ((data ?? []) as unknown as RecRow[]).map(mapRec);
+  const { data, error } = await requireClient().rpc("list_inbox");
+  if (error) {
+    // Surface (don't silently swallow) so a broken inbox is debuggable, but
+    // still degrade to an empty list rather than throwing into the hook.
+    console.error("list_inbox failed", error);
+    return [];
+  }
+  return ((data ?? []) as InboxRow[]).map((r) => ({
+    id: r.id,
+    fromUser: r.from_user,
+    fromUsername: r.from_username ?? "",
+    fromDisplayName: r.from_display_name ?? "",
+    toUser: userId,
+    albumId: r.album_id,
+    albumTitle: r.album_title,
+    artistId: r.artist_id ?? "",
+    artistName: r.artist_name ?? "Unknown",
+    note: r.note,
+    createdAt: r.created_at,
+    readAt: r.read_at,
+  }));
 }
 
 export async function listSent(userId: string): Promise<Recommendation[]> {
@@ -1105,6 +1151,18 @@ export async function unreadRecommendationCount(userId: string): Promise<number>
     .select("id", { count: "exact", head: true })
     .eq("to_user", userId)
     .is("read_at", null);
+  return count ?? 0;
+}
+
+/** Count of incoming follow requests awaiting accept. Only PRIVATE journeys
+ *  produce 'pending' edges (follows toward public journeys auto-accept), so this
+ *  drives the People nav's "you have requests" badge. */
+export async function pendingFollowRequestCount(userId: string): Promise<number> {
+  const { count } = await requireClient()
+    .from("follows")
+    .select("id", { count: "exact", head: true })
+    .eq("followee_id", userId)
+    .eq("status", "pending");
   return count ?? 0;
 }
 

@@ -135,7 +135,10 @@ export function Dashboard({
           {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
           <div className="flex flex-col gap-6">
           <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex flex-1 flex-col justify-center"}`}>
-            {nowSpinning.length === 0 && (
+            {/* Faint Summit mountain backdrop. Skip it when the progress card is
+                alone (no featured record) AND the Summit isn't reached yet — a
+                brand-new, pre-summit marathon shouldn't show the peak. */}
+            {nowSpinning.length === 0 && (featured || stats.goalPct >= 100) && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 opacity-[0.12]" aria-hidden>
                 <SummitMountain pct={stats.goalPct} />
               </div>
@@ -149,7 +152,7 @@ export function Dashboard({
                 <div className="inline-flex items-center justify-center gap-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-gold">
                   The Summit — conquered <Crown className="h-4 w-4" aria-hidden />
                 </div>
-                <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
+                <div className="mt-2 font-display text-4xl font-black leading-none text-fg tabular-nums sm:text-5xl">
                   {fmtHours(animatedHours)}
                 </div>
                 <div className="mt-2 text-sm text-fg-muted">
@@ -158,17 +161,17 @@ export function Dashboard({
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
                       Total time logged
                     </div>
-                    <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
+                    <div className="font-display text-5xl font-black leading-none text-gold tabular-nums sm:text-6xl">
                       {fmtHours(animatedHours)}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-display text-3xl font-black leading-none text-fg">
+                  <div className="sm:text-right">
+                    <div className="font-display text-3xl font-black leading-none text-fg tabular-nums">
                       {animatedPct.toFixed(1)}%
                     </div>
                     <div className="mt-1 text-xs text-fg-faint">to the Summit</div>

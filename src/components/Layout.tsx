@@ -3,8 +3,8 @@ import { Headphones } from "lucide-react";
 import { navigate, useHashRoute } from "../lib/router";
 import { useAuth, useMyJourney } from "../lib/store";
 import { computeStats, flattenAlbums } from "../lib/stats";
-import { fmtHours } from "../lib/format";
-import { unreadRecommendationCount } from "../lib/api";
+import { fmtHours, fmtScore } from "../lib/format";
+import { pendingFollowRequestCount, unreadRecommendationCount } from "../lib/api";
 import { Avatar } from "./social";
 import { Wordmark } from "./Wordmark";
 
@@ -13,7 +13,7 @@ import { Wordmark } from "./Wordmark";
  *  `match` lists route heads (no leading slash) that also light the tab
  *  (Journey covers all of the owner's journey routes); `badge: "unread"` shows
  *  the recommendations unread count. */
-type NavItem = { id: string; label: string; path: string; match?: string[]; badge?: "unread" };
+type NavItem = { id: string; label: string; path: string; match?: string[]; badge?: "unread" | "requests" };
 
 // Priority order = kept in the bar longest (left) → first to overflow (right).
 // Reorder this array to reprioritize. Settings + Sign out are intentionally NOT
@@ -22,7 +22,7 @@ const NAV_PRIORITY: NavItem[] = [
   { id: "journey", label: "Journey", path: "/me", match: ["me", "artists", "artist", "album", "hall-of-fame"] },
   { id: "discover", label: "Discover", path: "/discover" },
   { id: "feed", label: "Feed", path: "/feed" },
-  { id: "people", label: "People", path: "/people" },
+  { id: "people", label: "People", path: "/people", badge: "requests" },
   { id: "recs", label: "Recs", path: "/recommendations", badge: "unread" },
   { id: "editor", label: "Editor", path: "/editor" },
 ];
@@ -86,7 +86,7 @@ function Ticker() {
     .filter((a) => a.status === "completed" && a.rating != null)
     .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""));
   if (completed.length === 0) return null;
-  const items = completed.map((a) => `${a.artistName} — ${a.title}  ★ ${a.rating?.toFixed(1)}`);
+  const items = completed.map((a) => `${a.artistName} — ${a.title}  ★ ${a.rating != null ? fmtScore(a.rating) : "—"}`);
   const doubled = [...items, ...items];
   return (
     <div className="overflow-hidden border-y border-edge/60 bg-fg/5 py-1.5">
@@ -138,7 +138,7 @@ function NavButton({
   );
 }
 
-function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number }) {
+function UserMenu({ overflow, unread, requests }: { overflow: NavItem[]; unread: number; requests: number }) {
   const { profile, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -178,7 +178,7 @@ function UserMenu({ overflow, unread }: { overflow: NavItem[]; unread: number })
   // always-pinned Settings / Sign out.
   const overflowEntries: MenuEntry[] = overflow.map((n) => ({
     label: n.label,
-    badge: n.badge === "unread" ? unread : undefined,
+    badge: n.badge === "unread" ? unread : n.badge === "requests" ? requests : undefined,
     onSelect: () => go(n.path),
   }));
   const pinned: MenuEntry[] = [
@@ -270,6 +270,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const route = useHashRoute();
   const stats = data ? computeStats(data) : null;
   const [unread, setUnread] = useState(0);
+  const [requests, setRequests] = useState(0);
   const { containerRef, measureRef, visibleCount } = useOverflowNav(NAV_PRIORITY.length, !!session);
   const overflow = session ? NAV_PRIORITY.slice(visibleCount) : [];
 
@@ -278,9 +279,11 @@ export function Layout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setUnread(0);
+      setRequests(0);
       return;
     }
     unreadRecommendationCount(user.id).then(setUnread).catch(() => setUnread(0));
+    pendingFollowRequestCount(user.id).then(setRequests).catch(() => setRequests(0));
   }, [user, route]);
 
   useEffect(() => {
@@ -293,7 +296,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-4">
           <Logo />
           {session ? (
-            <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden">
+            <div ref={containerRef} className="relative min-w-0 flex-1 overflow-hidden py-2 -my-2">
               <nav aria-label="Primary" className="flex items-center gap-1">
                 {NAV_PRIORITY.slice(0, visibleCount).map((n) => (
                   <NavButton
@@ -301,7 +304,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     path={n.path}
                     label={n.label}
                     match={n.match}
-                    badge={n.badge === "unread" ? unread : undefined}
+                    badge={n.badge === "unread" ? unread : n.badge === "requests" ? requests : undefined}
                   />
                 ))}
               </nav>
@@ -318,7 +321,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     path={n.path}
                     label={n.label}
                     match={n.match}
-                    badge={n.badge === "unread" ? unread : undefined}
+                    badge={n.badge === "unread" ? unread : n.badge === "requests" ? requests : undefined}
                   />
                 ))}
               </div>
@@ -338,7 +341,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </button>
             )}
             {session ? (
-              <UserMenu overflow={overflow} unread={unread} />
+              <UserMenu overflow={overflow} unread={unread} requests={requests} />
             ) : (
               <button
                 onClick={() => navigate("/login")}
