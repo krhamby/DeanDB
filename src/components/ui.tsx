@@ -112,7 +112,7 @@ export function Score10({
 const STATUS_META: Record<AlbumStatus, { label: string; cls: string }> = {
   completed: { label: "✓ Completed", cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30" },
   listening: { label: "▶ Now Spinning", cls: "bg-gold/15 text-gold-soft ring-gold/30" },
-  want: { label: "☆ On the List", cls: "bg-fg/10 text-fg-muted ring-fg/10" },
+  want: { label: "☆ On the List", cls: "bg-fg/10 text-fg ring-fg/10" },
 };
 
 export function StatusBadge({ status }: { status: AlbumStatus }) {
