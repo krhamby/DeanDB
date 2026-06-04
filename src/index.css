@@ -46,23 +46,34 @@
 }
 [data-skin="midnight"] {
   --color-ink: #0a0a0b;
-  --color-panel: #15151a;
-  --color-panel-2: #1d1d24;
-  --color-edge: #2a2a33;
+  --color-panel: #15151f;
+  --color-panel-2: #1c1c2a;
+  --color-edge: #2c2c3a;
   --color-fg: #e9e9ee;
   --color-fg-muted: #a1a1aa;
   --color-fg-faint: #82828a;
   --color-edge-strong: #70707d;
   --color-status-done: #6ee7b7;
   --color-status-lib: #c4b5fd;
-  --color-surface: #15151a;
+  --color-surface: #0b0b13;   /* deeper, faint cool tint — lets the neon glow read */
   --color-on-accent: #000000;
+  /* Cinematic neon ambient: gold + dean + a violet rise. Stronger than Paper's
+     wash because glow pops on a dark base. Game-moment neon (Wheel/Summit) stays loudest. */
   --app-bg:
-    radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-gold) 8%, transparent), transparent 60%),
-    radial-gradient(900px 500px at -10% 10%, color-mix(in srgb, var(--color-dean) 7%, transparent), transparent 55%),
+    radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 20%, transparent), transparent 58%),
+    radial-gradient(900px 520px at -12% 8%, color-mix(in srgb, var(--color-dean) 18%, transparent), transparent 55%),
+    radial-gradient(820px 760px at 50% 128%, color-mix(in srgb, #7c3aed 16%, transparent), transparent 60%),
     var(--color-surface);
   --scrollbar-track: var(--color-ink);
   --scrollbar-thumb: var(--color-edge);
+}
+
+/* Midnight only: a soft neon rim + depth on cards so they float over the glow.
+   Paper stays flat/editorial. Scoped to the Panel component (not inputs). */
+[data-skin="midnight"] .sleeve-panel {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-gold) 9%, transparent),
+    0 10px 34px -14px rgba(0, 0, 0, 0.85);
 }
 
 html {

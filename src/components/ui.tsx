@@ -181,7 +181,7 @@ export function Panel({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-edge/70 bg-panel/80 backdrop-blur-sm ${className}`}
+      className={`sleeve-panel rounded-2xl border border-edge/70 bg-panel/80 backdrop-blur-sm ${className}`}
     >
       {children}
     </div>
