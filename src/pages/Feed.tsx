@@ -34,7 +34,8 @@ export function Feed() {
           and follow them to see their listening here.
         </Panel>
       ) : (
-        items.map((it) => {
+        <div className="space-y-4 stagger-children">
+        {items.map((it) => {
           if (it.kind === "achievement") {
             const meta = ACHIEVEMENT_CATALOG[it.achievementId];
             if (!meta) return null; // unknown/retired id — skip
@@ -74,7 +75,7 @@ export function Feed() {
             );
           }
           return (
-            <Panel key={it.userAlbumId} className="flex items-center gap-3 p-3">
+            <Panel key={it.userAlbumId} className="flex items-center gap-3 p-3 transition hover:border-gold/30">
               <div className="shrink-0">
                 <Cover colors={it.cover} title={it.albumTitle} coverUrl={it.coverUrl ?? undefined} size="sm" />
               </div>
@@ -108,7 +109,8 @@ export function Feed() {
               {it.rating != null && <DeanMeter value={it.rating} size={48} name={it.displayName} />}
             </Panel>
           );
-        })
+        })}
+        </div>
       )}
     </div>
   );

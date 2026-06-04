@@ -23,7 +23,8 @@ export function Recommendations() {
           No recommendations yet. When a friend recommends an album, it lands here. ✉
         </Panel>
       ) : (
-        inbox.map((r) => (
+        <div className="space-y-4 stagger-children">
+        {inbox.map((r) => (
           <Panel key={r.id} className={`p-4 ${r.readAt ? "" : "border-gold/40"}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-fg-muted">
@@ -51,7 +52,8 @@ export function Recommendations() {
             </div>
             {r.note && <p className="mt-1 text-sm text-fg-muted">“{r.note}”</p>}
           </Panel>
-        ))
+        ))}
+        </div>
       )}
     </div>
   );

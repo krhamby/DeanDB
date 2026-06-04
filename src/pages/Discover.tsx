@@ -143,7 +143,7 @@ export function Discover() {
           }}
           rows={3}
           placeholder="e.g. moody 70s prog rock with long instrumental passages"
-          className="w-full rounded-lg border border-edge bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
+          className="w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm font-normal normal-case tracking-normal text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
         />
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
@@ -176,12 +176,12 @@ export function Discover() {
       )}
 
       {suggestions && suggestions.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 stagger-children">
           {suggestions.map((s) => {
             const key = s.mbid ?? s.name;
             const add$ = adds[key] ?? { status: "idle" as AddStatus };
             return (
-              <Panel key={key} className="flex flex-col gap-3 p-4">
+              <Panel key={key} className="flex flex-col gap-3 p-4 transition hover:-translate-y-0.5 hover:border-gold/30">
                 <div className="flex items-start gap-3">
                   <div
                     className="grid h-12 w-12 shrink-0 place-items-center rounded-lg font-display text-xl font-black text-white/90 shadow-inner"

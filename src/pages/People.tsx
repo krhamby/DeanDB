@@ -28,14 +28,14 @@ export function People() {
   return (
     <div className="space-y-8">
       <div>
-        <SectionTitle kicker="Find your people" title="Discover" />
+        <SectionTitle kicker="Find your people" title="People" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name or @username…"
-          className="w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50"
+          className="w-full rounded-xl border border-[var(--color-edge-strong)] bg-panel px-4 py-2.5 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
         />
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-2 stagger-children">
           {loading && <p className="text-sm text-fg-faint">Searching…</p>}
           {!loading && q.trim().length >= 2 && results.length === 0 && (
             <p className="text-sm text-fg-faint">No one matches “{q}”.</p>
@@ -71,7 +71,7 @@ export function People() {
       {following.length > 0 && (
         <div>
           <SectionTitle kicker={`${following.length} people`} title="Following" />
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {following.map((p) => (
               <PersonRow key={p.profile.id} person={p} onChanged={loadGraph} />
             ))}
