@@ -702,74 +702,96 @@ export function Editor() {
 
       {/* Manage artists */}
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h3 className="font-display text-lg font-black text-fg">Roster ({data.artists.length})</h3>
-          <input
-            value={rosterQuery}
-            onChange={(e) => setRosterQuery(e.target.value)}
-            placeholder="Search artists or albums…"
-            className={`${inputCls} flex-1 sm:max-w-xs`}
-          />
-          <button
-            onClick={() => setFavOnly((v) => !v)}
-            className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"}`}
-            title="Show favorite albums only"
-          >
-            ⭐ Favorites
-          </button>
-          {allAlbumIds.length > 0 && (
-            <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
-              {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
+        {/* Cohesive command bar: heading + search + toggles + filters read as one unit. */}
+        <Panel className="space-y-3 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="font-display text-lg font-black text-fg">Roster ({data.artists.length})</h3>
+            <input
+              value={rosterQuery}
+              onChange={(e) => setRosterQuery(e.target.value)}
+              placeholder="Search artists or albums…"
+              className={`${inputCls} flex-1 sm:max-w-xs`}
+            />
+            <button
+              onClick={() => setFavOnly((v) => !v)}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${favOnly ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"}`}
+              title="Show favorite albums only"
+            >
+              ⭐ Favorites
             </button>
-          )}
-        </div>
-        {/* Filters + sort — narrow the roster and order albums within each artist. */}
-        <div className="flex flex-wrap items-center gap-2">
-          {genreOptions.length > 0 && (
-            <Select value={genreFilter} onChange={setGenreFilter} title="Filter by genre" ariaLabel="Filter by genre">
-              <option value="">All genres</option>
-              {genreOptions.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </Select>
-          )}
-          <Select value={statusFilter} onChange={(v) => setStatusFilter(v as "all" | AlbumStatus)} title="Filter by status" ariaLabel="Filter by status">
-            <option value="all">Any status</option>
-            <option value="want">Want</option>
-            <option value="listening">Listening</option>
-            <option value="completed">Done</option>
-          </Select>
-          <Select value={ratedFilter} onChange={(v) => setRatedFilter(v as "all" | "rated" | "unrated")} title="Filter by rating" ariaLabel="Filter by rating">
-            <option value="all">Rated &amp; unrated</option>
-            <option value="rated">Rated only</option>
-            <option value="unrated">Unrated only</option>
-          </Select>
-          <Select value={albumSort} onChange={(v) => setAlbumSort(v as typeof albumSort)} title="Sort albums within each artist" ariaLabel="Sort albums">
-            <option value="default">Sort: default</option>
-            <option value="title">Title A–Z</option>
-            <option value="year">Year (new→old)</option>
-            <option value="rating">Rating (high→low)</option>
-            <option value="date">Recently listened</option>
-          </Select>
-          {anyFilterActive && (
-            <>
-              <span className="text-xs text-fg-faint">
-                {shownArtists.length} artist{shownArtists.length === 1 ? "" : "s"} · {shownAlbumCount} album{shownAlbumCount === 1 ? "" : "s"}
-              </span>
-              <button onClick={clearFilters} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
-                Clear filters
+            {allAlbumIds.length > 0 && (
+              <button onClick={toggleAllAlbums} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
+                {allCollapsed ? "⤢ Expand all albums" : "⤡ Collapse to album names"}
               </button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+          {/* Filters + sort — narrow the roster and order albums within each artist. */}
+          <div className="flex flex-wrap items-center gap-2 border-t border-edge/60 pt-3">
+            {genreOptions.length > 0 && (
+              <Select value={genreFilter} onChange={setGenreFilter} title="Filter by genre" ariaLabel="Filter by genre">
+                <option value="">All genres</option>
+                {genreOptions.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </Select>
+            )}
+            <Select value={statusFilter} onChange={(v) => setStatusFilter(v as "all" | AlbumStatus)} title="Filter by status" ariaLabel="Filter by status">
+              <option value="all">Any status</option>
+              <option value="want">Want</option>
+              <option value="listening">Listening</option>
+              <option value="completed">Done</option>
+            </Select>
+            <Select value={ratedFilter} onChange={(v) => setRatedFilter(v as "all" | "rated" | "unrated")} title="Filter by rating" ariaLabel="Filter by rating">
+              <option value="all">Rated &amp; unrated</option>
+              <option value="rated">Rated only</option>
+              <option value="unrated">Unrated only</option>
+            </Select>
+            <Select value={albumSort} onChange={(v) => setAlbumSort(v as typeof albumSort)} title="Sort albums within each artist" ariaLabel="Sort albums">
+              <option value="default">Sort: default</option>
+              <option value="title">Title A–Z</option>
+              <option value="year">Year (new→old)</option>
+              <option value="rating">Rating (high→low)</option>
+              <option value="date">Recently listened</option>
+            </Select>
+            {anyFilterActive && (
+              <>
+                <span className="text-xs text-fg-faint">
+                  {shownArtists.length} artist{shownArtists.length === 1 ? "" : "s"} · {shownAlbumCount} album{shownAlbumCount === 1 ? "" : "s"}
+                </span>
+                <button onClick={clearFilters} className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-fg-muted hover:text-fg">
+                  Clear filters
+                </button>
+              </>
+            )}
+          </div>
+        </Panel>
         {shownArtists.length === 0 && (
-          <p className="py-6 text-center text-sm text-fg-faint">
-            {data.artists.length === 0
-              ? "No artists yet — add your first above."
-              : q
-                ? `No artists or albums match “${rosterQuery.trim()}”.`
-                : "No artists or albums match your filters."}
-          </p>
+          <Panel className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <span className="text-4xl" aria-hidden>
+              {data.artists.length === 0 ? "🎙" : "🔍"}
+            </span>
+            <p className="text-sm text-fg-faint">
+              {data.artists.length === 0
+                ? "Your roster is empty — import or add your first artist to begin."
+                : q
+                  ? `No artists or albums match “${rosterQuery.trim()}”.`
+                  : "No artists or albums match your filters."}
+            </p>
+            {data.artists.length === 0 ? (
+              <button
+                onClick={() => setImportOpen(true)}
+                className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110"
+              >
+                + Add artists
+              </button>
+            ) : (
+              anyFilterActive && (
+                <button onClick={clearFilters} className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-fg-muted hover:text-fg">
+                  Clear filters
+                </button>
+              )
+            )}
+          </Panel>
         )}
         {shownArtists.map((artist: Artist) => (
           <Panel key={artist.id} className="p-4">
