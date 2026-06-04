@@ -139,7 +139,7 @@ export function AlbumDetail({
               {album.title}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/80">
-              <StatusBadge status={album.status} />
+              <StatusBadge status={album.status} onMedia />
               {album.year && <span>{album.year}</span>}
               {(() => {
                 const shownMinutes = runtimeOverride ?? album.minutes;

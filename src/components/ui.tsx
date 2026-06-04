@@ -109,26 +109,50 @@ export function Score10({
   );
 }
 
-const STATUS_META: Record<AlbumStatus, { label: string; cls: string }> = {
-  completed: { label: "✓ Completed", cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30" },
-  listening: { label: "▶ Now Spinning", cls: "bg-gold/15 text-gold-soft ring-gold/30" },
-  want: { label: "☆ On the List", cls: "bg-fg/10 text-fg ring-fg/10" },
+// Each status has two looks: `cls` for badges on a panel/surface (skin-aware —
+// dark text on Paper, light on Midnight), and `onMediaCls` for badges layered
+// over a dark cover-art hero (always light text, both skins).
+const STATUS_META: Record<AlbumStatus, { label: string; cls: string; onMediaCls: string }> = {
+  completed: {
+    label: "✓ Completed",
+    cls: "bg-emerald-500/15 text-[var(--color-status-done)] ring-emerald-500/30",
+    onMediaCls: "bg-emerald-500/20 text-emerald-200 ring-emerald-400/30",
+  },
+  listening: {
+    label: "▶ Now Spinning",
+    cls: "bg-gold/15 text-gold-soft ring-gold/30",
+    onMediaCls: "bg-white/15 text-[#ffe082] ring-white/25",
+  },
+  want: {
+    label: "☆ On the List",
+    cls: "bg-fg/10 text-fg ring-fg/10",
+    onMediaCls: "bg-white/15 text-zinc-100 ring-white/25",
+  },
 };
 
-export function StatusBadge({ status }: { status: AlbumStatus }) {
+export function StatusBadge({ status, onMedia = false }: { status: AlbumStatus; onMedia?: boolean }) {
   const m = STATUS_META[status];
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${m.cls}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+        onMedia ? m.onMediaCls : m.cls
+      }`}
+    >
       {m.label}
     </span>
   );
 }
 
-/** Marks an artist as an already-heard "Library" pick rather than a marathon one. */
-export function LoggedBadge({ className = "" }: { className?: string }) {
+/** Marks an artist as an already-heard "Library" pick rather than a marathon one.
+ *  Pass `onMedia` when it sits over a dark cover-art hero. */
+export function LoggedBadge({ className = "", onMedia = false }: { className?: string; onMedia?: boolean }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full bg-violet-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-status-lib)] ring-1 ring-violet-500/30 ${className}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+        onMedia
+          ? "bg-violet-500/25 text-violet-200 ring-violet-400/30"
+          : "bg-violet-500/15 text-[var(--color-status-lib)] ring-violet-500/30"
+      } ${className}`}
       title="Already listened — kept for ratings & Hall of Fame, but out of the marathon"
     >
       📚 Library

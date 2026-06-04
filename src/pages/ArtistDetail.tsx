@@ -58,7 +58,7 @@ export function ArtistDetail({
         <div className="relative">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
             <span>{artist.genre} · {artist.country}</span>
-            {artist.logged && <LoggedBadge />}
+            {artist.logged && <LoggedBadge onMedia />}
           </div>
           <h1 className="font-display text-5xl font-black tracking-tight text-white drop-shadow">
             {artist.name}
