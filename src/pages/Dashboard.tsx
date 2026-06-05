@@ -34,25 +34,41 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 
 /** A stencil mountain — the marathon's "climb to the Summit" motif. Used as a
  *  faint backdrop at the bottom of the meter/Summit card when nothing is currently
- *  spinning; the silhouette fills (gold) to the listener's progress. Decorative. */
+ *  spinning; gold "alpenglow" rises up the silhouette to the listener's progress.
+ *  Decorative. The fill is a vertical gradient anchored to the mountain's base
+ *  (flush with the card's bottom edge) that dissolves to transparent at the current
+ *  climb line — so a barely-started climb reads as a soft ground glow instead of a
+ *  hard horizontal line floating above the card. */
 function SummitMountain({ pct }: { pct: number }) {
-  const id = useId();
+  const clipId = useId();
+  const fillId = useId();
   const climb = Math.max(0, Math.min(100, pct));
-  const fillTop = 86 - (86 - 20) * (climb / 100); // base y=86 → ~summit y=20
+  const baseY = 90; // anchor the base flush to the SVG's bottom edge (no floating gap)
+  const summitY = 20;
+  const fillTop = baseY - (baseY - summitY) * (climb / 100); // base → summit climb line
+  // Ridge line only (no flat base edge) — the closing `Z` exists solely for the clip.
+  const ridge = "M0 90 L70 46 L120 64 L200 20 L280 64 L330 46 L400 90";
   // Wide viewBox + w-full (intrinsic height) → spans the full card width at proper
   // proportions, anchored to the card's bottom edge.
   return (
     <svg viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet" className="block w-full text-fg" aria-hidden>
       <defs>
-        <clipPath id={id}>
-          <path d="M0 86 L70 46 L120 64 L200 20 L280 64 L330 46 L400 86 Z" />
+        <clipPath id={clipId}>
+          <path d={`${ridge} Z`} />
         </clipPath>
+        {/* Gold at the base, fading out at the climb line — keeps the bottom flush
+            and the leading edge soft so low progress never shows a hard line. */}
+        <linearGradient id={fillId} gradientUnits="userSpaceOnUse" x1="0" y1={baseY} x2="0" y2={fillTop}>
+          <stop offset="0" stopColor="var(--color-gold)" stopOpacity="1" />
+          <stop offset="0.65" stopColor="var(--color-gold)" stopOpacity="0.8" />
+          <stop offset="1" stopColor="var(--color-gold)" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <g clipPath={`url(#${id})`}>
-        <rect x="0" y={fillTop} width="400" height="90" fill="var(--color-gold)" />
+      <g clipPath={`url(#${clipId})`}>
+        <rect x="0" y={fillTop} width="400" height={baseY - fillTop} fill={`url(#${fillId})`} />
       </g>
       <path
-        d="M0 86 L70 46 L120 64 L200 20 L280 64 L330 46 L400 86"
+        d={ridge}
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
