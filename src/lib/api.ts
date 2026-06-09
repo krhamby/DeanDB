@@ -16,11 +16,15 @@ import type {
   AlbumStatus,
   Artist,
   ArtistSuggestion,
+  BlockedUser,
+  Conversation,
   DeanDBData,
+  DirectMessage,
   FeedItem,
   PersonResult,
   Profile,
   Recommendation,
+  ReportReason,
   Track,
 } from "../types";
 
@@ -1164,6 +1168,213 @@ export async function pendingFollowRequestCount(userId: string): Promise<number>
     .eq("followee_id", userId)
     .eq("status", "pending");
   return count ?? 0;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Direct messages, blocking & reporting
+// ════════════════════════════════════════════════════════════════
+
+interface DmRow {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+function mapDm(r: DmRow): DirectMessage {
+  return {
+    id: r.id,
+    senderId: r.sender_id,
+    recipientId: r.recipient_id,
+    body: r.body,
+    createdAt: r.created_at,
+    readAt: r.read_at,
+  };
+}
+
+/** Whether `me` may DM `other` right now (accepted follow either direction, no
+ *  block either way). Same SQL helper the INSERT policy enforces — this is just
+ *  the UX preflight so the composer isn't shown when sending would be refused. */
+export async function canDirectMessage(me: string, other: string): Promise<boolean> {
+  const { data } = await requireClient().rpc("can_dm", { sender: me, recipient: other });
+  return data === true;
+}
+
+export async function sendDirectMessage(
+  senderId: string,
+  recipientId: string,
+  body: string,
+): Promise<DirectMessage> {
+  const { data, error } = await requireClient()
+    .from("dm_messages")
+    .insert({ sender_id: senderId, recipient_id: recipientId, body })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapDm(data as DmRow);
+}
+
+/** The sender's "unsend" — deletes one of my own messages for both parties. */
+export async function unsendDirectMessage(messageId: string): Promise<void> {
+  const { error } = await requireClient().from("dm_messages").delete().eq("id", messageId);
+  if (error) throw error;
+}
+
+interface ConversationRow {
+  other_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  last_body: string;
+  last_sender_id: string;
+  last_at: string;
+  unread_count: number;
+}
+
+/** My DM threads, newest activity first, with the counterparty's public identity. */
+export async function listConversations(): Promise<Conversation[]> {
+  const { data, error } = await requireClient().rpc("list_dm_conversations");
+  if (error) throw error;
+  return ((data ?? []) as ConversationRow[]).map((r) => ({
+    otherId: r.other_id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    lastBody: r.last_body,
+    lastSenderId: r.last_sender_id,
+    lastAt: r.last_at,
+    unreadCount: Number(r.unread_count),
+  }));
+}
+
+/** The latest messages between me and `other`, oldest-first for rendering. */
+export async function fetchThread(me: string, other: string, limit = 200): Promise<DirectMessage[]> {
+  const { data, error } = await requireClient()
+    .from("dm_messages")
+    .select("*")
+    .or(
+      `and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`,
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as DmRow[]).map(mapDm).reverse();
+}
+
+/** Mark everything `other` sent me as read (opening / viewing the thread). */
+export async function markThreadRead(me: string, other: string): Promise<void> {
+  const { error } = await requireClient()
+    .from("dm_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("recipient_id", me)
+    .eq("sender_id", other)
+    .is("read_at", null);
+  if (error) throw error;
+}
+
+/** Unread DM count for the Messages nav badge. */
+export async function unreadDmCount(userId: string): Promise<number> {
+  const { count } = await requireClient()
+    .from("dm_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_id", userId)
+    .is("read_at", null);
+  return count ?? 0;
+}
+
+/**
+ * Live delivery of messages sent TO `userId`. Realtime respects the table's
+ * RLS, so the stream only ever contains rows the user could select anyway.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToIncomingDms(userId: string, onMessage: (m: DirectMessage) => void): () => void {
+  const c = requireClient();
+  const channel = c
+    .channel(`dm-inbox-${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "dm_messages", filter: `recipient_id=eq.${userId}` },
+      (payload) => onMessage(mapDm(payload.new as DmRow)),
+    )
+    .subscribe();
+  return () => {
+    void c.removeChannel(channel);
+  };
+}
+
+// ── Blocking ───────────────────────────────────────────────────
+// A DB trigger severs follow edges in both directions on insert, and RLS on
+// follows/recommendations/dm_messages refuses new contact across the block.
+
+export async function blockUser(blockerId: string, blockedId: string): Promise<void> {
+  const { error } = await requireClient()
+    .from("blocks")
+    .upsert({ blocker_id: blockerId, blocked_id: blockedId }, { onConflict: "blocker_id,blocked_id" });
+  if (error) throw error;
+}
+
+export async function unblockUser(blockerId: string, blockedId: string): Promise<void> {
+  const { error } = await requireClient()
+    .from("blocks")
+    .delete()
+    .eq("blocker_id", blockerId)
+    .eq("blocked_id", blockedId);
+  if (error) throw error;
+}
+
+/** True when I have blocked `other` (incoming blocks are never visible). */
+export async function hasBlocked(me: string, other: string): Promise<boolean> {
+  const { data } = await requireClient()
+    .from("blocks")
+    .select("id")
+    .eq("blocker_id", me)
+    .eq("blocked_id", other)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+interface BlockedRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
+/** Everyone I've blocked (Settings management list), public identity only. */
+export async function listBlockedUsers(): Promise<BlockedUser[]> {
+  const { data, error } = await requireClient().rpc("list_blocked");
+  if (error) throw error;
+  return ((data ?? []) as BlockedRow[]).map((r) => ({
+    id: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    blockedAt: r.created_at,
+  }));
+}
+
+// ── Reporting ──────────────────────────────────────────────────
+
+/** File a moderation report about a user, optionally anchored to one of their
+ *  messages (the DB snapshots the message body server-side as evidence). */
+export async function reportUser(
+  reporterId: string,
+  reportedUserId: string,
+  reason: ReportReason,
+  details: string,
+  messageId?: string,
+): Promise<void> {
+  const { error } = await requireClient().from("reports").insert({
+    reporter_id: reporterId,
+    reported_user_id: reportedUserId,
+    reason,
+    details,
+    message_id: messageId ?? null,
+  });
+  if (error) throw error;
 }
 
 // ════════════════════════════════════════════════════════════════

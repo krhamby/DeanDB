@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Lock, SearchX } from "lucide-react";
-import { profilePath } from "../lib/router";
+import { Lock, MessageCircle, SearchX } from "lucide-react";
+import { messagesPath, navigate, profilePath } from "../lib/router";
 import { MeterNameProvider, useAuth, useJourney, useThemeControl } from "../lib/store";
 import { resolveTheme } from "../lib/themes";
 import { Avatar, FollowButton } from "../components/social";
+import { ModerationMenu } from "../components/moderation";
 import { JourneyNav } from "../components/JourneyNav";
 import { Panel } from "../components/ui";
 import { JourneySkeleton } from "../components/skeletons";
@@ -61,7 +62,24 @@ export function Profile({ username, rest }: { username: string; rest: string[] }
           )}
         </div>
       </div>
+      {/* DMs open between people connected by an accepted follow in either
+          direction; the thread itself re-verifies via can_dm (blocks included). */}
+      {!view.canEdit &&
+        (view.relationship?.followStatus === "accepted" || view.relationship?.followsMe) && (
+          <button
+            onClick={() => navigate(messagesPath(owner.username))}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-edge px-4 py-2 text-sm font-bold text-fg-muted transition hover:text-fg"
+          >
+            <MessageCircle className="h-3.5 w-3.5" aria-hidden /> Message
+          </button>
+        )}
       <FollowButton target={owner} initialStatus={view.relationship?.followStatus ?? null} onChanged={view.reloadRelationship} />
+      {!view.canEdit && (
+        <ModerationMenu
+          target={{ id: owner.id, username: owner.username, displayName: owner.displayName }}
+          onBlockChanged={() => void view.reloadRelationship()}
+        />
+      )}
     </Panel>
   );
 

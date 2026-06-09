@@ -1,10 +1,10 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Headphones } from "lucide-react";
 import { navigate, useHashRoute } from "../lib/router";
 import { useAuth, useMyJourney } from "../lib/store";
 import { computeStats, flattenAlbums } from "../lib/stats";
 import { fmtHours, fmtScore } from "../lib/format";
-import { pendingFollowRequestCount, unreadRecommendationCount } from "../lib/api";
+import { pendingFollowRequestCount, subscribeToIncomingDms, unreadDmCount, unreadRecommendationCount } from "../lib/api";
 import { Avatar } from "./social";
 import { Wordmark } from "./Wordmark";
 
@@ -13,7 +13,7 @@ import { Wordmark } from "./Wordmark";
  *  `match` lists route heads (no leading slash) that also light the tab
  *  (Journey covers all of the owner's journey routes); `badge: "unread"` shows
  *  the recommendations unread count. */
-type NavItem = { id: string; label: string; path: string; match?: string[]; badge?: "unread" | "requests" };
+type NavItem = { id: string; label: string; path: string; match?: string[]; badge?: "unread" | "requests" | "dms" };
 
 // Priority order = kept in the bar longest (left) → first to overflow (right).
 // Reorder this array to reprioritize. Settings + Sign out are intentionally NOT
@@ -22,6 +22,7 @@ const NAV_PRIORITY: NavItem[] = [
   { id: "journey", label: "Journey", path: "/me", match: ["me", "artists", "artist", "album", "hall-of-fame"] },
   { id: "discover", label: "Discover", path: "/discover" },
   { id: "feed", label: "Feed", path: "/feed" },
+  { id: "messages", label: "Messages", path: "/messages", badge: "dms" },
   { id: "people", label: "People", path: "/people", badge: "requests" },
   { id: "recs", label: "Recs", path: "/recommendations", badge: "unread" },
   { id: "editor", label: "Editor", path: "/editor" },
@@ -138,7 +139,7 @@ function NavButton({
   );
 }
 
-function UserMenu({ overflow, unread, requests }: { overflow: NavItem[]; unread: number; requests: number }) {
+function UserMenu({ overflow, badges }: { overflow: NavItem[]; badges: Record<string, number> }) {
   const { profile, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -178,7 +179,7 @@ function UserMenu({ overflow, unread, requests }: { overflow: NavItem[]; unread:
   // always-pinned Settings / Sign out.
   const overflowEntries: MenuEntry[] = overflow.map((n) => ({
     label: n.label,
-    badge: n.badge === "unread" ? unread : n.badge === "requests" ? requests : undefined,
+    badge: n.badge ? badges[n.badge] : undefined,
     onSelect: () => go(n.path),
   }));
   const pinned: MenuEntry[] = [
@@ -268,11 +269,15 @@ export function Layout({ children }: { children: ReactNode }) {
   const { session, user } = useAuth();
   const { data } = useMyJourney();
   const route = useHashRoute();
-  const stats = data ? computeStats(data) : null;
+  // Memoized: the header re-renders on every route/badge change, but the stats
+  // only move when the journey itself does.
+  const stats = useMemo(() => (data ? computeStats(data) : null), [data]);
   const [unread, setUnread] = useState(0);
   const [requests, setRequests] = useState(0);
+  const [dms, setDms] = useState(0);
   const { containerRef, measureRef, visibleCount } = useOverflowNav(NAV_PRIORITY.length, !!session);
   const overflow = session ? NAV_PRIORITY.slice(visibleCount) : [];
+  const badges: Record<string, number> = { unread, requests, dms };
 
   // Refetch on navigation so the badge clears after the Recommendations page
   // marks its inbox read (the page owns that state; this header doesn't).
@@ -280,11 +285,21 @@ export function Layout({ children }: { children: ReactNode }) {
     if (!user) {
       setUnread(0);
       setRequests(0);
+      setDms(0);
       return;
     }
     unreadRecommendationCount(user.id).then(setUnread).catch(() => setUnread(0));
     pendingFollowRequestCount(user.id).then(setRequests).catch(() => setRequests(0));
+    unreadDmCount(user.id).then(setDms).catch(() => setDms(0));
   }, [user, route]);
+
+  // New DMs light the Messages badge live (no navigation needed).
+  useEffect(() => {
+    if (!user) return;
+    return subscribeToIncomingDms(user.id, () => {
+      unreadDmCount(user.id).then(setDms).catch(() => {});
+    });
+  }, [user]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -304,7 +319,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     path={n.path}
                     label={n.label}
                     match={n.match}
-                    badge={n.badge === "unread" ? unread : n.badge === "requests" ? requests : undefined}
+                    badge={n.badge ? badges[n.badge] : undefined}
                   />
                 ))}
               </nav>
@@ -321,7 +336,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     path={n.path}
                     label={n.label}
                     match={n.match}
-                    badge={n.badge === "unread" ? unread : n.badge === "requests" ? requests : undefined}
+                    badge={n.badge ? badges[n.badge] : undefined}
                   />
                 ))}
               </div>
@@ -341,7 +356,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </button>
             )}
             {session ? (
-              <UserMenu overflow={overflow} unread={unread} requests={requests} />
+              <UserMenu overflow={overflow} badges={badges} />
             ) : (
               <button
                 onClick={() => navigate("/login")}

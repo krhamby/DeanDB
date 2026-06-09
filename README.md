@@ -20,6 +20,7 @@ as static files to GitHub Pages.
 - **The Marathon Bar & Wheel** — a live progress meter toward your total-runtime goal, and a spinner that reveals your next artist.
 - **Hall of Fame & Achievements** — a ranked leaderboard of your highest-rated records, desert-island tracks, and unlockable badges (*Discography Slayer*, *The Perfect Ten*, *The Summit*…).
 - **Social** — public/private profiles at `#/u/yourname`, follow/friends, an activity feed of what people you follow are spinning, and album/artist **recommendations**.
+- **Direct messages** — live 1:1 chat with anyone you follow or who follows you, with **blocking** and **reporting** built in (blocks sever follows and cut off all contact, enforced server-side).
 - **Real album art + discographies** — one-click import from [MusicBrainz](https://musicbrainz.org) & the [Cover Art Archive](https://coverartarchive.org) (free, open data, no API key); falls back to generative vinyl-on-gradient covers.
 
 ## 🚀 Running locally
@@ -41,7 +42,7 @@ You need a Supabase project configured (below) — DeanDB requires the backend.
 
 ## 🔐 Accounts & privacy
 
-- Sign in with a **magic link** (email, no password) — powered by Supabase Auth.
+- Sign in with **email + password**, with optional **TOTP two-factor** (authenticator app) — powered by Supabase Auth.
 - Your journey is **private by default**. Flip it to **public** in **Settings**, or share it with specific people: they follow you, you accept, and they can see it.
 - A journey is visible to **you**, to **anyone** if it's public, or to **accepted followers**. This is enforced server-side by Postgres Row Level Security — the public anon key alone can't read a private journey.
 

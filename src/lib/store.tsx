@@ -342,6 +342,9 @@ interface MyJourneyValue {
   /** The logged-in user's journey in DeanDBData shape, or null when signed out. */
   data: DeanDBData | null;
   loading: boolean;
+  /** The last journey load failed (network / schema drift). UI offers a retry
+   *  instead of spinning forever on the null data. */
+  loadError: boolean;
   userId: string | null;
   /** Achievement ids the VIEWER (signed-in user) has unlocked — persisted unlocks
    *  plus freshly-computed ones from their own journey. The single source of truth
@@ -374,6 +377,7 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   const userId = profile?.id ?? null;
   const [data, setData] = useState<DeanDBData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   // The viewer's own unlocked achievement ids (persisted ∪ freshly computed),
   // exposed for secret-achievement masking. Reactive so masking updates live.
   const [myUnlocked, setMyUnlocked] = useState<Set<string>>(new Set());
@@ -387,10 +391,18 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
       return null;
     }
     setLoading(true);
+    setLoadError(false);
     try {
       const fresh = await api.fetchJourney(profile);
       setData(fresh);
       return fresh;
+    } catch (e) {
+      // Keep any previously-loaded copy on screen; flag the failure so the UI
+      // can offer a retry rather than spinning forever (fetchJourney throws
+      // loudly on real query errors by design).
+      console.error("journey load failed", e);
+      setLoadError(true);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -519,8 +531,8 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<MyJourneyValue>(
-    () => ({ data, loading, userId, myUnlockedAchievementIds: myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist }),
-    [data, loading, userId, myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist],
+    () => ({ data, loading, loadError, userId, myUnlockedAchievementIds: myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist }),
+    [data, loading, loadError, userId, myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist],
   );
 
   return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;
@@ -538,6 +550,7 @@ export function MockJourneyProvider({ data, children }: { data: DeanDBData; chil
   const value: MyJourneyValue = {
     data,
     loading: false,
+    loadError: false,
     userId: "preview-user",
     myUnlockedAchievementIds: new Set<string>(),
     reload: async () => data,
