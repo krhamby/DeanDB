@@ -102,6 +102,7 @@ function Thread({ username }: { username: string }) {
   const { user } = useAuth();
   const [other, setOther] = useState<(ModerationTarget & { avatarUrl: string | null }) | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [allowed, setAllowed] = useState<boolean | null>(null); // null = checking
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,24 +117,33 @@ function Thread({ username }: { username: string }) {
     if (!user) return;
     let active = true;
     (async () => {
-      const header = await api.fetchProfileHeader(username);
-      if (!active) return;
-      if (!header || header.id === user.id) {
-        setNotFound(true);
+      try {
+        const header = await api.fetchProfileHeader(username);
+        if (!active) return;
+        if (!header || header.id === user.id) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        setOther({ id: header.id, username: header.username, displayName: header.displayName, avatarUrl: header.avatarUrl });
+        const [can, history] = await Promise.all([
+          api.canDirectMessage(user.id, header.id),
+          api.fetchThread(user.id, header.id),
+        ]);
+        if (!active) return;
+        setAllowed(can);
+        setMessages(history);
         setLoading(false);
-        return;
-      }
-      setOther({ id: header.id, username: header.username, displayName: header.displayName, avatarUrl: header.avatarUrl });
-      const [can, history] = await Promise.all([
-        api.canDirectMessage(user.id, header.id),
-        api.fetchThread(user.id, header.id),
-      ]);
-      if (!active) return;
-      setAllowed(can);
-      setMessages(history);
-      setLoading(false);
-      if (history.some((m) => m.recipientId === user.id && !m.readAt)) {
-        void api.markThreadRead(user.id, header.id);
+        if (history.some((m) => m.recipientId === user.id && !m.readAt)) {
+          void api.markThreadRead(user.id, header.id);
+        }
+      } catch (e) {
+        // Never strand the user on an infinite skeleton — surface the failure.
+        console.error("thread load failed", e);
+        if (active) {
+          setLoadFailed(true);
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -186,6 +196,21 @@ function Thread({ username }: { username: string }) {
     return (
       <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
         No one to message at <span className="text-gold">@{username}</span>.
+      </Panel>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
+        <p className="font-display text-lg font-black text-fg">Couldn't load this conversation</p>
+        <p className="mt-1 text-sm">Check your connection and try again.</p>
+        <button
+          onClick={() => navigate("/messages")}
+          className="mt-4 rounded-lg border border-edge px-4 py-1.5 text-sm font-semibold text-fg-muted hover:text-fg"
+        >
+          ← All messages
+        </button>
       </Panel>
     );
   }
