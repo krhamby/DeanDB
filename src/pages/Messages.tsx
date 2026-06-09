@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Flag, Lock, MessageCircle, Send, Trash2 } from "lucide-react";
-import type { Conversation, DirectMessage } from "../types";
+import { ArrowLeft, Flag, Lock, MessageCircle, Send, SquarePen, Trash2 } from "lucide-react";
+import type { Conversation, DirectMessage, DmContact } from "../types";
 import { messagesPath, navigate, profilePath } from "../lib/router";
 import { useAuth } from "../lib/store";
 import { fmtTimeAgo } from "../lib/format";
 import * as api from "../lib/api";
-import { Panel, SectionTitle } from "../components/ui";
+import { ModalShell, Panel, SectionTitle } from "../components/ui";
 import { Avatar } from "../components/social";
 import { ModerationMenu, ReportModal, type ModerationTarget } from "../components/moderation";
-import { PeopleSearchSkeleton } from "../components/skeletons";
+import { PeopleSearchSkeleton, Skeleton } from "../components/skeletons";
 
 // ──────────────────────────────────────────────────────────────
 // Direct messages.
@@ -24,6 +24,79 @@ export function Messages({ username }: { username?: string }) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// New message — searchable picker of everyone you can DM
+// ════════════════════════════════════════════════════════════════
+
+function NewMessageModal({ onClose }: { onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [contacts, setContacts] = useState<DmContact[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Debounced server-side filter (the RPC caps at 50, so typing narrows it).
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const t = setTimeout(() => {
+      api
+        .listDmContacts(q.trim())
+        .then((list) => active && setContacts(list))
+        .catch(() => active && setContacts([]))
+        .finally(() => active && setLoading(false));
+    }, q ? 250 : 0);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [q]);
+
+  return (
+    <ModalShell onClose={onClose} title="New message">
+      <input
+        autoFocus
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search people you can message…"
+        aria-label="Search people you can message"
+        className="w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold"
+      />
+      <div className="max-h-72 space-y-1 overflow-y-auto">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 p-2">
+              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+              <Skeleton className="h-4 w-36" />
+            </div>
+          ))
+        ) : contacts.length === 0 ? (
+          <p className="px-1 py-6 text-center text-sm text-fg-faint">
+            {q.trim()
+              ? `No one you can message matches “${q.trim()}”.`
+              : "No one to message yet — DMs open between people connected by an accepted follow (either direction)."}
+          </p>
+        ) : (
+          contacts.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => {
+                onClose();
+                navigate(messagesPath(c.username));
+              }}
+              className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-fg/5 focus-visible:bg-fg/10 focus-visible:outline-none"
+            >
+              <Avatar profile={c} size={36} />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold text-fg">{c.displayName}</span>
+                <span className="block truncate text-xs text-fg-faint">@{c.username}</span>
+              </span>
+            </button>
+          ))
+        )}
+      </div>
+    </ModalShell>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
 // Conversation list
 // ════════════════════════════════════════════════════════════════
 
@@ -31,6 +104,7 @@ function ConversationList() {
   const { user } = useAuth();
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [composing, setComposing] = useState(false);
 
   const reload = useCallback(() => {
     api
@@ -49,7 +123,15 @@ function ConversationList() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <SectionTitle kicker="Direct messages" title="Messages" />
+      <div className="flex items-start justify-between gap-3">
+        <SectionTitle kicker="Direct messages" title="Messages" />
+        <button
+          onClick={() => setComposing(true)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gold px-4 py-2 text-sm font-bold text-on-accent transition hover:brightness-110"
+        >
+          <SquarePen className="h-4 w-4" aria-hidden /> New message
+        </button>
+      </div>
       {loading ? (
         <PeopleSearchSkeleton count={4} />
       ) : convs.length === 0 ? (
@@ -57,8 +139,10 @@ function ConversationList() {
           <div className="mb-3 flex justify-center"><MessageCircle className="h-12 w-12" aria-hidden /></div>
           <p className="font-display text-lg font-black text-fg">No messages yet</p>
           <p className="mt-1 text-sm">
-            Open a friend's profile and hit <span className="font-semibold text-gold">Message</span> — you can DM
-            anyone you follow or who follows you.
+            You can DM anyone you follow or who follows you.{" "}
+            <button onClick={() => setComposing(true)} className="font-semibold text-gold hover:underline">
+              Start a conversation →
+            </button>
           </p>
         </Panel>
       ) : (
@@ -90,6 +174,7 @@ function ConversationList() {
           ))}
         </div>
       )}
+      {composing && <NewMessageModal onClose={() => setComposing(false)} />}
     </div>
   );
 }

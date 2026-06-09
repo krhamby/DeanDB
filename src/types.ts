@@ -213,6 +213,15 @@ export interface Conversation {
   unreadCount: number;
 }
 
+/** Someone you can start a DM with (the server's can_dm rule: accepted follow
+ *  edge in either direction, no block either way). */
+export interface DmContact {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 /** Someone you've blocked (the Settings management list). */
 export interface BlockedUser {
   id: string;
