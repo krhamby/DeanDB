@@ -181,4 +181,5 @@ routes go through `RequireAuth`.
 
 - This session develops on branch `claude/claude-md-docs-8B97s`. Commit/push there; do **not** open a PR or push elsewhere unless asked.
 - After code changes, verify with `npm run build` / `npm run typecheck`. There are no automated tests.
+- **Always VIEW webpages you create or change — never ship sight-unseen.** A green build is not proof the page renders. Use whatever is easiest in the current environment: in Claude Code on the web, drive headless Chromium (Playwright is global; browsers at `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`) against `npm run preview` (serves at `http://localhost:4173/DeanDB/` — note the base path) or the deployed site, take a screenshot, read it, and check console/page errors. Locally, use Claude in Chrome or the `#/__preview` dev harness.
 - The legacy single-row marathon migrates into a real account via `migrate_deandb_state('<user-uuid>')` (see the bottom of the init migration in `supabase/migrations/`). It's operator-only (execute revoked from anon/authenticated) and won't migrate an account other than the caller's own.
