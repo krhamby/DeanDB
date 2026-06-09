@@ -9,6 +9,7 @@
 // ──────────────────────────────────────────────────────────────
 
 import { requireClient, authRedirectTo } from "./supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { firstWord } from "./format";
 import type {
   Album,
@@ -1288,19 +1289,46 @@ export async function unreadDmCount(userId: string): Promise<number> {
  * Live delivery of messages sent TO `userId`. Realtime respects the table's
  * RLS, so the stream only ever contains rows the user could select anyway.
  * Returns an unsubscribe function.
+ *
+ * ONE channel per user, shared by every surface (nav badge, conversation list,
+ * open thread) via a listener registry. This is load-bearing: supabase-js
+ * dedupes channels by topic, and realtime-js THROWS if a `postgres_changes`
+ * callback is added to an already-subscribed channel — so a second component
+ * subscribing its "own" channel would crash its render tree (a blank
+ * #/messages page). The single binding below is attached before subscribe and
+ * fans out to however many listeners are currently registered.
  */
+let dmChannel: RealtimeChannel | null = null;
+let dmChannelUserId: string | null = null;
+const dmListeners = new Set<(m: DirectMessage) => void>();
+
 export function subscribeToIncomingDms(userId: string, onMessage: (m: DirectMessage) => void): () => void {
   const c = requireClient();
-  const channel = c
-    .channel(`dm-inbox-${userId}`)
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "dm_messages", filter: `recipient_id=eq.${userId}` },
-      (payload) => onMessage(mapDm(payload.new as DmRow)),
-    )
-    .subscribe();
+  if (dmChannelUserId !== userId || !dmChannel) {
+    if (dmChannel) void c.removeChannel(dmChannel);
+    dmChannelUserId = userId;
+    dmChannel = c
+      .channel(`dm-inbox-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "dm_messages", filter: `recipient_id=eq.${userId}` },
+        (payload) => {
+          const m = mapDm(payload.new as DmRow);
+          for (const listener of [...dmListeners]) listener(m);
+        },
+      )
+      .subscribe();
+  }
+  dmListeners.add(onMessage);
   return () => {
-    void c.removeChannel(channel);
+    dmListeners.delete(onMessage);
+    // Last listener gone (sign-out unmounts the Layout subscription too) —
+    // tear the channel down so the socket doesn't outlive the session.
+    if (dmListeners.size === 0 && dmChannel) {
+      void c.removeChannel(dmChannel);
+      dmChannel = null;
+      dmChannelUserId = null;
+    }
   };
 }
 
