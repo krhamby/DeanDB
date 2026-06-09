@@ -121,7 +121,7 @@ vite.config.ts          base = "/DeanDB/" in build (Pages subpath), "/" in dev
 `favorite`). Plus account/social types: `Profile`, `PersonResult`, `FeedItem`,
 `Recommendation`, `AlbumAggregate`, `Visibility`, `FollowStatus`.
 
-**Database (`supabase/migrations/` — applied via the Supabase GitHub integration / `supabase db push`, or pasted into the SQL editor):**
+**Database (`supabase/migrations/` — the Supabase GitHub integration is configured, so migrations apply **automatically on merge to `main`**; `supabase db push` / the SQL editor are only fallbacks):**
 - **Shared catalog** (`catalog_artists/albums/tracks`) — deduped by MusicBrainz `mbid`; world-readable; written only via SECURITY DEFINER `upsert_catalog_*` RPCs so cross-user rating aggregates and recommendations point at canonical rows.
 - **`profiles`** — one per `auth.users` (username, display_name, visibility, season, goal_hours). Auto-created by a trigger on signup.
 - **Per-user journey** (`user_artists/user_albums/user_tracks`) — the rateable layer, owned by `auth.uid()`.
@@ -173,7 +173,7 @@ routes go through `RequireAuth`.
 
 - `vite.config.ts`: `base "/DeanDB/"` in production (case-sensitive Pages subpath), `"/"` in dev. Use `import.meta.env.BASE_URL` for asset/redirect URLs.
 - `.github/workflows/deploy.yml` builds on push to `main` and deploys `dist/` to Pages.
-- Supabase setup: apply **all** migrations in `supabase/migrations/` (Supabase GitHub integration on merge, `supabase db push`, or paste into the SQL editor) and set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`).
+- Supabase setup: the **GitHub integration is connected** — migrations in `supabase/migrations/` run automatically when merged to `main` (no manual `db push` needed). Set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`).
 - **Auth dashboard config (required for the password + TOTP flow):** Authentication → Providers → Email — keep password sign-in ON (turn email OTP / magic-link off if exposed). Set a **password policy** (min length, leaked-password protection). Authentication → **Multi-Factor Authentication** — enable **TOTP**, leave Phone/SMS off. URL Configuration → **Redirect URLs** — add `https://<user>.github.io/DeanDB/` and `http://localhost:5173/` (password-reset / confirm links return there; `authRedirectTo()` is `BASE_URL`-relative, so just update this list when you move off Pages). Configure **SMTP** for production confirmation/reset email, and reword the "Reset password" email template to read as "set your password" — it doubles as the path for legacy magic-link users to set a first password.
 - **Runtime backfill note (put in release notes):** the `*_zero_runtime_placeholder` migration retires the old fake 40-minute seed; albums imported before the fix read **0 min** until the user clicks **Load all tracklists**, which repopulates real runtimes from MusicBrainz.
 
