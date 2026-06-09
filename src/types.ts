@@ -190,6 +190,41 @@ export interface Recommendation {
   readAt: string | null;
 }
 
+/** One direct message between two users (a `dm_messages` row). */
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/** A DM thread summary: the counterparty's public identity + latest message. */
+export interface Conversation {
+  otherId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  lastBody: string;
+  /** Who sent the latest message (me vs. them — drives the "You:" prefix). */
+  lastSenderId: string;
+  lastAt: string;
+  unreadCount: number;
+}
+
+/** Someone you've blocked (the Settings management list). */
+export interface BlockedUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  blockedAt: string;
+}
+
+/** Why a user is being reported (mirrors the `reports.reason` check constraint). */
+export type ReportReason = "spam" | "harassment" | "impersonation" | "other";
+
 /** Cross-user community rating for an album (shown on the album page). */
 export interface AlbumAggregate {
   avgRating: number | null;

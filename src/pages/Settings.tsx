@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Check, Copy, Globe, Lock, Moon, Newspaper } from "lucide-react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
-import { firstWord } from "../lib/format";
+import { firstWord, fmtTimeAgo } from "../lib/format";
 import { DEFAULT_THEME, PRESETS, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
+import { Avatar } from "../components/social";
 import * as api from "../lib/api";
-import type { Visibility } from "../types";
+import type { BlockedUser, Visibility } from "../types";
 
 const inputCls =
   "w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold";
@@ -198,6 +199,67 @@ function SecuritySection() {
       </div>
 
       {msg && <p className={`text-sm font-semibold ${msg.ok ? "text-[var(--color-status-done)]" : "text-dean"}`}>{msg.text}</p>}
+    </Panel>
+  );
+}
+
+/** People you've blocked — review and unblock. Blocking itself happens from a
+ *  profile or DM thread; the server severs follows and refuses new contact. */
+function BlockedSection() {
+  const { user } = useAuth();
+  const [blocked, setBlocked] = useState<BlockedUser[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    api
+      .listBlockedUsers()
+      .then((list) => active && setBlocked(list))
+      .catch(() => active && setBlocked([]))
+      .finally(() => active && setLoaded(true));
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const unblock = async (id: string) => {
+    if (!user) return;
+    setBlocked((list) => list.filter((b) => b.id !== id));
+    try {
+      await api.unblockUser(user.id, id);
+    } catch (e) {
+      console.error("unblock failed", e);
+    }
+  };
+
+  if (!loaded || blocked.length === 0) return null;
+
+  return (
+    <Panel className="space-y-3 p-5">
+      <h3 className="font-display text-lg font-black text-fg">Blocked users</h3>
+      <p className="text-xs text-fg-faint">
+        Blocked people can't follow you, message you, or send you recommendations.
+      </p>
+      <div className="space-y-2">
+        {blocked.map((b) => (
+          <div key={b.id} className="flex items-center gap-3 rounded-xl border border-edge/60 bg-panel-2/60 p-3">
+            <Avatar profile={b} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold text-fg">{b.displayName}</div>
+              <div className="truncate text-xs text-fg-faint">
+                @{b.username} · blocked {fmtTimeAgo(b.blockedAt)}
+              </div>
+            </div>
+            <button
+              onClick={() => unblock(b.id)}
+              className="shrink-0 rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg"
+            >
+              Unblock
+            </button>
+          </div>
+        ))}
+      </div>
     </Panel>
   );
 }
@@ -505,6 +567,8 @@ export function Settings() {
           </span>
         </label>
       </Panel>
+
+      <BlockedSection />
 
       <SecuritySection />
 

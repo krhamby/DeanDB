@@ -92,16 +92,18 @@ src/
     ui.tsx              DeanMeter, Score10, StatusBadge, ProgressBar, Panel, SectionTitle, scoreColor
     cards.tsx           Cover, AlbumCard, ArtistCard (take a `basePath` for journey-scoped links)
     social.tsx          Avatar, PersonRow, FollowButton, RecommendModal
+    moderation.tsx      Safety surfaces: ReportModal, BlockModal, ModerationMenu
     NextSpinner.tsx     "Marathon Wheel" next-artist spinner (takes basePath)
     EmptyState.tsx      Shown for your own empty journey
   pages/
     Dashboard/Artists/ArtistDetail/AlbumDetail/HallOfFame  read-only, journey-scoped (props: data, basePath, canEdit)
     Editor.tsx          Edit MY journey: add/import artists, rate, per-user row writes
     Profile.tsx         #/u/:username wrapper → resolves journey via useJourney, renders the read-only pages
-    Login.tsx           Magic-link sign in
+    Login.tsx           Email+password sign in/up, forgot-password, TOTP challenge
     Settings.tsx        Profile fields + visibility toggle + Share link
     Feed.tsx            Activity from people you follow
     People.tsx          Search + follow + accept requests + following list
+    Messages.tsx        DMs: conversation list + live thread (#/messages[/:username])
     Recommendations.tsx Recommendation inbox
 supabase/migrations/    DB schema as Supabase migrations (baseline *_init.sql): catalog, profiles,
                         user_* tables, follows, recommendations, RLS, helper fns, catalog RPCs,
@@ -124,6 +126,7 @@ vite.config.ts          base = "/DeanDB/" in build (Pages subpath), "/" in dev
 - **`profiles`** — one per `auth.users` (username, display_name, visibility, season, goal_hours). Auto-created by a trigger on signup.
 - **Per-user journey** (`user_artists/user_albums/user_tracks`) — the rateable layer, owned by `auth.uid()`.
 - **Social** — `follows` (pending/accepted), `recommendations`, and `feed_items` (a `security_invoker` view).
+- **Messaging & safety** (`*_direct_messages.sql`) — `dm_messages` (1:1 chat, realtime-enabled; the INSERT policy calls `can_dm` = accepted follow edge in either direction AND no block either way), `blocks` (one-way; an AFTER-INSERT trigger severs follow edges both directions, and the follows/recs/dms INSERT policies refuse contact across a block), `reports` (insert-only for users; reported message bodies are snapshotted server-side by trigger so "unsend" can't destroy evidence; triaged operator-side via service role).
 
 Conventions baked in: `rating: null` means **unrated**; `excluded` albums are out
 of all stats/marathon math; the marathon goal is *derived* (`stats.goalHours` =
@@ -151,7 +154,8 @@ are the catalog row uuids, used directly in routes.
 
 Hash routes only (zero Pages rewrite config). `#/` (feed when signed in, else
 landing), `#/login`, `#/me[/...]` (own journey, editable), `#/editor`,
-`#/settings`, `#/feed`, `#/people`, `#/recommendations`, and `#/u/:username/...`
+`#/settings`, `#/feed`, `#/people`, `#/messages[/:username]`,
+`#/recommendations`, and `#/u/:username/...`
 (others' journeys, read-only). `parseUserRoute` splits the `u/:username` prefix;
 `Profile.tsx` renders the read-only pages with `basePath="/u/:username"`. Bare
 `#/artist|/album|/artists|/hall-of-fame` resolve to your own journey. Auth-gated

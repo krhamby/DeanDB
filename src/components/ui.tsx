@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Bookmark, Check, ChevronDown, Library, Play, type LucideIcon } from "lucide-react";
 import type { AlbumStatus } from "../types";
 import { useMeterName, useThemeControl } from "../lib/store";
@@ -206,6 +206,34 @@ export function Panel({
       className={`sleeve-panel rounded-2xl border border-edge/70 bg-panel/80 backdrop-blur-sm ${className}`}
     >
       {children}
+    </div>
+  );
+}
+
+/** Shared modal scaffold: dimmed backdrop, centered Panel, closes on backdrop
+ *  click and Escape, labelled for screen readers. Content clicks don't close. */
+export function ModalShell({ onClose, title, children }: { onClose: () => void; title: string; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <Panel className="w-full max-w-md p-6">
+        <div onClick={(e) => e.stopPropagation()} className="space-y-4">
+          <h3 className="font-display text-lg font-black text-fg">{title}</h3>
+          {children}
+        </div>
+      </Panel>
     </div>
   );
 }
