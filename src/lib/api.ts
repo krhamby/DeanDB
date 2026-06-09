@@ -21,6 +21,7 @@ import type {
   Conversation,
   DeanDBData,
   DirectMessage,
+  DmContact,
   FeedItem,
   PersonResult,
   Profile,
@@ -1232,6 +1233,27 @@ interface ConversationRow {
   last_sender_id: string;
   last_at: string;
   unread_count: number;
+}
+
+interface DmContactRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+/** People I can start a conversation with, optionally filtered by name. Backed
+ *  by the `list_dm_contacts` RPC, which mirrors `can_dm` exactly — so a pick
+ *  from this list can never produce a refused send. */
+export async function listDmContacts(q = ""): Promise<DmContact[]> {
+  const { data, error } = await requireClient().rpc("list_dm_contacts", { q });
+  if (error) throw error;
+  return ((data ?? []) as DmContactRow[]).map((r) => ({
+    id: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+  }));
 }
 
 /** My DM threads, newest activity first, with the counterparty's public identity. */
