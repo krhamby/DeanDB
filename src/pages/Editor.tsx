@@ -7,6 +7,7 @@ import {
   ChevronsUpDown,
   Download,
   Footprints,
+  Headphones,
   Hourglass,
   Image as ImageIcon,
   Library,
@@ -22,7 +23,7 @@ import {
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
 import { fmtHours, fmtScore, gradient, pickGradient } from "../lib/format";
-import { artistProgress, computeStats } from "../lib/stats";
+import { artistProgress, computeStats, isHeard } from "../lib/stats";
 import * as api from "../lib/api";
 import {
   fetchTracklist,
@@ -1102,6 +1103,9 @@ export function Editor() {
                                 <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
                                   <span className="w-5 text-right text-xs text-fg-faint">{i + 1}</span>
                                   <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
+                                  <button onClick={() => setTrack(al.id, t.id, { listened: !t.listened })} className="inline-flex px-1 transition-transform hover:scale-110" title="Mark song as heard" aria-label={t.listened ? "Mark song as not heard" : "Mark song as heard"} aria-pressed={Boolean(t.listened)}>
+                                    <Headphones className={`h-4 w-4 ${isHeard(t) ? "text-[var(--color-status-done)]" : "text-fg-faint"}`} aria-hidden />
+                                  </button>
                                   <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="inline-flex px-1 transition-transform hover:scale-110" title="Favorite track" aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}>
                                     <Star className={`h-4 w-4 text-gold ${t.favorite ? "fill-current" : ""}`} aria-hidden />
                                   </button>

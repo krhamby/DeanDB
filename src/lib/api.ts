@@ -55,6 +55,7 @@ interface ProfileRow {
   theme_secondary: string | null;
   lock_own_theme: boolean;
   skin: string | null;
+  marathon_enabled: boolean;
 }
 
 function mapProfile(r: ProfileRow): Profile {
@@ -73,11 +74,12 @@ function mapProfile(r: ProfileRow): Profile {
     themeSecondary: r.theme_secondary,
     lockOwnTheme: r.lock_own_theme,
     skin: r.skin === "midnight" ? "midnight" : "paper",
+    marathonEnabled: r.marathon_enabled !== false,
   };
 }
 
 const PROFILE_COLS =
-  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme, skin";
+  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme, skin, marathon_enabled";
 
 // ════════════════════════════════════════════════════════════════
 // Auth
@@ -242,7 +244,7 @@ export async function fetchProfileByUsername(username: string): Promise<Profile 
 
 export async function updateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme" | "skin">>,
+  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme" | "skin" | "marathonEnabled">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.username !== undefined) row.username = patch.username;
@@ -258,6 +260,7 @@ export async function updateProfile(
   if (patch.themeSecondary !== undefined) row.theme_secondary = patch.themeSecondary;
   if (patch.lockOwnTheme !== undefined) row.lock_own_theme = patch.lockOwnTheme;
   if (patch.skin !== undefined) row.skin = patch.skin;
+  if (patch.marathonEnabled !== undefined) row.marathon_enabled = patch.marathonEnabled;
   const { error } = await requireClient().from("profiles").update(row).eq("id", id);
   if (error) {
     return {
@@ -318,6 +321,7 @@ interface UserAlbumRow {
   review: string;
   minutes: number;
   date_listened: string | null;
+  rated_at: string | null;
   favorite: boolean;
   excluded: boolean;
   album: {
@@ -338,6 +342,7 @@ interface UserTrackRow {
   track_id: string;
   rating: number | null;
   favorite: boolean;
+  listened: boolean;
 }
 
 /**
@@ -358,12 +363,12 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
     c
       .from("user_albums")
       .select(
-        "status, rating, review, minutes, date_listened, favorite, excluded, " +
+        "status, rating, review, minutes, date_listened, rated_at, favorite, excluded, " +
           "album:catalog_albums!inner ( id, artist_id, title, year, cover, cover_url, dominant_color, mbid, runtime_min, " +
           "tracks:catalog_tracks ( id, position, title ) )",
       )
       .eq("user_id", profile.id),
-    c.from("user_tracks").select("track_id, rating, favorite").eq("user_id", profile.id),
+    c.from("user_tracks").select("track_id, rating, favorite, listened").eq("user_id", profile.id),
   ]);
 
   // Fail loudly on a real query error (e.g. a missing column after schema drift)
@@ -423,7 +428,13 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       .sort((x, y) => x.position - y.position)
       .map((t) => {
         const o = trackOverlay.get(t.id);
-        return { id: t.id, title: t.title, rating: o?.rating ?? null, favorite: o?.favorite ?? false };
+        return {
+          id: t.id,
+          title: t.title,
+          rating: o?.rating ?? null,
+          favorite: o?.favorite ?? false,
+          listened: o?.listened ?? false,
+        };
       });
     const album: Album = {
       id: cat.id,
@@ -442,6 +453,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       // loaded, is written to both layers. Never seed a fake number here.
       minutes: ur.minutes || cat.runtime_min || 0,
       dateListened: ur.date_listened,
+      ratedAt: ur.rated_at,
       favorite: ur.favorite,
       tracks,
     };
@@ -455,6 +467,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
     },
     goalHours: profile.goalHours,
     season: profile.season,
+    marathon: profile.marathonEnabled !== false,
     artists: [...artistById.values()],
   };
 }
@@ -650,11 +663,12 @@ export async function removeUserAlbum(userId: string, albumId: string): Promise<
 export async function upsertUserTrack(
   userId: string,
   trackId: string,
-  patch: { rating?: number | null; favorite?: boolean },
+  patch: { rating?: number | null; favorite?: boolean; listened?: boolean },
 ): Promise<void> {
   const row: Record<string, unknown> = { user_id: userId, track_id: trackId };
   if (patch.rating !== undefined) row.rating = patch.rating;
   if (patch.favorite !== undefined) row.favorite = patch.favorite;
+  if (patch.listened !== undefined) row.listened = patch.listened;
   const { error } = await requireClient().from("user_tracks").upsert(row, { onConflict: "user_id,track_id" });
   if (error) throw error;
 }

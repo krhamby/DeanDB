@@ -67,6 +67,7 @@ interface AuthValue {
         | "themeSecondary"
         | "lockOwnTheme"
         | "skin"
+        | "marathonEnabled"
       >
     >,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -357,7 +358,11 @@ interface MyJourneyValue {
   /** Optimistic local edit + persist for one of my albums. */
   setAlbum: (albumId: string, patch: api.UserAlbumPatch) => void;
   /** Optimistic local edit + persist for one of my tracks. */
-  setTrack: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
+  setTrack: (
+    albumId: string,
+    trackId: string,
+    patch: { rating?: number | null; favorite?: boolean; listened?: boolean },
+  ) => void;
   /**
    * Optimistic local edit + persist for one of my artists (logged / verdict /
    * recommender). Pass `recommendedBy` to update the resolved display object
@@ -476,7 +481,13 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
           const al = ar.albums.find((x) => x.id === albumId);
           if (al) {
             if (patch.status !== undefined) al.status = patch.status;
-            if (patch.rating !== undefined) al.rating = patch.rating;
+            if (patch.rating !== undefined) {
+              // Mirror the DB trigger: a rating change stamps/clears ratedAt, so
+              // "Latest Verdicts" reorders instantly without a journey reload.
+              if (patch.rating !== al.rating)
+                al.ratedAt = patch.rating == null ? null : new Date().toISOString();
+              al.rating = patch.rating;
+            }
             if (patch.review !== undefined) al.review = patch.review;
             if (patch.minutes !== undefined) al.minutes = patch.minutes;
             if (patch.dateListened !== undefined) al.dateListened = patch.dateListened;
@@ -493,8 +504,11 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   );
 
   const setTrack = useCallback(
-    (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => {
+    (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean; listened?: boolean }) => {
       if (!userId) return;
+      // Platform invariant: rating a song means you heard it. Un-rating does
+      // NOT un-hear it — listened only ever flips off explicitly.
+      if (patch.rating != null && patch.listened === undefined) patch = { ...patch, listened: true };
       patchLocal((d) => {
         for (const ar of d.artists) {
           const al = ar.albums.find((x) => x.id === albumId);
@@ -502,6 +516,7 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
           if (tr) {
             if (patch.rating !== undefined) tr.rating = patch.rating;
             if (patch.favorite !== undefined) tr.favorite = patch.favorite;
+            if (patch.listened !== undefined) tr.listened = patch.listened;
             break;
           }
         }
