@@ -1103,7 +1103,7 @@ export function Editor() {
                                 <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
                                   <span className="w-5 text-right text-xs text-fg-faint">{i + 1}</span>
                                   <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
-                                  <button onClick={() => setTrack(al.id, t.id, { listened: !t.listened })} className="inline-flex px-1 transition-transform hover:scale-110" title="Mark song as heard" aria-label={t.listened ? "Mark song as not heard" : "Mark song as heard"} aria-pressed={Boolean(t.listened)}>
+                                  <button onClick={() => setTrack(al.id, t.id, { listened: !t.listened })} disabled={t.rating != null} className="inline-flex px-1 transition-transform hover:scale-110 disabled:hover:scale-100" title={t.rating != null ? "Rated songs always count as heard" : "Mark song as heard"} aria-label={isHeard(t) ? "Mark song as not heard" : "Mark song as heard"} aria-pressed={isHeard(t)}>
                                     <Headphones className={`h-4 w-4 ${isHeard(t) ? "text-[var(--color-status-done)]" : "text-fg-faint"}`} aria-hidden />
                                   </button>
                                   <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="inline-flex px-1 transition-transform hover:scale-110" title="Favorite track" aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}>

@@ -381,10 +381,13 @@ export function AlbumDetail({
                   <>
                     <button
                       onClick={() => patchTrack(t.id, { listened: !t.listened })}
-                      className="inline-flex min-h-11 min-w-11 items-center justify-center leading-none transition-transform hover:scale-125"
-                      title="Mark song as heard"
-                      aria-label={t.listened ? "Mark song as not heard" : "Mark song as heard"}
-                      aria-pressed={Boolean(t.listened)}
+                      // Rated songs always count as heard (DB trigger + isHeard agree),
+                      // so the toggle is disabled rather than silently reverting.
+                      disabled={t.rating != null}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center leading-none transition-transform hover:scale-125 disabled:hover:scale-100"
+                      title={t.rating != null ? "Rated songs always count as heard" : "Mark song as heard"}
+                      aria-label={isHeard(t) ? "Mark song as not heard" : "Mark song as heard"}
+                      aria-pressed={isHeard(t)}
                     >
                       <Headphones
                         className={`h-5 w-5 ${isHeard(t) ? "text-[var(--color-status-done)]" : "text-fg-faint"}`}

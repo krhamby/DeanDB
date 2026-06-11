@@ -83,9 +83,12 @@ function Logo() {
 function Ticker() {
   const { data } = useMyJourney();
   if (!data) return null;
+  // Same rating-recency key as the Dashboard's Latest Verdicts (rated_at first).
+  const recency = (a: { ratedAt?: string | null; dateListened: string | null }) =>
+    a.ratedAt ?? a.dateListened ?? "";
   const completed = flattenAlbums(data)
     .filter((a) => a.status === "completed" && a.rating != null)
-    .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""));
+    .sort((a, b) => recency(b).localeCompare(recency(a)));
   if (completed.length === 0) return null;
   const items = completed.map((a) => `${a.artistName} — ${a.title}  ★ ${a.rating != null ? fmtScore(a.rating) : "—"}`);
   const doubled = [...items, ...items];

@@ -160,7 +160,7 @@ export function Dashboard({
               Chill journeys swap the goal meter for a pressure-free tally. */}
           <div className="flex flex-col gap-6">
           {!marathonOn ? (
-            <Panel className="flex flex-1 flex-col justify-center p-6 sm:p-7">
+            <Panel className={`flex flex-col justify-center p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex-1"}`}>
               <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
                 Listening, logged
               </div>
@@ -327,7 +327,7 @@ export function Dashboard({
               : `${stats.artistsConquered} conquered`
           }
         />
-        <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
+        <StatCard label="Avg score" value={stats.avgRating != null ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
         <StatCard
           label="Songs rated"
           value={String(stats.songsRated)}

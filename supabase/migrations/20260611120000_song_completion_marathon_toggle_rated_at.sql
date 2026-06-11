@@ -19,6 +19,19 @@
 --      client hides the goal meter / Summit / Marathon Wheel and presents the
 --      journey as a pressure-free listening journal. Purely presentational:
 --      no stats are lost by toggling it off and back on.
+--
+-- Deploy note (skew window): the client merged alongside this file SELECTs all
+-- three new columns, and the Pages deploy + this migration ride the same merge.
+-- To rule out a client-before-schema window entirely, pre-apply the three
+-- `add column if not exists` statements via the SQL editor BEFORE merging
+-- (the same out-of-band discipline used for 20260603170000_add_profiles_skin);
+-- this whole file stays idempotent over that.
+--
+-- Known acceptable gap: the operator-only legacy migrate_deandb_state() (init
+-- migration) predates rated_at, so a future legacy import would stamp rated_at
+-- at apply time rather than historically. It has already been run for Dean and
+-- is not re-created here; its rated track inserts ARE covered by the
+-- user_tracks trigger below.
 -- ============================================================================
 
 -- ── 1. Album rating recency ──────────────────────────────────────────────────
@@ -62,7 +75,27 @@ alter table public.user_albums enable trigger user_albums_touch;
 alter table public.user_tracks
   add column if not exists listened boolean not null default false;
 
--- A rating implies the song was heard.
+-- A rating implies the song was heard — enforce it structurally so stale cached
+-- clients (rating writes that omit `listened`) and any future import path can't
+-- drift. Deliberately also means a rated song can never be un-heard, which is
+-- exactly how the client displays it (isHeard in stats.ts).
+create or replace function public.touch_track_listened()
+returns trigger language plpgsql as $$
+begin
+  if new.rating is not null then
+    new.listened := true;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists user_tracks_listened on public.user_tracks;
+create trigger user_tracks_listened
+  before insert or update on public.user_tracks
+  for each row execute function public.touch_track_listened();
+
+-- Backfill existing rated rows (idempotent; also repairs any skew-written rows
+-- on a re-run).
 update public.user_tracks set listened = true
   where rating is not null and listened = false;
 
