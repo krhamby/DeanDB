@@ -1,11 +1,11 @@
-import { artistProgress } from "../lib/stats";
-import { gradient } from "../lib/format";
+import { artistProgress, songStats } from "../lib/stats";
+import { fmtScore, gradient } from "../lib/format";
 import { navigate, profilePath } from "../lib/router";
 import { useThemeControl } from "../lib/store";
 import { legible, pickOnAccent } from "../lib/themes";
 import { AlbumCard } from "../components/cards";
 import { Avatar } from "../components/social";
-import { DeanMeter, LoggedBadge, Panel, ProgressBar } from "../components/ui";
+import { DeanMeter, LoggedBadge, Panel, ProgressBar, scoreColor } from "../components/ui";
 import type { DeanDBData } from "../types";
 
 export function ArtistDetail({
@@ -37,6 +37,9 @@ export function ArtistDetail({
   const pct = artistProgress(artist) * 100;
   const order = { listening: 0, want: 1, completed: 2 } as const;
   const albums = [...artist.albums].sort((a, b) => order[a.status] - order[b.status]);
+  // Artist-scope song average — same exclusion rule as all stats (excluded
+  // albums out), and secondary to the artist verdict.
+  const songs = songStats(tracked.flatMap((a) => a.tracks));
 
   return (
     <div
@@ -104,6 +107,17 @@ export function ArtistDetail({
           </div>
           <ProgressBar pct={pct} className="h-2.5" />
         </div>
+        {songs.rated > 0 && (
+          <div className="hidden flex-col items-center gap-1 border-l border-edge/60 pl-6 sm:flex">
+            <div
+              className="font-display text-3xl font-black tabular-nums"
+              style={{ color: scoreColor(songs.avg, surface) }}
+            >
+              {fmtScore(songs.avg as number)}
+            </div>
+            <div className="text-xs text-fg-faint">song avg · {songs.rated} rated</div>
+          </div>
+        )}
         {artist.verdict != null && (
           <div className="flex flex-col items-center gap-1 border-l border-edge/60 pl-6">
             <DeanMeter value={artist.verdict} size={52} />

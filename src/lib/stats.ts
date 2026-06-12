@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { Album, Artist, DeanDBData } from "../types";
+import type { Album, Artist, DeanDBData, Track } from "../types";
 import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_ORDER } from "./achievements";
 
 export interface AlbumWithArtist extends Album {
@@ -36,9 +36,28 @@ export interface Stats {
   artistsTotal: number;
   libraryArtistsTotal: number;
   songsRated: number;
+  songsHeard: number;
   favoriteSongs: number;
   avgRating: number | null;
+  /** Mean of every rated song across the collection — secondary to avgRating. */
+  avgSongRating: number | null;
   topGenre: string | null;
+}
+
+/** A song counts as heard if explicitly marked OR rated (a score implies a listen).
+ *  The rating check also covers rows from before the `listened` column existed. */
+export const isHeard = (t: Track): boolean => Boolean(t.listened) || t.rating != null;
+
+/** Average + counts over one set of songs (an album, an artist, the whole
+ *  collection). avg is null when nothing is rated; 0 is a real (harsh) score. */
+export function songStats(tracks: Track[]): { avg: number | null; rated: number; heard: number; total: number } {
+  const rated = tracks.filter((t) => t.rating != null);
+  return {
+    avg: rated.length > 0 ? rated.reduce((s, t) => s + (t.rating as number), 0) / rated.length : null,
+    rated: rated.length,
+    heard: tracks.filter(isHeard).length,
+    total: tracks.length,
+  };
 }
 
 export function flattenAlbums(data: DeanDBData): AlbumWithArtist[] {
@@ -112,10 +131,8 @@ export function computeStats(data: DeanDBData): Stats {
       ? rated.reduce((s, a) => s + (a.rating as number), 0) / rated.length
       : null;
 
-  const songsRated = collection.reduce(
-    (s, a) => s + a.tracks.filter((t) => t.rating != null).length,
-    0,
-  );
+  // Song-scope stats share the collection scope (excluded albums stay out).
+  const songs = songStats(collection.flatMap((a) => a.tracks));
   const favoriteSongs = collection.reduce(
     (s, a) => s + a.tracks.filter((t) => t.favorite).length,
     0,
@@ -150,9 +167,11 @@ export function computeStats(data: DeanDBData): Stats {
     albumsTotal: collection.length,
     artistsTotal: data.artists.length,
     libraryArtistsTotal,
-    songsRated,
+    songsRated: songs.rated,
+    songsHeard: songs.heard,
     favoriteSongs,
     avgRating,
+    avgSongRating: songs.avg,
     topGenre,
   };
 }

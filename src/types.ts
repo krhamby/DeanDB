@@ -12,6 +12,10 @@ export interface Track {
   /** Per-listener song score on the 0–10 scale (the Score10 control). null = unrated. */
   rating: number | null;
   favorite: boolean;
+  /** Marked as heard — per-song completion for listeners who don't do whole
+   *  albums. A rated song always counts as heard (see `isHeard` in stats.ts);
+   *  optional so fixtures/legacy shapes default to false. */
+  listened?: boolean;
 }
 
 export interface Album {
@@ -36,6 +40,10 @@ export interface Album {
   minutes: number;
   /** ISO date string of when Dean finished it. */
   dateListened: string | null;
+  /** ISO timestamp of when the album RATING last changed (trigger-maintained,
+   *  null = unrated). Drives "Latest Verdicts" recency — dateListened is
+   *  day-granular and set once, so it can't order re-ratings. */
+  ratedAt?: string | null;
   favorite: boolean;
   tracks: Track[];
 }
@@ -91,6 +99,9 @@ export interface DeanDBData {
   goalHours: number;
   /** Free-form "season" label, e.g. "The 2026 Marathon". */
   season: string;
+  /** Whether this journey runs marathon mode (goal meter, Summit, the Wheel).
+   *  false = "chill" — a pressure-free listening journal. Absent = true. */
+  marathon?: boolean;
   artists: Artist[];
 }
 
@@ -123,6 +134,8 @@ export interface Profile {
   lockOwnTheme?: boolean;
   /** Active skin, synced across the account. Defaults to "paper". */
   skin?: "paper" | "midnight";
+  /** Marathon mode on/off ("chill"). Absent/true = marathon. */
+  marathonEnabled?: boolean;
 }
 
 /** A person surfaced by search, with my relationship to them. */

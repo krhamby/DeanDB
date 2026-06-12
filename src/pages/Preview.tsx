@@ -185,6 +185,11 @@ export function Preview() {
         <Dashboard data={summitJourney} basePath="/__preview-summit" canEdit />
       </Section>
 
+      {/* ── Dashboard — chill mode (marathon off: no meter/Summit/Wheel) ── */}
+      <Section label="Dashboard — Chill mode (marathon off)">
+        <Dashboard data={{ ...sampleJourney, marathon: false }} basePath="/__preview-chill" canEdit />
+      </Section>
+
       {/* ── Marathon Wheel ── */}
       <Section label="The Marathon Wheel">
         <NextSpinner artists={sampleJourney.artists} basePath="/__preview" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Globe, Lock, Moon, Newspaper } from "lucide-react";
+import { Armchair, Check, Copy, Globe, Lock, Moon, Mountain, Newspaper } from "lucide-react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
 import { firstWord, fmtTimeAgo } from "../lib/format";
@@ -278,6 +278,7 @@ export function Settings() {
   }));
   const [visibility, setVisibility] = useState<Visibility>(profile?.visibility ?? "private");
   const [lockOwnTheme, setLockOwnTheme] = useState(profile?.lockOwnTheme ?? false);
+  const [marathonEnabled, setMarathonEnabled] = useState(profile?.marathonEnabled ?? true);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -317,6 +318,7 @@ export function Settings() {
       season: form.season,
       goalHours: Number(form.goalHours) || 250,
       visibility,
+      marathonEnabled,
       themeAccent: isHexColor(theme.accent) ? theme.accent : null,
       themeSecondary: isHexColor(theme.secondary) ? theme.secondary : null,
       lockOwnTheme,
@@ -391,6 +393,35 @@ export function Settings() {
         <Field label="Bio">
           <textarea rows={3} className={inputCls} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
         </Field>
+      </Panel>
+
+      {/* Journey style — marathon vs. chill */}
+      <Panel className="space-y-3 p-5">
+        <h3 className="font-display text-lg font-black text-fg">Journey style</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          {(
+            [
+              { on: true, label: "Marathon", Icon: Mountain },
+              { on: false, label: "Chill", Icon: Armchair },
+            ] as const
+          ).map(({ on, label, Icon }) => (
+            <button
+              key={label}
+              onClick={() => setMarathonEnabled(on)}
+              aria-pressed={marathonEnabled === on}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                marathonEnabled === on ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
+              }`}
+            >
+              <Icon className="h-4 w-4" aria-hidden /> {label}
+            </button>
+          ))}
+          <span className="text-xs text-fg-faint">
+            {marathonEnabled
+              ? "Chase the Summit — goal meter, progress and the Marathon Wheel."
+              : "Just log, rate and share — no goal, no meter, no pressure. Nothing is lost if you switch back."}
+          </span>
+        </div>
       </Panel>
 
       {/* Visibility + Share */}

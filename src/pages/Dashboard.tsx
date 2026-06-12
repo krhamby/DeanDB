@@ -99,13 +99,21 @@ export function Dashboard({
   const { myUnlockedAchievementIds } = useMyJourney();
   const { surface } = useThemeControl();
 
+  // Chill journeys hide the goal/Summit/Wheel layer entirely (absent = marathon).
+  const marathonOn = data.marathon !== false;
+
   const albums = flattenAlbums(data);
   // "Now spinning" is a marathon concept — logged Library artists aren't queued.
   const nowSpinning = albums.filter((a) => a.status === "listening" && !a.artistLogged);
   // Latest verdicts span the whole collection (a freshly logged favorite counts).
+  // Ordered by when the RATING last changed (rated_at, trigger-stamped) — the old
+  // dateListened sort was day-granular and set once, so re-rating an album (or
+  // rating a second album finished the same day) never surfaced as freshest.
+  const recency = (a: { ratedAt?: string | null; dateListened: string | null }) =>
+    a.ratedAt ?? a.dateListened ?? "";
   const recent = albums
     .filter((a) => a.status === "completed" && a.rating != null)
-    .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
+    .sort((a, b) => recency(b).localeCompare(recency(a)))
     .slice(0, 6);
   // Hall-of-Fame preview — top scores (mirrors HallOfFame.tsx; rating-sorted, not date).
   const top3 = [...albums]
@@ -139,7 +147,7 @@ export function Dashboard({
           {data.season}
         </div>
         <h1 className="mt-1 font-display text-4xl font-black leading-tight tracking-tight text-fg sm:text-5xl">
-          {data.listener.meterName}&apos;s Discography Marathon
+          {data.listener.meterName}&apos;s {marathonOn ? "Discography Marathon" : "Listening Journal"}
         </h1>
         <p className="mt-2 max-w-2xl text-fg-muted">{data.listener.tagline}</p>
 
@@ -148,8 +156,24 @@ export function Dashboard({
             featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-stretch" : ""
           }`}
         >
-          {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
+          {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse.
+              Chill journeys swap the goal meter for a pressure-free tally. */}
           <div className="flex flex-col gap-6">
+          {!marathonOn ? (
+            <Panel className={`flex flex-col justify-center p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex-1"}`}>
+              <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
+                Listening, logged
+              </div>
+              <div className="font-display text-5xl font-black leading-none text-gold tabular-nums sm:text-6xl">
+                {fmtHours(animatedHours)}
+              </div>
+              <div className="mt-3 text-sm text-fg-muted">
+                {stats.albumsCompleted} album{stats.albumsCompleted === 1 ? "" : "s"} ·{" "}
+                {stats.songsRated} song{stats.songsRated === 1 ? "" : "s"} rated — no goal, no
+                clock. Just the music.
+              </div>
+            </Panel>
+          ) : (
           <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex flex-1 flex-col justify-center"}`}>
             {/* Faint Summit mountain backdrop — a reward shown ONLY once the
                 marathon is complete (the Summit is reached). A still-climbing
@@ -215,6 +239,7 @@ export function Dashboard({
             )}
             </div>
           </Panel>
+          )}
 
           {nowSpinning.length > 0 && (
             <Panel className="flex-1 p-5">
@@ -274,8 +299,9 @@ export function Dashboard({
         )
       ) : (
         <>
-          {/* ── What's next (owner-only — the marathon "what to play next" tool) ── */}
-          {canEdit &&
+          {/* ── What's next (owner-only — the marathon "what to play next" tool).
+              A chill journey has no queue, so no Wheel. ── */}
+          {canEdit && marathonOn &&
             (stats.marathonArtistsTotal > 0 ? (
               <NextSpinner artists={data.artists} basePath={basePath} />
             ) : (
@@ -301,8 +327,12 @@ export function Dashboard({
               : `${stats.artistsConquered} conquered`
           }
         />
-        <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
-        <StatCard label="Songs rated" value={String(stats.songsRated)} />
+        <StatCard label="Avg score" value={stats.avgRating != null ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
+        <StatCard
+          label="Songs rated"
+          value={String(stats.songsRated)}
+          sub={stats.avgSongRating != null ? `${stats.avgSongRating.toFixed(1)} avg song score` : undefined}
+        />
         <StatCard label="Now spinning" value={String(stats.albumsListening)} />
         <StatCard label="Top genre" value={stats.topGenre ?? "—"} />
       </section>
@@ -416,9 +446,11 @@ export function Dashboard({
           <div className="mt-4 flex-1 space-y-1">
             <div className="font-display text-lg font-black leading-tight text-fg">{data.season}</div>
             <div className="text-sm text-fg-muted">{fmtHours(stats.hoursListened)} logged</div>
-            <div className="text-xs font-semibold text-gold">
-              {stats.goalPct.toFixed(0)}% to the Summit
-            </div>
+            {marathonOn && (
+              <div className="text-xs font-semibold text-gold">
+                {stats.goalPct.toFixed(0)}% to the Summit
+              </div>
+            )}
           </div>
         </Panel>
       </div>
