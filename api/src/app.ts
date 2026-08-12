@@ -84,22 +84,26 @@ export function createApp(opts: AppOpts) {
     // CAA answers with a redirect to archive.org; forward that redirect to the
     // browser (img-src https: allows it) instead of streaming bytes through
     // Cloud Run — the edge caches the redirect itself.
-    const res = await f(`${CAA_UPSTREAM}${suffix}`, {
-      redirect: "manual",
-      headers: { "User-Agent": ua },
-    });
-    const location = res.headers.get("Location");
-    if (res.status >= 300 && res.status < 400 && location) {
-      // Use manual redirect response to ensure Cache-Control is set
-      return new Response(null, {
-        status: 302,
-        headers: { Location: location, "Cache-Control": CACHE_CONTROL },
+    try {
+      const res = await f(`${CAA_UPSTREAM}${suffix}`, {
+        redirect: "manual",
+        headers: { "User-Agent": ua },
       });
+      const location = res.headers.get("Location");
+      if (res.status >= 300 && res.status < 400 && location) {
+        // Use manual redirect response to ensure Cache-Control is set
+        return new Response(null, {
+          status: 302,
+          headers: { Location: location, "Cache-Control": CACHE_CONTROL },
+        });
+      }
+      return c.json(
+        { error: "cover art not found" },
+        res.status === 404 ? 404 : 502,
+      );
+    } catch {
+      return c.json({ error: "cover art upstream failed" }, 502);
     }
-    return c.json(
-      { error: "cover art not found" },
-      res.status === 404 ? 404 : 502,
-    );
   });
 
   return app;

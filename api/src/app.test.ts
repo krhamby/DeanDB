@@ -79,4 +79,16 @@ describe("createApp", () => {
     });
     expect(res.status).toBe(404);
   });
+
+  it("returns 502 JSON when cover art upstream throws", async () => {
+    const fetchImpl = (async () => {
+      throw new Error("network down");
+    }) as unknown as typeof fetch;
+    const app = createApp({ edgeKey: KEY, fetchImpl });
+    const res = await app.request("/api/coverart/release-group/xyz/front-250", {
+      headers: { "X-Edge-Key": KEY },
+    });
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "cover art upstream failed" });
+  });
 });
