@@ -117,9 +117,20 @@ Out of scope, recorded for later decision: `aal2` RLS predicate enforcement for 
 
 Steady state **$0/month + ~$14/yr domain renewal**: Cloudflare free plan; Workers free tier (static assets unmetered, `/api` invocations ≪ 100k/day); Cloud Run / Artifact Registry / Secret Manager free tiers; GitHub free private repo (2,000 Actions min/mo). Budget alert at $5 as backstop.
 
+## Portability posture
+
+Decided 2026-08-12 after weighing alternatives (Firestore, MySQL, self-run Postgres): **stay on Supabase**; it wins on cost, relational fit, exit cost (plain Postgres), and ops burden. To keep the exit cheap:
+
+- Migrations stay **plain SQL** in-repo (already true) — no dashboard-only schema changes.
+- **New server logic goes to Cloud Run**, not Supabase edge functions; the existing `suggest-artists` function migrates to the API service when convenient. The API layer is the strangler-fig seam if we ever leave.
+- No Supabase-only features (Realtime, Storage) without an explicit decision recorded here.
+- **Monthly `pg_dump` + restore test** — this doubles as the backup strategy, since the free tier has no automated backups.
+- Known free-tier fine print: projects auto-pause after ~1 week of inactivity; active users prevent this, but a dormant app needs a manual dashboard restore.
+
 ## Deferred / follow-on work (separate specs)
 
 1. **Bug-fix workstream** — shelved by user 2026-08-12 pending Trello board access (board `6a2066d3db37ef390e8a0f51` is joined via a personal Trello account the connected plugin can't see). Structure: each card an isolated fix in a parallel worktree, converging before cutover. Pre-req to fold in: unmerged branch `fix/dashboard-summit-mountain`.
-2. **OG share images** on the API service.
-3. **Spotify integration** (secrets now have a home in Secret Manager).
-4. Stripe, custom SMTP (@deandb.app sender), `aal2` RLS enforcement, HSTS preload — each its own decision.
+2. **Custom SMTP for auth email** — *first follow-on to schedule*: Supabase's built-in mailer is rate-limited to a handful of messages/hour (test-grade only); wire an external provider (e.g. Resend free tier) sending from `@deandb.app`.
+3. **OG share images** on the API service.
+4. **Spotify integration** (secrets now have a home in Secret Manager).
+5. Stripe, `aal2` RLS enforcement, HSTS preload — each its own decision.
