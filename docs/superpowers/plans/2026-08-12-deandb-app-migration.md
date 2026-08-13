@@ -712,7 +712,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: project `deandb-krhamby` with APIs enabled; AR repo `deandb`; SAs `deandb-api-run` / `deandb-deployer`; secret `edge-shared-secret`; WIF provider resource name (needed by Task 12). Consumed by Tasks 8 and 12.
 
-- [ ] **Step 1: Create project**
+- [x] **Step 1: Create project** — already existed (created 2026-08-12T21:14:29Z by a prior run); confirmed via `gcloud projects describe deandb-krhamby` (project number `935180449709`).
 
 ```bash
 gcloud projects create deandb-krhamby --name="DeanDB"
@@ -720,7 +720,7 @@ gcloud projects create deandb-krhamby --name="DeanDB"
 
 Expected: success. (If the ID is somehow taken, STOP and ask Kevin for an alternate ID — it must then be substituted in every later command and in `.github/workflows/deploy.yml`.)
 
-- [ ] **Step 2 (HUMAN): Link billing**
+- [x] **Step 2 (HUMAN): Link billing** — already linked to `016F50-C744A4-2B46CB` (same account as Raise the Bahr), `billingEnabled: true`, confirmed via `gcloud billing projects describe`.
 
 ```bash
 gcloud billing accounts list
@@ -732,14 +732,14 @@ Kevin picks the account (same one as Raise the Bahr), then:
 gcloud billing projects link deandb-krhamby --billing-account=<ACCOUNT_ID_KEVIN_CHOSE>
 ```
 
-- [ ] **Step 3: Enable APIs**
+- [x] **Step 3: Enable APIs** — all 5 required APIs were already enabled; re-ran `gcloud services enable` to confirm (idempotent, no-op).
 
 ```bash
 gcloud config set project deandb-krhamby
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com sts.googleapis.com
 ```
 
-- [ ] **Step 4: Artifact Registry repo + service accounts**
+- [x] **Step 4: Artifact Registry repo + service accounts** — created `deandb` repo (us-central1) and both service accounts.
 
 ```bash
 gcloud artifacts repositories create deandb --repository-format=docker --location=us-central1
@@ -747,7 +747,7 @@ gcloud iam service-accounts create deandb-api-run --display-name="deandb-api run
 gcloud iam service-accounts create deandb-deployer --display-name="CI deployer"
 ```
 
-- [ ] **Step 5: Create the shared secret (never echo it)**
+- [x] **Step 5: Create the shared secret (never echo it)** — `~/.deandb-edge-key` did not exist, generated fresh (chmod 600, 64 hex chars), created `edge-shared-secret` v1, bound `deandb-api-run` as accessor.
 
 ```bash
 touch ~/.deandb-edge-key && chmod 600 ~/.deandb-edge-key
@@ -758,7 +758,7 @@ gcloud secrets add-iam-policy-binding edge-shared-secret \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-- [ ] **Step 6: Grant the deployer least privilege**
+- [x] **Step 6: Grant the deployer least privilege** — all three bindings applied.
 
 ```bash
 gcloud projects add-iam-policy-binding deandb-krhamby \
@@ -773,7 +773,7 @@ gcloud iam service-accounts add-iam-policy-binding \
   --role="roles/iam.serviceAccountUser"
 ```
 
-- [ ] **Step 7: Workload Identity Federation (covers both repo names, pre- and post-rename)**
+- [x] **Step 7: Workload Identity Federation (covers both repo names, pre- and post-rename)** — pool + provider created; the final SA binding hit a transient `PERMISSION_DENIED` (propagation lag on the just-created SA), succeeded on retry after a 20s wait.
 
 ```bash
 gcloud iam workload-identity-pools create github --location=global --display-name="GitHub Actions"
@@ -790,7 +790,7 @@ gcloud iam service-accounts add-iam-policy-binding \
   --role="roles/iam.workloadIdentityUser"
 ```
 
-- [ ] **Step 8: Verify + record the provider resource name (Task 12 needs it)**
+- [x] **Step 8: Verify + record the provider resource name (Task 12 needs it)** — `projects/935180449709/locations/global/workloadIdentityPools/github/providers/deandb-repo`
 
 ```bash
 gcloud iam workload-identity-pools providers describe deandb-repo \
