@@ -14,9 +14,13 @@
 
 const MB = "/api/mb";
 
-/** Cover-art URL for a release-group MBID (250px), via the deandb-api proxy. */
+/** Cover Art Archive front-cover URL for a release-group MBID (250px).
+ *  Deliberately browser-direct (NOT via /api/coverart): archive.org throttles
+ *  datacenter egress IPs, so proxying covers through Cloud Run starves them;
+ *  distributed browser IPs are the reliable path, and <img> needs no CORS.
+ *  canonicalCoverUrl still maps any legacy /api/coverart rows. */
 export function coverArtUrl(releaseGroupMbid: string): string {
-  return `/api/coverart/release-group/${releaseGroupMbid}/front-250`;
+  return `https://coverartarchive.org/release-group/${releaseGroupMbid}/front-250`;
 }
 
 /** Map a proxy-relative cover URL back to its canonical Cover Art Archive form

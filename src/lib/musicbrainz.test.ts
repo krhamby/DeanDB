@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { coverArtUrl, canonicalCoverUrl } from "./musicbrainz";
 
 describe("coverArtUrl", () => {
-  it("returns a proxy-relative path for a release-group MBID", () => {
+  it("returns an absolute Cover Art Archive URL for a release-group MBID", () => {
     const mbid = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
-    expect(coverArtUrl(mbid)).toBe(`/api/coverart/release-group/${mbid}/front-250`);
+    expect(coverArtUrl(mbid)).toBe(`https://coverartarchive.org/release-group/${mbid}/front-250`);
   });
 });
 

@@ -7,7 +7,7 @@
 //   • same-origin GET assets → cache-first (hashed Vite filenames are immutable)
 //   • cross-origin (Supabase, MusicBrainz, Cover Art) → never intercepted: those
 //     must always hit the network so data/auth stay fresh.
-const CACHE = "deandb-v1";
+const CACHE = "deandb-v2";
 const COVERS = "deandb-covers-v1";
 const COVERS_MAX = 300; // cap so the browser cache can't grow unbounded
 
@@ -43,6 +43,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return; // leave Supabase/MusicBrainz/CAA alone
+  if (url.pathname.startsWith("/api/")) return; // API JSON must always hit the network
 
   if (req.mode === "navigate") {
     event.respondWith(
