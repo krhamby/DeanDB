@@ -1,4 +1,6 @@
 // DeanDB — minimal service worker for offline support + installability (PWA).
+// v3 — script must be byte-distinct from v2 so browsers reinstall it and pick
+// up its new CSP-free response headers (worker-script CSP governs SW fetches).
 // Hand-rolled (no build plugin) so it stays base-path agnostic: it works under
 // /DeanDB/ on GitHub Pages today and a custom domain later without a rebuild.
 //
