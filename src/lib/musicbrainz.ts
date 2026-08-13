@@ -1,21 +1,22 @@
 // ──────────────────────────────────────────────────────────────
 // MusicBrainz + Cover Art Archive
 //
-// Both are free, open-data, no-API-key services that work from a static
-// site in the browser:
+// Both services are reached through the same-origin /api proxy
+// (Cloud Run deandb-api), which enforces 1 req/s etiquette globally
+// and lets Cloudflare edge-cache responses. The client-side serial
+// queue below remains as a belt-and-braces limiter.
+//
+// Upstream services:
 //   • MusicBrainz (https://musicbrainz.org) — the open music encyclopedia.
-//     Its /ws/2 JSON API sends `Access-Control-Allow-Origin: *`, so we can
-//     fetch it directly. Etiquette: ~1 request/second.
 //   • Cover Art Archive (https://coverartarchive.org) — album art keyed by
-//     MusicBrainz release-group id. Image URLs drop straight into <img>
-//     (images aren't subject to CORS), so no key or proxy is needed.
+//     release-group id.
 // ──────────────────────────────────────────────────────────────
 
-const MB = "https://musicbrainz.org/ws/2";
+const MB = "/api/mb";
 
-/** Cover Art Archive front-cover URL for a release-group MBID (250px). */
+/** Cover-art URL for a release-group MBID (250px), via the deandb-api proxy. */
 export function coverArtUrl(releaseGroupMbid: string): string {
-  return `https://coverartarchive.org/release-group/${releaseGroupMbid}/front-250`;
+  return `/api/coverart/release-group/${releaseGroupMbid}/front-250`;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
