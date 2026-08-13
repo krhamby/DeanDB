@@ -47,6 +47,19 @@ describe("createApp", () => {
     expect(upstream.calls.length).toBe(1); // served from cache
   });
 
+  it("does not append fmt=json when it is already present in the query", async () => {
+    const upstream = jsonUpstream({ name: "Nirvana" });
+    const app = createApp({ edgeKey: KEY, fetchImpl: upstream.fetchImpl, minIntervalMs: 0 });
+    const headers = { "X-Edge-Key": KEY };
+
+    const res = await app.request("/api/mb/artist/abc?inc=genres+tags&fmt=json", { headers });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ name: "Nirvana" });
+    expect(upstream.calls[0]).toBe(
+      "https://musicbrainz.org/ws/2/artist/abc?inc=genres+tags&fmt=json",
+    );
+  });
+
   it("returns 502 when MusicBrainz fails", async () => {
     const fetchImpl = (async () => {
       throw new Error("network down");

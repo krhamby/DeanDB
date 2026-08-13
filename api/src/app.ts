@@ -52,7 +52,8 @@ export function createApp(opts: AppOpts) {
   app.get("/api/mb/*", async (c) => {
     const suffix = c.req.path.replace(/^\/api\/mb/, "");
     const search = new URL(c.req.url).search;
-    const url = `${MB_UPSTREAM}${suffix}${search}${search ? "&" : "?"}fmt=json`;
+    const hasFmt = /[?&]fmt=/.test(search);
+    const url = `${MB_UPSTREAM}${suffix}${search}${hasFmt ? "" : `${search ? "&" : "?"}fmt=json`}`;
     const hit = cache.get(url);
     if (hit) {
       return c.body(hit.body, 200, {
