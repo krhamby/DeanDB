@@ -11,6 +11,6 @@
   "vars": {
     // Paste the status.url from Task 8, e.g. https://deandb-api-xxxxx-uc.a.run.app
     "API_ORIGIN": "https://deandb-api-vhpudwab4a-uc.a.run.app"
-  }
-  // Task 13 adds: "routes": [{ "pattern": "deandb.app", "custom_domain": true }]
+  },
+  "routes": [{ "pattern": "deandb.app", "custom_domain": true }]
 }
