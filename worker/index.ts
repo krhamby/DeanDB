@@ -22,9 +22,16 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 };
 
-function withSecurityHeaders(res: Response, edgeCache?: "HIT" | "MISS"): Response {
+function withSecurityHeaders(
+  res: Response,
+  edgeCache?: "HIT" | "MISS",
+  skipCsp = false,
+): Response {
   const out = new Response(res.body, res);
-  for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    if (skipCsp && k === "Content-Security-Policy") continue;
+    out.headers.set(k, v);
+  }
   if (edgeCache) out.headers.set("X-Edge-Cache", edgeCache);
   return out;
 }
@@ -53,6 +60,11 @@ export default {
       }
       return withSecurityHeaders(res, cacheable ? "MISS" : undefined);
     }
-    return withSecurityHeaders(await env.ASSETS.fetch(request));
+    // /sw.js is exempt from CSP: a service worker's own script CSP governs the
+    // worker's fetch() calls, and the SW's cover cache must fetch Cover Art
+    // Archive/archive.org (cross-origin) — hosts the document CSP deliberately
+    // omits from connect-src. Documents keep the full policy.
+    const skipCsp = url.pathname === "/sw.js";
+    return withSecurityHeaders(await env.ASSETS.fetch(request), undefined, skipCsp);
   },
 } satisfies ExportedHandler<Env>;
