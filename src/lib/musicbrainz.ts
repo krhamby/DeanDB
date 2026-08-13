@@ -19,6 +19,14 @@ export function coverArtUrl(releaseGroupMbid: string): string {
   return `/api/coverart/release-group/${releaseGroupMbid}/front-250`;
 }
 
+/** Map a proxy-relative cover URL back to its canonical Cover Art Archive form
+ *  (server-side consumers can't resolve same-origin relative paths). */
+export function canonicalCoverUrl(coverUrl: string): string {
+  return coverUrl.startsWith("/api/coverart/")
+    ? `https://coverartarchive.org/${coverUrl.slice("/api/coverart/".length)}`
+    : coverUrl;
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── Global rate limiter ─────────────────────────────────────────
