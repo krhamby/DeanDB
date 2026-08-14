@@ -1,4 +1,6 @@
 // DeanDB — minimal service worker for offline support + installability (PWA).
+// v3 — script must be byte-distinct from v2 so browsers reinstall it and pick
+// up its new CSP-free response headers (worker-script CSP governs SW fetches).
 // Hand-rolled (no build plugin) so it stays base-path agnostic: it works under
 // /DeanDB/ on GitHub Pages today and a custom domain later without a rebuild.
 //
@@ -7,7 +9,7 @@
 //   • same-origin GET assets → cache-first (hashed Vite filenames are immutable)
 //   • cross-origin (Supabase, MusicBrainz, Cover Art) → never intercepted: those
 //     must always hit the network so data/auth stay fresh.
-const CACHE = "deandb-v1";
+const CACHE = "deandb-v2";
 const COVERS = "deandb-covers-v1";
 const COVERS_MAX = 300; // cap so the browser cache can't grow unbounded
 
@@ -43,6 +45,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (url.origin !== self.location.origin) return; // leave Supabase/MusicBrainz/CAA alone
+  if (url.pathname.startsWith("/api/")) return; // API JSON must always hit the network
 
   if (req.mode === "navigate") {
     event.respondWith(

@@ -11,6 +11,7 @@
 import { requireClient, authRedirectTo } from "./supabase";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { firstWord } from "./format";
+import { canonicalCoverUrl } from "./musicbrainz";
 import type {
   Album,
   AlbumAggregate,
@@ -1482,10 +1483,12 @@ function isAllowedCoverHost(coverUrl: string): boolean {
 }
 
 export async function extractCover(albumId: string, coverUrl: string): Promise<string | null> {
-  if (!isAllowedCoverHost(coverUrl)) return null;
+  // Canonicalize proxy-relative paths to absolute CAA URLs for server-side validation & extraction.
+  const absoluteUrl = canonicalCoverUrl(coverUrl);
+  if (!isAllowedCoverHost(absoluteUrl)) return null;
   try {
     const { data, error } = await requireClient().functions.invoke("extract-cover", {
-      body: { albumId, coverUrl },
+      body: { albumId, coverUrl: absoluteUrl },
     });
     if (error || !data || typeof data.dominant_color !== "string") return null;
     return data.dominant_color;
