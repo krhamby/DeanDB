@@ -15,7 +15,10 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' https: data:; " +
-    "connect-src 'self' https://ixpxefsjrswujuxmnwkk.supabase.co; " +
+    // wss:// is required alongside https:// — Messages/DMs subscribes to
+    // Supabase Realtime over a WebSocket, and https: host-sources are not
+    // reliably treated as matching wss: connections across browsers.
+    "connect-src 'self' https://ixpxefsjrswujuxmnwkk.supabase.co wss://ixpxefsjrswujuxmnwkk.supabase.co; " +
     "font-src 'self'; frame-ancestors 'none'; base-uri 'self'",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
