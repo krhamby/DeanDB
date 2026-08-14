@@ -92,16 +92,18 @@ src/
     ui.tsx              DeanMeter, Score10, StatusBadge, ProgressBar, Panel, SectionTitle, scoreColor
     cards.tsx           Cover, AlbumCard, ArtistCard (take a `basePath` for journey-scoped links)
     social.tsx          Avatar, PersonRow, FollowButton, RecommendModal
+    moderation.tsx      Safety surfaces: ReportModal, BlockModal, ModerationMenu
     NextSpinner.tsx     "Marathon Wheel" next-artist spinner (takes basePath)
     EmptyState.tsx      Shown for your own empty journey
   pages/
     Dashboard/Artists/ArtistDetail/AlbumDetail/HallOfFame  read-only, journey-scoped (props: data, basePath, canEdit)
     Editor.tsx          Edit MY journey: add/import artists, rate, per-user row writes
     Profile.tsx         #/u/:username wrapper → resolves journey via useJourney, renders the read-only pages
-    Login.tsx           Magic-link sign in
+    Login.tsx           Email+password sign in/up, forgot-password, TOTP challenge
     Settings.tsx        Profile fields + visibility toggle + Share link
     Feed.tsx            Activity from people you follow
     People.tsx          Search + follow + accept requests + following list
+    Messages.tsx        DMs: conversation list + live thread (#/messages[/:username])
     Recommendations.tsx Recommendation inbox
 supabase/migrations/    DB schema as Supabase migrations (baseline *_init.sql): catalog, profiles,
                         user_* tables, follows, recommendations, RLS, helper fns, catalog RPCs,
@@ -119,11 +121,12 @@ vite.config.ts          base = "/DeanDB/" in build (Pages subpath), "/" in dev
 `favorite`). Plus account/social types: `Profile`, `PersonResult`, `FeedItem`,
 `Recommendation`, `AlbumAggregate`, `Visibility`, `FollowStatus`.
 
-**Database (`supabase/migrations/` — applied via the Supabase GitHub integration / `supabase db push`, or pasted into the SQL editor):**
+**Database (`supabase/migrations/` — the Supabase GitHub integration is configured, so migrations apply **automatically on merge to `main`**; `supabase db push` / the SQL editor are only fallbacks):**
 - **Shared catalog** (`catalog_artists/albums/tracks`) — deduped by MusicBrainz `mbid`; world-readable; written only via SECURITY DEFINER `upsert_catalog_*` RPCs so cross-user rating aggregates and recommendations point at canonical rows.
 - **`profiles`** — one per `auth.users` (username, display_name, visibility, season, goal_hours). Auto-created by a trigger on signup.
 - **Per-user journey** (`user_artists/user_albums/user_tracks`) — the rateable layer, owned by `auth.uid()`.
 - **Social** — `follows` (pending/accepted), `recommendations`, and `feed_items` (a `security_invoker` view).
+- **Messaging & safety** (`*_direct_messages.sql`) — `dm_messages` (1:1 chat, realtime-enabled; the INSERT policy calls `can_dm` = accepted follow edge in either direction AND no block either way), `blocks` (one-way; an AFTER-INSERT trigger severs follow edges both directions, and the follows/recs/dms INSERT policies refuse contact across a block), `reports` (insert-only for users; reported message bodies are snapshotted server-side by trigger so "unsend" can't destroy evidence; triaged operator-side via service role).
 
 Conventions baked in: `rating: null` means **unrated**; `excluded` albums are out
 of all stats/marathon math; the marathon goal is *derived* (`stats.goalHours` =
@@ -151,7 +154,8 @@ are the catalog row uuids, used directly in routes.
 
 Hash routes only (zero Pages rewrite config). `#/` (feed when signed in, else
 landing), `#/login`, `#/me[/...]` (own journey, editable), `#/editor`,
-`#/settings`, `#/feed`, `#/people`, `#/recommendations`, and `#/u/:username/...`
+`#/settings`, `#/feed`, `#/people`, `#/messages[/:username]`,
+`#/recommendations`, and `#/u/:username/...`
 (others' journeys, read-only). `parseUserRoute` splits the `u/:username` prefix;
 `Profile.tsx` renders the read-only pages with `basePath="/u/:username"`. Bare
 `#/artist|/album|/artists|/hall-of-fame` resolve to your own journey. Auth-gated
@@ -169,7 +173,7 @@ routes go through `RequireAuth`.
 
 - `vite.config.ts`: `base "/DeanDB/"` in production (case-sensitive Pages subpath), `"/"` in dev. Use `import.meta.env.BASE_URL` for asset/redirect URLs.
 - `.github/workflows/deploy.yml` builds on push to `main` and deploys `dist/` to Pages.
-- Supabase setup: apply **all** migrations in `supabase/migrations/` (Supabase GitHub integration on merge, `supabase db push`, or paste into the SQL editor) and set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`).
+- Supabase setup: the **GitHub integration is connected** — migrations in `supabase/migrations/` run automatically when merged to `main` (no manual `db push` needed). Set URL/key in `config.ts` (or `VITE_SUPABASE_ANON_KEY`).
 - **Auth dashboard config (required for the password + TOTP flow):** Authentication → Providers → Email — keep password sign-in ON (turn email OTP / magic-link off if exposed). Set a **password policy** (min length, leaked-password protection). Authentication → **Multi-Factor Authentication** — enable **TOTP**, leave Phone/SMS off. URL Configuration → **Redirect URLs** — add `https://<user>.github.io/DeanDB/` and `http://localhost:5173/` (password-reset / confirm links return there; `authRedirectTo()` is `BASE_URL`-relative, so just update this list when you move off Pages). Configure **SMTP** for production confirmation/reset email, and reword the "Reset password" email template to read as "set your password" — it doubles as the path for legacy magic-link users to set a first password.
 - **Runtime backfill note (put in release notes):** the `*_zero_runtime_placeholder` migration retires the old fake 40-minute seed; albums imported before the fix read **0 min** until the user clicks **Load all tracklists**, which repopulates real runtimes from MusicBrainz.
 
@@ -177,4 +181,5 @@ routes go through `RequireAuth`.
 
 - This session develops on branch `claude/claude-md-docs-8B97s`. Commit/push there; do **not** open a PR or push elsewhere unless asked.
 - After code changes, verify with `npm run build` / `npm run typecheck`. There are no automated tests.
+- **Always VIEW webpages you create or change — never ship sight-unseen.** A green build is not proof the page renders. Use whatever is easiest in the current environment: in Claude Code on the web, drive headless Chromium (Playwright is global; browsers at `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`) against `npm run preview` (serves at `http://localhost:4173/DeanDB/` — note the base path) or the deployed site, take a screenshot, read it, and check console/page errors. Locally, use Claude in Chrome or the `#/__preview` dev harness.
 - The legacy single-row marathon migrates into a real account via `migrate_deandb_state('<user-uuid>')` (see the bottom of the init migration in `supabase/migrations/`). It's operator-only (execute revoked from anon/authenticated) and won't migrate an account other than the caller's own.

@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { gradient } from "../lib/format";
+import { fmtScore, gradient } from "../lib/format";
 import { scoreColor } from "./ui";
 
 export const CARD_W = 540;
@@ -19,7 +19,7 @@ export const VerdictCard = forwardRef<HTMLDivElement, VerdictCardProps>(function
   { title, artist, rating, review, cover, meterName },
   ref,
 ) {
-  const score = rating == null ? "—" : rating.toFixed(1);
+  const score = rating == null ? "—" : fmtScore(rating);
   const accent = scoreColor(rating);
   const quote = review.trim().length > 180 ? review.trim().slice(0, 177) + "…" : review.trim();
   return (

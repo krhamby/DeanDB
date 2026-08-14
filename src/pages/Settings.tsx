@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Globe, Lock, Moon, Newspaper } from "lucide-react";
+import { Armchair, Check, Copy, Globe, Lock, Moon, Mountain, Newspaper } from "lucide-react";
 import { useAuth, useThemeControl } from "../lib/store";
 import { navigate, profilePath } from "../lib/router";
-import { firstWord } from "../lib/format";
+import { firstWord, fmtTimeAgo } from "../lib/format";
 import { DEFAULT_THEME, PRESETS, contrastRatio, isHexColor, legible, resolveTheme, type Theme } from "../lib/themes";
 import { Panel, SectionTitle } from "../components/ui";
+import { Avatar } from "../components/social";
 import * as api from "../lib/api";
-import type { Visibility } from "../types";
+import type { BlockedUser, Visibility } from "../types";
 
 const inputCls =
   "w-full rounded-lg border border-[var(--color-edge-strong)] bg-panel-2 px-3 py-2 text-sm text-fg outline-none placeholder:text-fg-faint focus:border-gold/50 focus-visible:ring-2 focus-visible:ring-gold";
@@ -141,7 +142,10 @@ function SecuritySection() {
             <p className="text-sm text-fg-muted">Scan this in your authenticator app, then enter the 6-digit code.</p>
             {enroll.qrCode && (
               <img
-                src={`data:image/svg+xml;utf-8,${encodeURIComponent(enroll.qrCode)}`}
+                // Supabase returns qr_code as a ready-to-use `data:image/svg+xml`
+                // URI — render it as-is. Re-encoding it produced a double-encoded
+                // src that silently failed to load, so the QR never appeared.
+                src={enroll.qrCode}
                 alt="TOTP QR code"
                 className="h-40 w-40 rounded bg-white p-2"
               />
@@ -199,6 +203,67 @@ function SecuritySection() {
   );
 }
 
+/** People you've blocked — review and unblock. Blocking itself happens from a
+ *  profile or DM thread; the server severs follows and refuses new contact. */
+function BlockedSection() {
+  const { user } = useAuth();
+  const [blocked, setBlocked] = useState<BlockedUser[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    api
+      .listBlockedUsers()
+      .then((list) => active && setBlocked(list))
+      .catch(() => active && setBlocked([]))
+      .finally(() => active && setLoaded(true));
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const unblock = async (id: string) => {
+    if (!user) return;
+    setBlocked((list) => list.filter((b) => b.id !== id));
+    try {
+      await api.unblockUser(user.id, id);
+    } catch (e) {
+      console.error("unblock failed", e);
+    }
+  };
+
+  if (!loaded || blocked.length === 0) return null;
+
+  return (
+    <Panel className="space-y-3 p-5">
+      <h3 className="font-display text-lg font-black text-fg">Blocked users</h3>
+      <p className="text-xs text-fg-faint">
+        Blocked people can't follow you, message you, or send you recommendations.
+      </p>
+      <div className="space-y-2">
+        {blocked.map((b) => (
+          <div key={b.id} className="flex items-center gap-3 rounded-xl border border-edge/60 bg-panel-2/60 p-3">
+            <Avatar profile={b} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold text-fg">{b.displayName}</div>
+              <div className="truncate text-xs text-fg-faint">
+                @{b.username} · blocked {fmtTimeAgo(b.blockedAt)}
+              </div>
+            </div>
+            <button
+              onClick={() => unblock(b.id)}
+              className="shrink-0 rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-fg-muted hover:text-fg"
+            >
+              Unblock
+            </button>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
 export function Settings() {
   const { profile, updateProfile } = useAuth();
   const [form, setForm] = useState(() => ({
@@ -213,6 +278,7 @@ export function Settings() {
   }));
   const [visibility, setVisibility] = useState<Visibility>(profile?.visibility ?? "private");
   const [lockOwnTheme, setLockOwnTheme] = useState(profile?.lockOwnTheme ?? false);
+  const [marathonEnabled, setMarathonEnabled] = useState(profile?.marathonEnabled ?? true);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -252,6 +318,7 @@ export function Settings() {
       season: form.season,
       goalHours: Number(form.goalHours) || 250,
       visibility,
+      marathonEnabled,
       themeAccent: isHexColor(theme.accent) ? theme.accent : null,
       themeSecondary: isHexColor(theme.secondary) ? theme.secondary : null,
       lockOwnTheme,
@@ -326,6 +393,35 @@ export function Settings() {
         <Field label="Bio">
           <textarea rows={3} className={inputCls} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
         </Field>
+      </Panel>
+
+      {/* Journey style — marathon vs. chill */}
+      <Panel className="space-y-3 p-5">
+        <h3 className="font-display text-lg font-black text-fg">Journey style</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          {(
+            [
+              { on: true, label: "Marathon", Icon: Mountain },
+              { on: false, label: "Chill", Icon: Armchair },
+            ] as const
+          ).map(({ on, label, Icon }) => (
+            <button
+              key={label}
+              onClick={() => setMarathonEnabled(on)}
+              aria-pressed={marathonEnabled === on}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${
+                marathonEnabled === on ? "bg-gold text-on-accent" : "border border-edge text-fg-muted hover:text-fg"
+              }`}
+            >
+              <Icon className="h-4 w-4" aria-hidden /> {label}
+            </button>
+          ))}
+          <span className="text-xs text-fg-faint">
+            {marathonEnabled
+              ? "Chase the Summit — goal meter, progress and the Marathon Wheel."
+              : "Just log, rate and share — no goal, no meter, no pressure. Nothing is lost if you switch back."}
+          </span>
+        </div>
       </Panel>
 
       {/* Visibility + Share */}
@@ -502,6 +598,8 @@ export function Settings() {
           </span>
         </label>
       </Panel>
+
+      <BlockedSection />
 
       <SecuritySection />
 

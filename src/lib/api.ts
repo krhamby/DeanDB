@@ -9,6 +9,7 @@
 // ──────────────────────────────────────────────────────────────
 
 import { requireClient, authRedirectTo } from "./supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { firstWord } from "./format";
 import { canonicalCoverUrl } from "./musicbrainz";
 import type {
@@ -17,11 +18,16 @@ import type {
   AlbumStatus,
   Artist,
   ArtistSuggestion,
+  BlockedUser,
+  Conversation,
   DeanDBData,
+  DirectMessage,
+  DmContact,
   FeedItem,
   PersonResult,
   Profile,
   Recommendation,
+  ReportReason,
   Track,
 } from "../types";
 
@@ -50,6 +56,7 @@ interface ProfileRow {
   theme_secondary: string | null;
   lock_own_theme: boolean;
   skin: string | null;
+  marathon_enabled: boolean;
 }
 
 function mapProfile(r: ProfileRow): Profile {
@@ -68,11 +75,12 @@ function mapProfile(r: ProfileRow): Profile {
     themeSecondary: r.theme_secondary,
     lockOwnTheme: r.lock_own_theme,
     skin: r.skin === "midnight" ? "midnight" : "paper",
+    marathonEnabled: r.marathon_enabled !== false,
   };
 }
 
 const PROFILE_COLS =
-  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme, skin";
+  "id, username, display_name, tagline, bio, avatar_url, season, goal_hours, journey_visibility, meter_name, theme_accent, theme_secondary, lock_own_theme, skin, marathon_enabled";
 
 // ════════════════════════════════════════════════════════════════
 // Auth
@@ -237,7 +245,7 @@ export async function fetchProfileByUsername(username: string): Promise<Profile 
 
 export async function updateProfile(
   id: string,
-  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme" | "skin">>,
+  patch: Partial<Pick<Profile, "username" | "displayName" | "tagline" | "bio" | "avatarUrl" | "season" | "goalHours" | "visibility" | "meterName" | "themeAccent" | "themeSecondary" | "lockOwnTheme" | "skin" | "marathonEnabled">>,
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.username !== undefined) row.username = patch.username;
@@ -253,6 +261,7 @@ export async function updateProfile(
   if (patch.themeSecondary !== undefined) row.theme_secondary = patch.themeSecondary;
   if (patch.lockOwnTheme !== undefined) row.lock_own_theme = patch.lockOwnTheme;
   if (patch.skin !== undefined) row.skin = patch.skin;
+  if (patch.marathonEnabled !== undefined) row.marathon_enabled = patch.marathonEnabled;
   const { error } = await requireClient().from("profiles").update(row).eq("id", id);
   if (error) {
     return {
@@ -313,6 +322,7 @@ interface UserAlbumRow {
   review: string;
   minutes: number;
   date_listened: string | null;
+  rated_at: string | null;
   favorite: boolean;
   excluded: boolean;
   album: {
@@ -333,6 +343,7 @@ interface UserTrackRow {
   track_id: string;
   rating: number | null;
   favorite: boolean;
+  listened: boolean;
 }
 
 /**
@@ -353,12 +364,12 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
     c
       .from("user_albums")
       .select(
-        "status, rating, review, minutes, date_listened, favorite, excluded, " +
+        "status, rating, review, minutes, date_listened, rated_at, favorite, excluded, " +
           "album:catalog_albums!inner ( id, artist_id, title, year, cover, cover_url, dominant_color, mbid, runtime_min, " +
           "tracks:catalog_tracks ( id, position, title ) )",
       )
       .eq("user_id", profile.id),
-    c.from("user_tracks").select("track_id, rating, favorite").eq("user_id", profile.id),
+    c.from("user_tracks").select("track_id, rating, favorite, listened").eq("user_id", profile.id),
   ]);
 
   // Fail loudly on a real query error (e.g. a missing column after schema drift)
@@ -418,7 +429,13 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       .sort((x, y) => x.position - y.position)
       .map((t) => {
         const o = trackOverlay.get(t.id);
-        return { id: t.id, title: t.title, rating: o?.rating ?? null, favorite: o?.favorite ?? false };
+        return {
+          id: t.id,
+          title: t.title,
+          rating: o?.rating ?? null,
+          favorite: o?.favorite ?? false,
+          listened: o?.listened ?? false,
+        };
       });
     const album: Album = {
       id: cat.id,
@@ -437,6 +454,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
       // loaded, is written to both layers. Never seed a fake number here.
       minutes: ur.minutes || cat.runtime_min || 0,
       dateListened: ur.date_listened,
+      ratedAt: ur.rated_at,
       favorite: ur.favorite,
       tracks,
     };
@@ -450,6 +468,7 @@ export async function fetchJourney(profile: Profile): Promise<DeanDBData> {
     },
     goalHours: profile.goalHours,
     season: profile.season,
+    marathon: profile.marathonEnabled !== false,
     artists: [...artistById.values()],
   };
 }
@@ -645,11 +664,12 @@ export async function removeUserAlbum(userId: string, albumId: string): Promise<
 export async function upsertUserTrack(
   userId: string,
   trackId: string,
-  patch: { rating?: number | null; favorite?: boolean },
+  patch: { rating?: number | null; favorite?: boolean; listened?: boolean },
 ): Promise<void> {
   const row: Record<string, unknown> = { user_id: userId, track_id: trackId };
   if (patch.rating !== undefined) row.rating = patch.rating;
   if (patch.favorite !== undefined) row.favorite = patch.favorite;
+  if (patch.listened !== undefined) row.listened = patch.listened;
   const { error } = await requireClient().from("user_tracks").upsert(row, { onConflict: "user_id,track_id" });
   if (error) throw error;
 }
@@ -1068,7 +1088,20 @@ export async function sendRecommendation(
   subject: { albumId?: string; artistId?: string },
   note: string,
 ): Promise<void> {
-  const { error } = await requireClient().from("recommendations").insert({
+  const c = requireClient();
+  // Dedupe: a repeat recommendation of the same subject from the same sender to
+  // the same recipient replaces the older one (newest shown, older removed —
+  // the ticket's requested behavior). The `recs delete` RLS policy lets the
+  // sender remove their own rows.
+  const subjectCol = subject.albumId ? "album_id" : "artist_id";
+  const subjectId = subject.albumId ?? subject.artistId ?? "";
+  await c
+    .from("recommendations")
+    .delete()
+    .eq("from_user", fromUser)
+    .eq("to_user", toUser)
+    .eq(subjectCol, subjectId);
+  const { error } = await c.from("recommendations").insert({
     from_user: fromUser,
     to_user: toUser,
     album_id: subject.albumId ?? null,
@@ -1078,13 +1111,46 @@ export async function sendRecommendation(
   if (error) throw error;
 }
 
+/** Flat row shape returned by the `list_inbox` RPC (sender public identity +
+ *  resolved album/artist), used instead of a PostgREST embed because
+ *  recommendations.from_user is an FK to auth.users, not profiles. */
+interface InboxRow {
+  id: string;
+  from_user: string;
+  from_username: string | null;
+  from_display_name: string | null;
+  from_avatar_url: string | null;
+  album_id: string | null;
+  artist_id: string | null;
+  note: string;
+  created_at: string;
+  read_at: string | null;
+  album_title: string | null;
+  artist_name: string | null;
+}
+
 export async function listInbox(userId: string): Promise<Recommendation[]> {
-  const { data } = await requireClient()
-    .from("recommendations")
-    .select(REC_COLS)
-    .eq("to_user", userId)
-    .order("created_at", { ascending: false });
-  return ((data ?? []) as unknown as RecRow[]).map(mapRec);
+  const { data, error } = await requireClient().rpc("list_inbox");
+  if (error) {
+    // Surface (don't silently swallow) so a broken inbox is debuggable, but
+    // still degrade to an empty list rather than throwing into the hook.
+    console.error("list_inbox failed", error);
+    return [];
+  }
+  return ((data ?? []) as InboxRow[]).map((r) => ({
+    id: r.id,
+    fromUser: r.from_user,
+    fromUsername: r.from_username ?? "",
+    fromDisplayName: r.from_display_name ?? "",
+    toUser: userId,
+    albumId: r.album_id,
+    albumTitle: r.album_title,
+    artistId: r.artist_id ?? "",
+    artistName: r.artist_name ?? "Unknown",
+    note: r.note,
+    createdAt: r.created_at,
+    readAt: r.read_at,
+  }));
 }
 
 export async function listSent(userId: string): Promise<Recommendation[]> {
@@ -1107,6 +1173,273 @@ export async function unreadRecommendationCount(userId: string): Promise<number>
     .eq("to_user", userId)
     .is("read_at", null);
   return count ?? 0;
+}
+
+/** Count of incoming follow requests awaiting accept. Only PRIVATE journeys
+ *  produce 'pending' edges (follows toward public journeys auto-accept), so this
+ *  drives the People nav's "you have requests" badge. */
+export async function pendingFollowRequestCount(userId: string): Promise<number> {
+  const { count } = await requireClient()
+    .from("follows")
+    .select("id", { count: "exact", head: true })
+    .eq("followee_id", userId)
+    .eq("status", "pending");
+  return count ?? 0;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Direct messages, blocking & reporting
+// ════════════════════════════════════════════════════════════════
+
+interface DmRow {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+function mapDm(r: DmRow): DirectMessage {
+  return {
+    id: r.id,
+    senderId: r.sender_id,
+    recipientId: r.recipient_id,
+    body: r.body,
+    createdAt: r.created_at,
+    readAt: r.read_at,
+  };
+}
+
+/** Whether `me` may DM `other` right now (accepted follow either direction, no
+ *  block either way). Same SQL helper the INSERT policy enforces — this is just
+ *  the UX preflight so the composer isn't shown when sending would be refused. */
+export async function canDirectMessage(me: string, other: string): Promise<boolean> {
+  const { data } = await requireClient().rpc("can_dm", { sender: me, recipient: other });
+  return data === true;
+}
+
+export async function sendDirectMessage(
+  senderId: string,
+  recipientId: string,
+  body: string,
+): Promise<DirectMessage> {
+  const { data, error } = await requireClient()
+    .from("dm_messages")
+    .insert({ sender_id: senderId, recipient_id: recipientId, body })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapDm(data as DmRow);
+}
+
+/** The sender's "unsend" — deletes one of my own messages for both parties. */
+export async function unsendDirectMessage(messageId: string): Promise<void> {
+  const { error } = await requireClient().from("dm_messages").delete().eq("id", messageId);
+  if (error) throw error;
+}
+
+interface ConversationRow {
+  other_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  last_body: string;
+  last_sender_id: string;
+  last_at: string;
+  unread_count: number;
+}
+
+interface DmContactRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+/** People I can start a conversation with, optionally filtered by name. Backed
+ *  by the `list_dm_contacts` RPC, which mirrors `can_dm` exactly — so a pick
+ *  from this list can never produce a refused send. */
+export async function listDmContacts(q = ""): Promise<DmContact[]> {
+  const { data, error } = await requireClient().rpc("list_dm_contacts", { q });
+  if (error) throw error;
+  return ((data ?? []) as DmContactRow[]).map((r) => ({
+    id: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+  }));
+}
+
+/** My DM threads, newest activity first, with the counterparty's public identity. */
+export async function listConversations(): Promise<Conversation[]> {
+  const { data, error } = await requireClient().rpc("list_dm_conversations");
+  if (error) throw error;
+  return ((data ?? []) as ConversationRow[]).map((r) => ({
+    otherId: r.other_id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    lastBody: r.last_body,
+    lastSenderId: r.last_sender_id,
+    lastAt: r.last_at,
+    unreadCount: Number(r.unread_count),
+  }));
+}
+
+/** The latest messages between me and `other`, oldest-first for rendering. */
+export async function fetchThread(me: string, other: string, limit = 200): Promise<DirectMessage[]> {
+  const { data, error } = await requireClient()
+    .from("dm_messages")
+    .select("*")
+    .or(
+      `and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`,
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as DmRow[]).map(mapDm).reverse();
+}
+
+/** Mark everything `other` sent me as read (opening / viewing the thread). */
+export async function markThreadRead(me: string, other: string): Promise<void> {
+  const { error } = await requireClient()
+    .from("dm_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("recipient_id", me)
+    .eq("sender_id", other)
+    .is("read_at", null);
+  if (error) throw error;
+}
+
+/** Unread DM count for the Messages nav badge. */
+export async function unreadDmCount(userId: string): Promise<number> {
+  const { count } = await requireClient()
+    .from("dm_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_id", userId)
+    .is("read_at", null);
+  return count ?? 0;
+}
+
+/**
+ * Live delivery of messages sent TO `userId`. Realtime respects the table's
+ * RLS, so the stream only ever contains rows the user could select anyway.
+ * Returns an unsubscribe function.
+ *
+ * ONE channel per user, shared by every surface (nav badge, conversation list,
+ * open thread) via a listener registry. This is load-bearing: supabase-js
+ * dedupes channels by topic, and realtime-js THROWS if a `postgres_changes`
+ * callback is added to an already-subscribed channel — so a second component
+ * subscribing its "own" channel would crash its render tree (a blank
+ * #/messages page). The single binding below is attached before subscribe and
+ * fans out to however many listeners are currently registered.
+ */
+let dmChannel: RealtimeChannel | null = null;
+let dmChannelUserId: string | null = null;
+const dmListeners = new Set<(m: DirectMessage) => void>();
+
+export function subscribeToIncomingDms(userId: string, onMessage: (m: DirectMessage) => void): () => void {
+  const c = requireClient();
+  if (dmChannelUserId !== userId || !dmChannel) {
+    if (dmChannel) void c.removeChannel(dmChannel);
+    dmChannelUserId = userId;
+    dmChannel = c
+      .channel(`dm-inbox-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "dm_messages", filter: `recipient_id=eq.${userId}` },
+        (payload) => {
+          const m = mapDm(payload.new as DmRow);
+          for (const listener of [...dmListeners]) listener(m);
+        },
+      )
+      .subscribe();
+  }
+  dmListeners.add(onMessage);
+  return () => {
+    dmListeners.delete(onMessage);
+    // Last listener gone (sign-out unmounts the Layout subscription too) —
+    // tear the channel down so the socket doesn't outlive the session.
+    if (dmListeners.size === 0 && dmChannel) {
+      void c.removeChannel(dmChannel);
+      dmChannel = null;
+      dmChannelUserId = null;
+    }
+  };
+}
+
+// ── Blocking ───────────────────────────────────────────────────
+// A DB trigger severs follow edges in both directions on insert, and RLS on
+// follows/recommendations/dm_messages refuses new contact across the block.
+
+export async function blockUser(blockerId: string, blockedId: string): Promise<void> {
+  const { error } = await requireClient()
+    .from("blocks")
+    .upsert({ blocker_id: blockerId, blocked_id: blockedId }, { onConflict: "blocker_id,blocked_id" });
+  if (error) throw error;
+}
+
+export async function unblockUser(blockerId: string, blockedId: string): Promise<void> {
+  const { error } = await requireClient()
+    .from("blocks")
+    .delete()
+    .eq("blocker_id", blockerId)
+    .eq("blocked_id", blockedId);
+  if (error) throw error;
+}
+
+/** True when I have blocked `other` (incoming blocks are never visible). */
+export async function hasBlocked(me: string, other: string): Promise<boolean> {
+  const { data } = await requireClient()
+    .from("blocks")
+    .select("id")
+    .eq("blocker_id", me)
+    .eq("blocked_id", other)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+interface BlockedRow {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
+/** Everyone I've blocked (Settings management list), public identity only. */
+export async function listBlockedUsers(): Promise<BlockedUser[]> {
+  const { data, error } = await requireClient().rpc("list_blocked");
+  if (error) throw error;
+  return ((data ?? []) as BlockedRow[]).map((r) => ({
+    id: r.id,
+    username: r.username,
+    displayName: r.display_name,
+    avatarUrl: r.avatar_url,
+    blockedAt: r.created_at,
+  }));
+}
+
+// ── Reporting ──────────────────────────────────────────────────
+
+/** File a moderation report about a user, optionally anchored to one of their
+ *  messages (the DB snapshots the message body server-side as evidence). */
+export async function reportUser(
+  reporterId: string,
+  reportedUserId: string,
+  reason: ReportReason,
+  details: string,
+  messageId?: string,
+): Promise<void> {
+  const { error } = await requireClient().from("reports").insert({
+    reporter_id: reporterId,
+    reported_user_id: reportedUserId,
+    reason,
+    details,
+    message_id: messageId ?? null,
+  });
+  if (error) throw error;
 }
 
 // ════════════════════════════════════════════════════════════════

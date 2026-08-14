@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 //   #/settings               -> profile + visibility
 //   #/feed                   -> activity feed
 //   #/people                 -> discover + follow
+//   #/messages               -> DM conversation list
+//   #/messages/:username     -> DM thread with one person
 //   #/recommendations        -> recommendation inbox
 //   #/u/:username            -> a user's public journey (read-only)
 //   #/u/:username/artists
@@ -41,8 +43,13 @@ export function profilePath(username: string): string {
   return `/u/${encodeURIComponent(username)}`;
 }
 
+/** Build a link-safe path to a DM thread with a user. */
+export function messagesPath(username: string): string {
+  return `/messages/${encodeURIComponent(username)}`;
+}
+
 /** decodeURIComponent that won't throw on a malformed segment (lone "%", etc.). */
-function safeDecode(segment: string): string {
+export function safeDecode(segment: string): string {
   try {
     return decodeURIComponent(segment);
   } catch {

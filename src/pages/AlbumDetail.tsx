@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Download, Globe, Mail, Pencil, Star } from "lucide-react";
-import { fmtDate, fmtMinutes, gradient } from "../lib/format";
+import { Check, Download, Globe, Headphones, Mail, Pencil, Star } from "lucide-react";
+import { fmtDate, fmtMinutes, fmtScore, gradient } from "../lib/format";
 import { navigate } from "../lib/router";
 import { useAuth, useThemeControl } from "../lib/store";
 import { darken, legible, lighten, pickOnAccent, SKIN_SURFACE } from "../lib/themes";
 import * as api from "../lib/api";
+import { isHeard, songStats } from "../lib/stats";
 import { fetchTracklist, findAlbumCover } from "../lib/musicbrainz";
 import { Cover } from "../components/cards";
-import { DeanMeter, Panel, StatusBadge, Score10 } from "../components/ui";
+import { DeanMeter, Panel, StatusBadge, Score10, scoreColor } from "../components/ui";
 import { RecommendModal } from "../components/social";
 import { VerdictCard } from "../components/ShareCard";
 import { toPng } from "html-to-image";
@@ -28,7 +29,11 @@ export function AlbumDetail({
   canEdit?: boolean;
   basePath?: string;
   setAlbum?: (albumId: string, patch: api.UserAlbumPatch) => void;
-  setTrack?: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
+  setTrack?: (
+    albumId: string,
+    trackId: string,
+    patch: { rating?: number | null; favorite?: boolean; listened?: boolean },
+  ) => void;
 }) {
   const { user } = useAuth();
   const { surface } = useThemeControl();
@@ -120,8 +125,13 @@ export function AlbumDetail({
   const albumAccent = legible(extractedColor ?? album.dominantColor ?? album.cover[0], surface);
 
   const patchAlbum = (patch: api.UserAlbumPatch) => setAlbum?.(album.id, patch);
-  const patchTrack = (trackId: string, patch: { rating?: number | null; favorite?: boolean }) =>
+  const patchTrack = (trackId: string, patch: { rating?: number | null; favorite?: boolean; listened?: boolean }) =>
     setTrack?.(album.id, trackId, patch);
+
+  // Song-scope average for THIS album — deliberately secondary to the album
+  // rating (small text, no DeanMeter dial).
+  const songs = songStats(album.tracks);
+  const allHeard = album.tracks.length > 0 && album.tracks.every(isHeard);
 
   return (
     <div
@@ -285,7 +295,7 @@ export function AlbumDetail({
                   {data.listener.meterName} Meter
                 </label>
                 <span className="font-display text-3xl font-black leading-none text-gold">
-                  {album.rating?.toFixed(1) ?? "—"}
+                  {album.rating != null ? fmtScore(album.rating) : "—"}
                 </span>
               </div>
               <input
@@ -345,23 +355,61 @@ export function AlbumDetail({
       {/* Tracklist */}
       {(album.tracks.length > 0 || editing) && (
         <div className="mt-8">
-          <h2 className="mb-3 font-display text-xl font-black text-fg">Track Ratings</h2>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-display text-xl font-black text-fg">Track Ratings</h2>
+            {/* Song-scope average — secondary to the album's Dean Meter score. */}
+            {songs.rated > 0 && (
+              <span className="text-sm text-fg-muted">
+                Song average{" "}
+                <span
+                  className="font-display text-base font-black tabular-nums"
+                  style={{ color: scoreColor(songs.avg, surface) }}
+                >
+                  {fmtScore(songs.avg as number)}
+                </span>{" "}
+                · {songs.rated}/{songs.total} rated
+                {songs.heard > 0 && ` · ${songs.heard} heard`}
+              </span>
+            )}
+          </div>
           <Panel className="divide-y divide-edge/60">
             {album.tracks.map((t, i) => (
               <div key={t.id} className="flex items-center gap-3 p-3">
                 <span className="w-6 text-right font-display text-sm text-fg-faint">{i + 1}</span>
                 <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
                 {editing ? (
-                  <button
-                    onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center leading-none transition-transform hover:scale-125"
-                    title="Favorite track"
-                    aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}
-                  >
-                    <Star className={`h-5 w-5 text-gold ${t.favorite ? "fill-current" : ""}`} aria-hidden />
-                  </button>
+                  <>
+                    <button
+                      onClick={() => patchTrack(t.id, { listened: !t.listened })}
+                      // Rated songs always count as heard (DB trigger + isHeard agree),
+                      // so the toggle is disabled rather than silently reverting.
+                      disabled={t.rating != null}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center leading-none transition-transform hover:scale-125 disabled:hover:scale-100"
+                      title={t.rating != null ? "Rated songs always count as heard" : "Mark song as heard"}
+                      aria-label={isHeard(t) ? "Mark song as not heard" : "Mark song as heard"}
+                      aria-pressed={isHeard(t)}
+                    >
+                      <Headphones
+                        className={`h-5 w-5 ${isHeard(t) ? "text-[var(--color-status-done)]" : "text-fg-faint"}`}
+                        aria-hidden
+                      />
+                    </button>
+                    <button
+                      onClick={() => patchTrack(t.id, { favorite: !t.favorite })}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center leading-none transition-transform hover:scale-125"
+                      title="Favorite track"
+                      aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}
+                    >
+                      <Star className={`h-5 w-5 text-gold ${t.favorite ? "fill-current" : ""}`} aria-hidden />
+                    </button>
+                  </>
                 ) : (
-                  t.favorite && <Star className="h-5 w-5 fill-current text-gold" aria-label="Favorite" />
+                  <>
+                    {isHeard(t) && (
+                      <Headphones className="h-5 w-5 text-[var(--color-status-done)]" aria-label="Heard" />
+                    )}
+                    {t.favorite && <Star className="h-5 w-5 fill-current text-gold" aria-label="Favorite" />}
+                  </>
                 )}
                 <Score10 value={t.rating} onChange={editing ? (v) => patchTrack(t.id, { rating: v }) : undefined} />
               </div>
@@ -370,6 +418,21 @@ export function AlbumDetail({
               <p className="p-4 text-sm italic text-fg-faint">No tracks added yet.</p>
             )}
           </Panel>
+          {/* Every song heard but the album isn't completed — offer the one-tap
+              upgrade rather than auto-completing behind the listener's back. */}
+          {editing && allHeard && album.status !== "completed" && (
+            <button
+              onClick={() =>
+                patchAlbum({
+                  status: "completed",
+                  dateListened: album.dateListened ?? new Date().toISOString().slice(0, 10),
+                })
+              }
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-edge px-3 py-1.5 text-sm font-semibold text-gold hover:brightness-110"
+            >
+              <Check className="h-4 w-4" aria-hidden /> Every song heard — mark album completed
+            </button>
+          )}
         </div>
       )}
 

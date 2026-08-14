@@ -86,7 +86,8 @@ export const sampleJourney: DeanDBData = {
           favorite: false,
           excluded: false,
           tracks: [
-            { id: "trk-nature-feels", title: "Nature Feels", rating: null, favorite: false },
+            // Heard-but-unrated: exercises the per-song "listened" checkmark.
+            { id: "trk-nature-feels", title: "Nature Feels", rating: null, favorite: false, listened: true },
             { id: "trk-novacane", title: "Novacane", rating: 8, favorite: true },
             { id: "trk-lovecrimes", title: "Lovecrimes", rating: null, favorite: false },
           ],

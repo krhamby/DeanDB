@@ -34,25 +34,41 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 
 /** A stencil mountain — the marathon's "climb to the Summit" motif. Used as a
  *  faint backdrop at the bottom of the meter/Summit card when nothing is currently
- *  spinning; the silhouette fills (gold) to the listener's progress. Decorative. */
+ *  spinning; gold "alpenglow" rises up the silhouette to the listener's progress.
+ *  Decorative. The fill is a vertical gradient anchored to the mountain's base
+ *  (flush with the card's bottom edge) that dissolves to transparent at the current
+ *  climb line — so a barely-started climb reads as a soft ground glow instead of a
+ *  hard horizontal line floating above the card. */
 function SummitMountain({ pct }: { pct: number }) {
-  const id = useId();
+  const clipId = useId();
+  const fillId = useId();
   const climb = Math.max(0, Math.min(100, pct));
-  const fillTop = 86 - (86 - 20) * (climb / 100); // base y=86 → ~summit y=20
+  const baseY = 90; // anchor the base flush to the SVG's bottom edge (no floating gap)
+  const summitY = 20;
+  const fillTop = baseY - (baseY - summitY) * (climb / 100); // base → summit climb line
+  // Ridge line only (no flat base edge) — the closing `Z` exists solely for the clip.
+  const ridge = "M0 90 L70 46 L120 64 L200 20 L280 64 L330 46 L400 90";
   // Wide viewBox + w-full (intrinsic height) → spans the full card width at proper
   // proportions, anchored to the card's bottom edge.
   return (
     <svg viewBox="0 0 400 90" preserveAspectRatio="xMidYMax meet" className="block w-full text-fg" aria-hidden>
       <defs>
-        <clipPath id={id}>
-          <path d="M0 86 L70 46 L120 64 L200 20 L280 64 L330 46 L400 86 Z" />
+        <clipPath id={clipId}>
+          <path d={`${ridge} Z`} />
         </clipPath>
+        {/* Gold at the base, fading out at the climb line — keeps the bottom flush
+            and the leading edge soft so low progress never shows a hard line. */}
+        <linearGradient id={fillId} gradientUnits="userSpaceOnUse" x1="0" y1={baseY} x2="0" y2={fillTop}>
+          <stop offset="0" stopColor="var(--color-gold)" stopOpacity="1" />
+          <stop offset="0.65" stopColor="var(--color-gold)" stopOpacity="0.8" />
+          <stop offset="1" stopColor="var(--color-gold)" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <g clipPath={`url(#${id})`}>
-        <rect x="0" y={fillTop} width="400" height="90" fill="var(--color-gold)" />
+      <g clipPath={`url(#${clipId})`}>
+        <rect x="0" y={fillTop} width="400" height={baseY - fillTop} fill={`url(#${fillId})`} />
       </g>
       <path
-        d="M0 86 L70 46 L120 64 L200 20 L280 64 L330 46 L400 86"
+        d={ridge}
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
@@ -83,13 +99,21 @@ export function Dashboard({
   const { myUnlockedAchievementIds } = useMyJourney();
   const { surface } = useThemeControl();
 
+  // Chill journeys hide the goal/Summit/Wheel layer entirely (absent = marathon).
+  const marathonOn = data.marathon !== false;
+
   const albums = flattenAlbums(data);
   // "Now spinning" is a marathon concept — logged Library artists aren't queued.
   const nowSpinning = albums.filter((a) => a.status === "listening" && !a.artistLogged);
   // Latest verdicts span the whole collection (a freshly logged favorite counts).
+  // Ordered by when the RATING last changed (rated_at, trigger-stamped) — the old
+  // dateListened sort was day-granular and set once, so re-rating an album (or
+  // rating a second album finished the same day) never surfaced as freshest.
+  const recency = (a: { ratedAt?: string | null; dateListened: string | null }) =>
+    a.ratedAt ?? a.dateListened ?? "";
   const recent = albums
     .filter((a) => a.status === "completed" && a.rating != null)
-    .sort((a, b) => (b.dateListened ?? "").localeCompare(a.dateListened ?? ""))
+    .sort((a, b) => recency(b).localeCompare(recency(a)))
     .slice(0, 6);
   // Hall-of-Fame preview — top scores (mirrors HallOfFame.tsx; rating-sorted, not date).
   const top3 = [...albums]
@@ -123,7 +147,7 @@ export function Dashboard({
           {data.season}
         </div>
         <h1 className="mt-1 font-display text-4xl font-black leading-tight tracking-tight text-fg sm:text-5xl">
-          {data.listener.meterName}&apos;s Discography Marathon
+          {data.listener.meterName}&apos;s {marathonOn ? "Discography Marathon" : "Listening Journal"}
         </h1>
         <p className="mt-2 max-w-2xl text-fg-muted">{data.listener.tagline}</p>
 
@@ -132,10 +156,29 @@ export function Dashboard({
             featured ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-stretch" : ""
           }`}
         >
-          {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse */}
+          {/* LEFT — the marathon meter (or Summit) + the live "now spinning" pulse.
+              Chill journeys swap the goal meter for a pressure-free tally. */}
           <div className="flex flex-col gap-6">
+          {!marathonOn ? (
+            <Panel className={`flex flex-col justify-center p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex-1"}`}>
+              <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
+                Listening, logged
+              </div>
+              <div className="font-display text-5xl font-black leading-none text-gold tabular-nums sm:text-6xl">
+                {fmtHours(animatedHours)}
+              </div>
+              <div className="mt-3 text-sm text-fg-muted">
+                {stats.albumsCompleted} album{stats.albumsCompleted === 1 ? "" : "s"} ·{" "}
+                {stats.songsRated} song{stats.songsRated === 1 ? "" : "s"} rated — no goal, no
+                clock. Just the music.
+              </div>
+            </Panel>
+          ) : (
           <Panel className={`relative overflow-hidden p-6 sm:p-7 ${nowSpinning.length > 0 ? "" : "flex flex-1 flex-col justify-center"}`}>
-            {nowSpinning.length === 0 && (
+            {/* Faint Summit mountain backdrop — a reward shown ONLY once the
+                marathon is complete (the Summit is reached). A still-climbing
+                journey never shows the peak. */}
+            {stats.goalPct >= 100 && (
               <div className="pointer-events-none absolute inset-x-0 bottom-0 opacity-[0.12]" aria-hidden>
                 <SummitMountain pct={stats.goalPct} />
               </div>
@@ -149,7 +192,7 @@ export function Dashboard({
                 <div className="inline-flex items-center justify-center gap-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-gold">
                   The Summit — conquered <Crown className="h-4 w-4" aria-hidden />
                 </div>
-                <div className="mt-2 font-display text-4xl font-black leading-none text-fg sm:text-5xl">
+                <div className="mt-2 font-display text-4xl font-black leading-none text-fg tabular-nums sm:text-5xl">
                   {fmtHours(animatedHours)}
                 </div>
                 <div className="mt-2 text-sm text-fg-muted">
@@ -158,17 +201,17 @@ export function Dashboard({
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-fg-faint">
                       Total time logged
                     </div>
-                    <div className="font-display text-5xl font-black leading-none text-gold sm:text-6xl">
+                    <div className="font-display text-5xl font-black leading-none text-gold tabular-nums sm:text-6xl">
                       {fmtHours(animatedHours)}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-display text-3xl font-black leading-none text-fg">
+                  <div className="sm:text-right">
+                    <div className="font-display text-3xl font-black leading-none text-fg tabular-nums">
                       {animatedPct.toFixed(1)}%
                     </div>
                     <div className="mt-1 text-xs text-fg-faint">to the Summit</div>
@@ -196,6 +239,7 @@ export function Dashboard({
             )}
             </div>
           </Panel>
+          )}
 
           {nowSpinning.length > 0 && (
             <Panel className="flex-1 p-5">
@@ -255,8 +299,9 @@ export function Dashboard({
         )
       ) : (
         <>
-          {/* ── What's next (owner-only — the marathon "what to play next" tool) ── */}
-          {canEdit &&
+          {/* ── What's next (owner-only — the marathon "what to play next" tool).
+              A chill journey has no queue, so no Wheel. ── */}
+          {canEdit && marathonOn &&
             (stats.marathonArtistsTotal > 0 ? (
               <NextSpinner artists={data.artists} basePath={basePath} />
             ) : (
@@ -282,8 +327,12 @@ export function Dashboard({
               : `${stats.artistsConquered} conquered`
           }
         />
-        <StatCard label="Avg score" value={stats.avgRating ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
-        <StatCard label="Songs rated" value={String(stats.songsRated)} />
+        <StatCard label="Avg score" value={stats.avgRating != null ? stats.avgRating.toFixed(1) : "—"} sub={`${data.listener.meterName} Meter`} />
+        <StatCard
+          label="Songs rated"
+          value={String(stats.songsRated)}
+          sub={stats.avgSongRating != null ? `${stats.avgSongRating.toFixed(1)} avg song score` : undefined}
+        />
         <StatCard label="Now spinning" value={String(stats.albumsListening)} />
         <StatCard label="Top genre" value={stats.topGenre ?? "—"} />
       </section>
@@ -397,9 +446,11 @@ export function Dashboard({
           <div className="mt-4 flex-1 space-y-1">
             <div className="font-display text-lg font-black leading-tight text-fg">{data.season}</div>
             <div className="text-sm text-fg-muted">{fmtHours(stats.hoursListened)} logged</div>
-            <div className="text-xs font-semibold text-gold">
-              {stats.goalPct.toFixed(0)}% to the Summit
-            </div>
+            {marathonOn && (
+              <div className="text-xs font-semibold text-gold">
+                {stats.goalPct.toFixed(0)}% to the Summit
+              </div>
+            )}
           </div>
         </Panel>
       </div>

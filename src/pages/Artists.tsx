@@ -27,7 +27,7 @@ export function Artists({ data, basePath = "" }: { data: DeanDBData; basePath?: 
     list.length > 0 && (
       <section className="mb-8">
         <SectionTitle kicker={kicker} title={title} />
-        <div className="grid gap-3 md:grid-cols-2 stagger-children">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 stagger-children">
           {list.map((a) => (
             <ArtistCard key={a.id} artist={a} basePath={basePath} />
           ))}

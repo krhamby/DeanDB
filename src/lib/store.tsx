@@ -67,6 +67,7 @@ interface AuthValue {
         | "themeSecondary"
         | "lockOwnTheme"
         | "skin"
+        | "marathonEnabled"
       >
     >,
   ) => Promise<{ ok: boolean; error?: string }>;
@@ -342,6 +343,9 @@ interface MyJourneyValue {
   /** The logged-in user's journey in DeanDBData shape, or null when signed out. */
   data: DeanDBData | null;
   loading: boolean;
+  /** The last journey load failed (network / schema drift). UI offers a retry
+   *  instead of spinning forever on the null data. */
+  loadError: boolean;
   userId: string | null;
   /** Achievement ids the VIEWER (signed-in user) has unlocked — persisted unlocks
    *  plus freshly-computed ones from their own journey. The single source of truth
@@ -354,7 +358,11 @@ interface MyJourneyValue {
   /** Optimistic local edit + persist for one of my albums. */
   setAlbum: (albumId: string, patch: api.UserAlbumPatch) => void;
   /** Optimistic local edit + persist for one of my tracks. */
-  setTrack: (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => void;
+  setTrack: (
+    albumId: string,
+    trackId: string,
+    patch: { rating?: number | null; favorite?: boolean; listened?: boolean },
+  ) => void;
   /**
    * Optimistic local edit + persist for one of my artists (logged / verdict /
    * recommender). Pass `recommendedBy` to update the resolved display object
@@ -374,6 +382,7 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   const userId = profile?.id ?? null;
   const [data, setData] = useState<DeanDBData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   // The viewer's own unlocked achievement ids (persisted ∪ freshly computed),
   // exposed for secret-achievement masking. Reactive so masking updates live.
   const [myUnlocked, setMyUnlocked] = useState<Set<string>>(new Set());
@@ -387,10 +396,18 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
       return null;
     }
     setLoading(true);
+    setLoadError(false);
     try {
       const fresh = await api.fetchJourney(profile);
       setData(fresh);
       return fresh;
+    } catch (e) {
+      // Keep any previously-loaded copy on screen; flag the failure so the UI
+      // can offer a retry rather than spinning forever (fetchJourney throws
+      // loudly on real query errors by design).
+      console.error("journey load failed", e);
+      setLoadError(true);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -464,7 +481,13 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
           const al = ar.albums.find((x) => x.id === albumId);
           if (al) {
             if (patch.status !== undefined) al.status = patch.status;
-            if (patch.rating !== undefined) al.rating = patch.rating;
+            if (patch.rating !== undefined) {
+              // Mirror the DB trigger: a rating change stamps/clears ratedAt, so
+              // "Latest Verdicts" reorders instantly without a journey reload.
+              if (patch.rating !== al.rating)
+                al.ratedAt = patch.rating == null ? null : new Date().toISOString();
+              al.rating = patch.rating;
+            }
             if (patch.review !== undefined) al.review = patch.review;
             if (patch.minutes !== undefined) al.minutes = patch.minutes;
             if (patch.dateListened !== undefined) al.dateListened = patch.dateListened;
@@ -481,8 +504,11 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   );
 
   const setTrack = useCallback(
-    (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean }) => {
+    (albumId: string, trackId: string, patch: { rating?: number | null; favorite?: boolean; listened?: boolean }) => {
       if (!userId) return;
+      // Platform invariant: rating a song means you heard it. Un-rating does
+      // NOT un-hear it — listened only ever flips off explicitly.
+      if (patch.rating != null && patch.listened === undefined) patch = { ...patch, listened: true };
       patchLocal((d) => {
         for (const ar of d.artists) {
           const al = ar.albums.find((x) => x.id === albumId);
@@ -490,6 +516,7 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
           if (tr) {
             if (patch.rating !== undefined) tr.rating = patch.rating;
             if (patch.favorite !== undefined) tr.favorite = patch.favorite;
+            if (patch.listened !== undefined) tr.listened = patch.listened;
             break;
           }
         }
@@ -519,8 +546,8 @@ function MyJourneyProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<MyJourneyValue>(
-    () => ({ data, loading, userId, myUnlockedAchievementIds: myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist }),
-    [data, loading, userId, myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist],
+    () => ({ data, loading, loadError, userId, myUnlockedAchievementIds: myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist }),
+    [data, loading, loadError, userId, myUnlocked, reload, patchLocal, setAlbum, setTrack, setArtist],
   );
 
   return <MyJourneyContext.Provider value={value}>{children}</MyJourneyContext.Provider>;
@@ -538,6 +565,7 @@ export function MockJourneyProvider({ data, children }: { data: DeanDBData; chil
   const value: MyJourneyValue = {
     data,
     loading: false,
+    loadError: false,
     userId: "preview-user",
     myUnlockedAchievementIds: new Set<string>(),
     reload: async () => data,

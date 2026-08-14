@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Plug } from "lucide-react";
 import { Layout } from "./components/Layout";
 import { Panel } from "./components/ui";
-import { parseRoute, parseUserRoute, useHashRoute, navigate } from "./lib/router";
+import { parseRoute, parseUserRoute, safeDecode, useHashRoute, navigate } from "./lib/router";
 import { MeterNameProvider, useAuth, useMyJourney } from "./lib/store";
 import { supabaseEnabled } from "./lib/supabase";
 import { JourneyNav } from "./components/JourneyNav";
@@ -16,6 +16,7 @@ import { Login } from "./pages/Login";
 import { Settings } from "./pages/Settings";
 import { Feed } from "./pages/Feed";
 import { People } from "./pages/People";
+import { Messages } from "./pages/Messages";
 import { Recommendations } from "./pages/Recommendations";
 import { Discover } from "./pages/Discover";
 import { Profile } from "./pages/Profile";
@@ -60,9 +61,26 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 /** Renders the signed-in user's own journey pages (editable). */
 function MyJourney({ rest }: { rest: string[] }) {
-  const { data, loading, setAlbum, setTrack } = useMyJourney();
+  const { data, loading, loadError, reload, setAlbum, setTrack } = useMyJourney();
   if (loading) return <Loading />;
-  if (!data) return <Loading />;
+  if (!data) {
+    // A failed load must not spin forever — surface it with a retry.
+    if (loadError) {
+      return (
+        <Panel className="mx-auto max-w-md px-6 py-16 text-center text-fg-muted">
+          <p className="font-display text-lg font-black text-fg">Couldn't load your journey</p>
+          <p className="mt-1 text-sm">Check your connection and try again.</p>
+          <button
+            onClick={() => void reload()}
+            className="mt-4 rounded-lg bg-gold px-4 py-1.5 text-sm font-bold text-on-accent hover:brightness-110"
+          >
+            Retry
+          </button>
+        </Panel>
+      );
+    }
+    return <Loading />;
+  }
   const [head, a, b] = rest;
   let content;
   switch (head) {
@@ -162,6 +180,12 @@ function Router() {
       return (
         <RequireAuth>
           <People />
+        </RequireAuth>
+      );
+    case "messages":
+      return (
+        <RequireAuth>
+          <Messages username={segments[1] ? safeDecode(segments[1]) : undefined} />
         </RequireAuth>
       );
     case "discover":

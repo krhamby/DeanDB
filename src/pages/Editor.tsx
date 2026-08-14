@@ -7,6 +7,7 @@ import {
   ChevronsUpDown,
   Download,
   Footprints,
+  Headphones,
   Hourglass,
   Image as ImageIcon,
   Library,
@@ -21,8 +22,8 @@ import {
 } from "lucide-react";
 import { useMyJourney, usePeopleSearch } from "../lib/store";
 import { navigate } from "../lib/router";
-import { fmtHours, gradient, pickGradient } from "../lib/format";
-import { artistProgress, computeStats } from "../lib/stats";
+import { fmtHours, fmtScore, gradient, pickGradient } from "../lib/format";
+import { artistProgress, computeStats, isHeard } from "../lib/stats";
 import * as api from "../lib/api";
 import {
   fetchTracklist,
@@ -844,7 +845,7 @@ export function Editor() {
           </Panel>
         )}
         {shownArtists.map((artist: Artist) => (
-          <Panel key={artist.id} className="p-4">
+          <Panel key={artist.id} className="relative p-4 focus-within:z-20">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <div
@@ -859,7 +860,7 @@ export function Editor() {
                     <span className="font-display text-lg font-black text-fg">{artist.name}</span>
                     {artist.logged && <LoggedBadge />}
                     <span className="text-xs text-fg-faint">
-                      {artist.genre} · {artist.albums.length}/{artist.catalogSize} albums
+                      {artist.genre} · {artist.albums.length} {artist.albums.length === 1 ? "album" : "albums"}
                     </span>
                   </div>
                   <ProgressBar pct={artistProgress(artist) * 100} className="mt-2 max-w-xs" />
@@ -974,7 +975,7 @@ export function Editor() {
                       title="One overall score for the whole artist"
                     />
                     <span className="w-8 text-right text-xs font-bold text-gold">
-                      {artist.verdict != null ? artist.verdict.toFixed(1) : "—"}
+                      {artist.verdict != null ? fmtScore(artist.verdict) : "—"}
                     </span>
                     {artist.verdict != null && (
                       <button
@@ -1013,7 +1014,7 @@ export function Editor() {
                       <StatusBadge status={al.status} />
                     </span>
                     <span className="w-9 shrink-0 text-right font-display text-sm font-black tabular-nums" style={{ color: scoreColor(al.rating) }}>
-                      {al.rating != null ? al.rating.toFixed(1) : "—"}
+                      {al.rating != null ? fmtScore(al.rating) : "—"}
                     </span>
                   </button>
 
@@ -1087,7 +1088,7 @@ export function Editor() {
                             className="h-6 w-32 cursor-pointer accent-gold"
                             title={`${data.listener.meterName} Meter — overall album score`}
                           />
-                          <span className="font-display text-2xl font-black text-gold">{al.rating != null ? al.rating.toFixed(1) : "—"}</span>
+                          <span className="font-display text-2xl font-black text-gold">{al.rating != null ? fmtScore(al.rating) : "—"}</span>
                         </div>
                       </div>
 
@@ -1102,6 +1103,9 @@ export function Editor() {
                                 <div key={t.id} className="flex items-center gap-2 px-2.5 py-1.5">
                                   <span className="w-5 text-right text-xs text-fg-faint">{i + 1}</span>
                                   <span className="flex-1 truncate text-sm text-fg">{t.title}</span>
+                                  <button onClick={() => setTrack(al.id, t.id, { listened: !t.listened })} disabled={t.rating != null} className="inline-flex px-1 transition-transform hover:scale-110 disabled:hover:scale-100" title={t.rating != null ? "Rated songs always count as heard" : "Mark song as heard"} aria-label={isHeard(t) ? "Mark song as not heard" : "Mark song as heard"} aria-pressed={isHeard(t)}>
+                                    <Headphones className={`h-4 w-4 ${isHeard(t) ? "text-[var(--color-status-done)]" : "text-fg-faint"}`} aria-hidden />
+                                  </button>
                                   <button onClick={() => setTrack(al.id, t.id, { favorite: !t.favorite })} className="inline-flex px-1 transition-transform hover:scale-110" title="Favorite track" aria-label={t.favorite ? "Unfavorite track" : "Favorite track"}>
                                     <Star className={`h-4 w-4 text-gold ${t.favorite ? "fill-current" : ""}`} aria-hidden />
                                   </button>

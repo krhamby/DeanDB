@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Bookmark, Check, ChevronDown, Library, Play, type LucideIcon } from "lucide-react";
 import type { AlbumStatus } from "../types";
 import { useMeterName, useThemeControl } from "../lib/store";
 import { legible } from "../lib/themes";
+import { fmtScore } from "../lib/format";
 
 /** 0-10 color ramp. Pass `surface` to clamp legible for the active skin (UI);
  *  omit it to get the bright base colors (e.g. the fixed-palette share card). */
@@ -43,13 +44,16 @@ export function DeanMeter({
         // doesn't).
         boxShadow: value != null && value >= 9 ? `0 0 15px -3px ${color}` : undefined,
       }}
-      title={value == null ? "Unrated" : `${label} Meter: ${value.toFixed(1)}/10`}
+      title={value == null ? "Unrated" : `${label} Meter: ${fmtScore(value)}/10`}
     >
+      {/* High-score glow. `screen` blend adds light so it melts into the card
+          instead of stamping a flat translucent disc — that disc was the "weird
+          background" reported behind 9.0+ ratings on both skins. */}
       {value != null && value >= 9 && (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-full"
-          style={{ background: `radial-gradient(circle, ${color} 0%, transparent 72%)`, opacity: 0.35 }}
+          style={{ background: `radial-gradient(circle, ${color} 0%, transparent 72%)`, opacity: 0.35, mixBlendMode: "screen" }}
         />
       )}
       <svg width={size} height={size} className="relative -rotate-90">
@@ -73,7 +77,7 @@ export function DeanMeter({
           className="font-display font-black"
           style={{ color, fontSize: size * 0.3 }}
         >
-          {value == null ? "—" : value.toFixed(1)}
+          {value == null ? "—" : fmtScore(value)}
         </span>
       </div>
     </div>
@@ -95,7 +99,7 @@ export function Score10({
   if (!onChange) {
     return (
       <span className="font-display text-base font-black tabular-nums sm:text-sm" style={{ color }}>
-        {value == null ? "—" : value.toFixed(1)}
+        {value == null ? "—" : fmtScore(value)}
       </span>
     );
   }
@@ -202,6 +206,34 @@ export function Panel({
       className={`sleeve-panel rounded-2xl border border-edge/70 bg-panel/80 backdrop-blur-sm ${className}`}
     >
       {children}
+    </div>
+  );
+}
+
+/** Shared modal scaffold: dimmed backdrop, centered Panel, closes on backdrop
+ *  click and Escape, labelled for screen readers. Content clicks don't close. */
+export function ModalShell({ onClose, title, children }: { onClose: () => void; title: string; children: ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <Panel className="w-full max-w-md p-6">
+        <div onClick={(e) => e.stopPropagation()} className="space-y-4">
+          <h3 className="font-display text-lg font-black text-fg">{title}</h3>
+          {children}
+        </div>
+      </Panel>
     </div>
   );
 }
